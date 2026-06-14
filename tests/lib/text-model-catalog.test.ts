@@ -2,17 +2,17 @@
  * V082: text-model catalog tests.
  *
  * The catalog (lib/text-model-catalog.ts) is the single source of truth
- * for every text model MashupForge knows how to call via the Vercel AI
- * SDK. Tests cover the four contract surfaces:
+ * for every text model the app knows how to call via the Vercel AI
+ * SDK. 4NE-20: MiniMax-only. Tests cover the four contract surfaces:
  *   1. defaults + mode-override merging (mode override wins when set)
  *   2. unknown models return an empty object (safe-to-spread contract)
  *   3. provider-bucketing helper returns only matching entries
  *   4. alias resolution (historical IDs like `M2.7-highspeed` → canonical
  *      `MiniMax-M2.7-highspeed`) keeps persisted user selections working
  *
- * Also pinned: the catalog contains the expected 6 entries across 2
- * providers (5 MiniMax variants + 1 OpenAI). Adding a new model is
- * a one-line addition to TEXT_MODEL_CATALOG; if this test starts
+ * Also pinned: the catalog contains the expected 5 MiniMax entries
+ * (M2, M2.5, M2.7, M2.7-highspeed, M3). Adding a new model is a
+ * one-line addition to TEXT_MODEL_CATALOG; if this test starts
  * failing after a model add, update the count below in lock-step.
  */
 
@@ -29,13 +29,14 @@ import {
 } from '@/lib/text-model-catalog';
 
 describe('text-model-catalog V082', () => {
-  it('ships models for each of the two vercel-ai providers', () => {
+  it('ships MiniMax text models only (4NE-20)', () => {
     const minimax = getTextCatalogByProvider('minimax');
-    const openai = getTextCatalogByProvider('openai');
     expect(minimax.length).toBeGreaterThanOrEqual(3);
-    expect(openai.length).toBeGreaterThanOrEqual(1);
 
-    // The two dropped providers return no text models.
+    // 4NE-20: OpenAI was removed; it returns no text models now.
+    expect(getTextCatalogByProvider('openai')).toEqual([]);
+
+    // The two earlier-dropped providers return no text models.
     expect(getTextCatalogByProvider('anthropic')).toEqual([]);
     expect(getTextCatalogByProvider('openrouter')).toEqual([]);
 
@@ -45,11 +46,12 @@ describe('text-model-catalog V082', () => {
   });
 
   it('catalog has the expected model count and structure', () => {
-    // V082-CATALOG: 5 MiniMax variants (M2, M2.5, M2.7, M2.7-highspeed,
-    // M3) + 1 OpenAI (gpt-4o-mini) = 6 total. Adding a new model is a
-    // one-line addition; bump this count in lock-step.
+    // 4NE-20: 5 MiniMax variants (M2, M2.5, M2.7, M2.7-highspeed, M3).
+    // Adding a new model is a one-line addition; bump this count in
+    // lock-step.
     const all = getAllTextCatalogEntries();
-    expect(all.length).toBe(6);
+    expect(all.length).toBe(5);
+    expect(all.every((m) => m.provider === 'minimax')).toBe(true);
 
     for (const s of all) {
       expect(s.modelId).toBeTruthy();
@@ -117,7 +119,7 @@ describe('text-model-catalog V082', () => {
   it('mode override is consistent across models with the shared profile', () => {
     // Every shipped model uses SHARED_MODE_OVERRIDES → same temperature
     // per mode, only the maxTokens default differs per generation.
-    for (const modelId of ['MiniMax-M2.5', 'MiniMax-M2.7', 'MiniMax-M3', 'gpt-4o-mini']) {
+    for (const modelId of ['MiniMax-M2.5', 'MiniMax-M2.7', 'MiniMax-M3']) {
       expect(getTextModelParams(modelId, 'idea').temperature).toBe(0.95);
       expect(getTextModelParams(modelId, 'tag').temperature).toBe(0.3);
       expect(getTextModelParams(modelId, 'enhance').temperature).toBe(0.5);
@@ -143,29 +145,20 @@ describe('text-model-catalog V082', () => {
 
   it('getDefaultTextModelForProvider returns the flagged default', () => {
     expect(getDefaultTextModelForProvider('minimax')).toBe('MiniMax-M3');
-    expect(getDefaultTextModelForProvider('openai')).toBe('gpt-4o-mini');
+    // 4NE-20: OpenAI has no catalog entries, so no default.
+    expect(getDefaultTextModelForProvider('openai')).toBeUndefined();
   });
 
-  it('exactly one default per provider is flagged', () => {
+  it('exactly one default for the MiniMax provider is flagged', () => {
     const minimax = TEXT_MODEL_CATALOG.filter((m) => m.provider === 'minimax');
-    const openai = TEXT_MODEL_CATALOG.filter((m) => m.provider === 'openai');
     expect(minimax.filter((m) => m.isDefault).length).toBe(1);
-    expect(openai.filter((m) => m.isDefault).length).toBe(1);
   });
 
   it('getAvailableTextModels marks models available/unavailable per env', () => {
-    const allKeys = { minimax: true, openai: true };
-    const onlyMiniMax = { minimax: true, openai: false };
-    const noKeys = { minimax: false, openai: false };
-
-    const all = getAvailableTextModels(allKeys);
+    const all = getAvailableTextModels({ minimax: true });
     expect(all.every((m) => m.available)).toBe(true);
 
-    const onlyMx = getAvailableTextModels(onlyMiniMax);
-    expect(onlyMx.filter((m) => m.entry.provider === 'minimax').every((m) => m.available)).toBe(true);
-    expect(onlyMx.filter((m) => m.entry.provider === 'openai').every((m) => !m.available)).toBe(true);
-
-    const none = getAvailableTextModels(noKeys);
+    const none = getAvailableTextModels({ minimax: false });
     expect(none.every((m) => !m.available)).toBe(true);
   });
 });

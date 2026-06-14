@@ -43,7 +43,6 @@ interface ModelEntryDto {
 
 const ENV_KEY_FOR_PROVIDER: Record<string, string> = {
   minimax: 'MINIMAX_API_KEY',
-  openai: 'OPENAI_API_KEY',
 };
 
 function toDto(entry: TextModelAvailability): ModelEntryDto {
@@ -72,7 +71,6 @@ export async function GET(): Promise<Response> {
   // without env mocks.
   const envKeys = {
     minimax: Boolean(process.env.MINIMAX_API_KEY),
-    openai: Boolean(process.env.OPENAI_API_KEY),
   };
   const models = getAvailableTextModels(envKeys).map(toDto);
   return NextResponse.json({ models, envKeys });

@@ -132,11 +132,11 @@ describe('estimateStepCost — pricing math', () => {
     expect(cost).toBeCloseTo(1.5, 6);
   });
 
-  it('applies per-model rates correctly for gpt-4o-mini', () => {
-    // $0.15 / 1M input, $0.60 / 1M output.
-    // 1M + 0.25M = $0.15 + $0.15 = $0.30
-    const cost = estimateStepCost({ inputTokens: 1_000_000, outputTokens: 250_000 }, 'gpt-4o-mini');
-    expect(cost).toBeCloseTo(0.3, 6);
+  it('applies per-model rates correctly for MiniMax-M2.5', () => {
+    // M2.5: $0.20 / 1M input, $1.50 / 1M output.
+    // 1M + 0.25M = $0.20 + $0.375 = $0.575
+    const cost = estimateStepCost({ inputTokens: 1_000_000, outputTokens: 250_000 }, 'MiniMax-M2.5');
+    expect(cost).toBeCloseTo(0.575, 6);
   });
 
   it('falls back to the conservative default for unknown models', () => {
@@ -159,7 +159,7 @@ describe('estimateStepCost — pricing math', () => {
 describe('getPricing', () => {
   it('returns the table entry for known models', () => {
     expect(getPricing('MiniMax-M3')).toEqual(MODEL_PRICING['MiniMax-M3']);
-    expect(getPricing('gpt-4o-mini')).toEqual(MODEL_PRICING['gpt-4o-mini']);
+    expect(getPricing('MiniMax-M2.5')).toEqual(MODEL_PRICING['MiniMax-M2.5']);
   });
 
   it('returns the default for unknown models', () => {

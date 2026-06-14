@@ -9,7 +9,7 @@ import { getErrorMessage } from '@/lib/errors';
  * structured error. No polling, no separate status endpoint.
  *
  * Endpoint: POST {MINIMAX_API_BASE_URL}/image_generation  (defaults to
- * https://api.minimaxi.chat/v1, the same base URL the chat path uses).
+ * https://api.minimax.io/v1, the same base URL the chat path uses).
  * Auth: `Authorization: Bearer ${MINIMAX_API_KEY}` — the same key the
  * vercel-ai chat provider uses.
  *
@@ -127,7 +127,7 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const baseURL =
-    process.env.MINIMAX_API_BASE_URL?.trim() || 'https://api.minimaxi.chat/v1';
+    process.env.MINIMAX_API_BASE_URL?.trim() || 'https://api.minimax.io/v1';
   const url = `${baseURL.replace(/\/$/, '')}/image_generation`;
 
   // Build the request shape that MiniMax expects. Pass aspect_ratio when

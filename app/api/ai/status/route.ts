@@ -6,11 +6,10 @@
 // a "vercel-ai" card with the same dot/label/model conventions. There
 // is no install state — direct HTTPS API calls work as long as the env
 // var is set, so `available` and `authenticated` collapse to the same
-// signal: MINIMAX_API_KEY (preferred) or OPENAI_API_KEY is present on
-// the server.
+// signal: MINIMAX_API_KEY is present on the server.
 //
-// 0513-CONSOLIDATION: v1.0 chain was MiniMax → OpenAI → Anthropic →
-// OpenRouter. The v1.0.1 trim keeps only MiniMax and OpenAI.
+// 4NE-20: MiniMax-only. Earlier revisions chained MiniMax → OpenAI
+// (and, before that, Anthropic / OpenRouter); those are gone.
 //
 // The picked provider's default model is reported so the UI can show
 // e.g. "MiniMax-M3" without hitting the underlying API. The model is
@@ -30,9 +29,8 @@ export const runtime = 'nodejs';
 interface AiStatus {
   available: boolean;
   authenticated: boolean;
-  // 0513-CONSOLIDATION: chain trimmed to {minimax, openai}. See module
-  // header for rationale.
-  provider: 'minimax' | 'openai' | null;
+  // 4NE-20: MiniMax-only. See module header for rationale.
+  provider: 'minimax' | null;
   model: string | null;
   /**
    * V082: full catalog entry for the resolved model. The Settings
@@ -59,15 +57,12 @@ function detect(): AiStatus {
   // V082-CATALOG: resolve through the catalog so legacy alias
   // forms get normalised. Falls back to the provider default when
   // no env var is set.
-  const pickModel = (provider: 'minimax' | 'openai'): string => {
+  const pickModel = (provider: 'minimax'): string => {
     if (envModel) {
       const resolved = resolveTextModel(envModel);
       if (resolved && resolved.provider === provider) return resolved.modelId;
     }
-    return (
-      getDefaultTextModelForProvider(provider) ||
-      (provider === 'minimax' ? 'MiniMax-M3' : 'gpt-4o-mini')
-    );
+    return getDefaultTextModelForProvider(provider) || 'MiniMax-M3';
   };
   const buildInfo = (modelId: string) => {
     const entry = getTextModelCatalogEntry(modelId);
@@ -88,16 +83,6 @@ function detect(): AiStatus {
       available: true,
       authenticated: true,
       provider: 'minimax',
-      model: modelId,
-      modelInfo: buildInfo(modelId),
-    };
-  }
-  if (process.env.OPENAI_API_KEY) {
-    const modelId = pickModel('openai');
-    return {
-      available: true,
-      authenticated: true,
-      provider: 'openai',
       model: modelId,
       modelInfo: buildInfo(modelId),
     };

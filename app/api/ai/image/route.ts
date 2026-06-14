@@ -138,7 +138,7 @@ async function enhanceViaMinimax(args: {
     );
   }
   const baseURL =
-    process.env.MINIMAX_API_BASE_URL?.trim() || 'https://api.minimaxi.chat/v1';
+    process.env.MINIMAX_API_BASE_URL?.trim() || 'https://api.minimax.io/v1';
   const url = `${baseURL.replace(/\/$/, '')}/chat/completions`;
   // V082-CATALOG: pass the override + env-var through
   // `resolveTextModel` for alias normalisation. Unknown IDs (typos,

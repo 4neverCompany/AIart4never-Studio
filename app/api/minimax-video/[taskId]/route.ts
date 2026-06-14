@@ -66,7 +66,7 @@ export async function GET(
     );
   }
 
-  const baseURL = process.env.MINIMAX_API_BASE_URL?.trim() || 'https://api.minimaxi.chat/v1';
+  const baseURL = process.env.MINIMAX_API_BASE_URL?.trim() || 'https://api.minimax.io/v1';
   const queryUrl = `${baseURL.replace(/\/$/, '')}/query/video_generation?task_id=${encodeURIComponent(taskId)}`;
 
   let queryRes: Response;

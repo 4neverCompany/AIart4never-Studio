@@ -13,11 +13,9 @@
  *   - a future Replay UI that re-runs a single tool step,
  *   - an eval harness that wants to A/B-test prompt templates.
  *
- * The model used here is intentionally swappable: the Vercel AI SDK
- * accepts any `LanguageModel` (MiniMax M3, OpenAI gpt-4o-mini, etc.)
- * and the active choice is determined by env vars the same way
- * `app/api/ai/prompt/route.ts` does it. See `resolveTextModel` from
- * `lib/text-model-catalog`.
+ * The model used here is a MiniMax `LanguageModel` (default MiniMax-M3,
+ * overridable via VERCEL_AI_MODEL or the per-call override), resolved
+ * from env vars the same way `app/api/ai/prompt/route.ts` does it.
  */
 import { tool, generateText, type LanguageModel } from 'ai';
 import { extractDraftFromCommentary, trimCommentarySuffix } from './prompt-extract';
@@ -41,17 +39,17 @@ import { buildDefaultAgentPrompt } from '@/lib/agent-prompt';
 // ---------------------------------------------------------------------------
 
 interface ResolvedTextModel {
-  provider: 'minimax' | 'openai';
+  provider: 'minimax';
   model: LanguageModel;
   modelId: string;
 }
 
 /**
- * Resolve a Vercel AI SDK text model from env vars. Same precedence
- * as the route handler (MINIMAX_API_KEY wins over OPENAI_API_KEY).
+ * Resolve a Vercel AI SDK text model from env vars. MiniMax-only
+ * (4NE-20), same as the route handler.
  *
- * Returns `null` when no API key is configured. The tool then
- * throws ToolNotAvailableError so the Director loop gets a clear
+ * Returns `null` when MINIMAX_API_KEY is not configured. The tool
+ * then throws ToolNotAvailableError so the Director loop gets a clear
  * "not configured" failure instead of an opaque SDK error.
  *
  * Dynamic import: `@ai-sdk/openai` is a heavy module and we want
@@ -62,7 +60,7 @@ async function resolveTextModel(opts: { override?: string }): Promise<ResolvedTe
     const { createOpenAI } = await import('@ai-sdk/openai');
     const openai = createOpenAI({
       apiKey: process.env.MINIMAX_API_KEY,
-      baseURL: 'https://api.minimaxi.chat/v1',
+      baseURL: 'https://api.minimax.io/v1',
     });
     const modelId = opts.override || process.env.VERCEL_AI_MODEL || 'MiniMax-M3';
     // MiniMax only implements /v1/chat/completions — the default `openai(id)`
@@ -70,12 +68,6 @@ async function resolveTextModel(opts: { override?: string }): Promise<ResolvedTe
     // makes the Director return an empty prompt. `openai.chat(id)` pins the
     // chat-completions transport. Mirrors lib/agent-loop/index.ts.
     return { provider: 'minimax', model: openai.chat(modelId), modelId };
-  }
-  if (process.env.OPENAI_API_KEY) {
-    const { createOpenAI } = await import('@ai-sdk/openai');
-    const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const modelId = opts.override || 'gpt-4o-mini';
-    return { provider: 'openai', model: openai.chat(modelId), modelId };
   }
   return null;
 }
@@ -226,7 +218,7 @@ export async function executeGeneratePrompt(
     if (!resolved) {
       throw new ToolNotAvailableError(
         'generate_prompt',
-        'no AI provider configured (set MINIMAX_API_KEY or OPENAI_API_KEY)',
+        'no AI provider configured (set MINIMAX_API_KEY)',
       );
     }
 

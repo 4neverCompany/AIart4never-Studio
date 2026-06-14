@@ -453,13 +453,13 @@ describe('runDirectorLoop — budget hard-stop', () => {
 // ---------------------------------------------------------------------------
 
 describe('runDirectorLoop — no provider', () => {
-  it('returns truncatedBy=error and provider=unknown', async () => {
-    // Force the "no API key" branch by clearing the env
-    // vars and skipping the override.
+  it('returns truncatedBy=error and provider=unknown when MINIMAX_API_KEY is unset (4NE-20: no OpenAI fallback)', async () => {
+    // Force the "no MiniMax key" branch. A stray OPENAI_API_KEY must
+    // NOT rescue the run — MiniMax is the only text/agent provider now.
     const prevMinimax = process.env.MINIMAX_API_KEY;
     const prevOpenai = process.env.OPENAI_API_KEY;
     delete process.env.MINIMAX_API_KEY;
-    delete process.env.OPENAI_API_KEY;
+    process.env.OPENAI_API_KEY = 'stray-openai-key';
     try {
       const result = await runDirectorLoop({
         ...baseInput,
@@ -472,6 +472,7 @@ describe('runDirectorLoop — no provider', () => {
     } finally {
       if (prevMinimax !== undefined) process.env.MINIMAX_API_KEY = prevMinimax;
       if (prevOpenai !== undefined) process.env.OPENAI_API_KEY = prevOpenai;
+      else delete process.env.OPENAI_API_KEY;
     }
   });
 });
@@ -511,17 +512,18 @@ describe('runDirectorLoop — input validation', () => {
 // ---------------------------------------------------------------------------
 
 describe('resolveDirectorModel', () => {
-  it('returns null when no API key is set', async () => {
+  it('returns null when MINIMAX_API_KEY is unset, even with a stray OPENAI_API_KEY (4NE-20)', async () => {
     const prevMinimax = process.env.MINIMAX_API_KEY;
     const prevOpenai = process.env.OPENAI_API_KEY;
     delete process.env.MINIMAX_API_KEY;
-    delete process.env.OPENAI_API_KEY;
+    process.env.OPENAI_API_KEY = 'stray-openai-key';
     try {
       const r = await resolveDirectorModel(undefined);
       expect(r).toBeNull();
     } finally {
       if (prevMinimax !== undefined) process.env.MINIMAX_API_KEY = prevMinimax;
       if (prevOpenai !== undefined) process.env.OPENAI_API_KEY = prevOpenai;
+      else delete process.env.OPENAI_API_KEY;
     }
   });
 

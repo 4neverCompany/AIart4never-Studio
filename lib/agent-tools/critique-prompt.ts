@@ -277,17 +277,11 @@ async function resolveTextModel(opts: { override?: string }): Promise<ResolvedTe
     const { createOpenAI } = await import('@ai-sdk/openai');
     const openai = createOpenAI({
       apiKey: process.env.MINIMAX_API_KEY,
-      baseURL: 'https://api.minimaxi.chat/v1',
+      baseURL: 'https://api.minimax.io/v1',
     });
     const modelId = opts.override || process.env.VERCEL_AI_MODEL || 'MiniMax-M3';
     // MiniMax only implements /v1/chat/completions; `openai.chat(id)` pins that
     // transport (the bare `openai(id)` callable hits the Responses API and 404s).
-    return { model: openai.chat(modelId), modelId };
-  }
-  if (process.env.OPENAI_API_KEY) {
-    const { createOpenAI } = await import('@ai-sdk/openai');
-    const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const modelId = opts.override || 'gpt-4o-mini';
     return { model: openai.chat(modelId), modelId };
   }
   return null;
@@ -325,7 +319,7 @@ export async function executeCritiquePrompt(
     if (!resolved) {
       throw new ToolNotAvailableError(
         'critique_prompt',
-        'no AI provider configured (set MINIMAX_API_KEY or OPENAI_API_KEY) — and mode=llm requested',
+        'no AI provider configured (set MINIMAX_API_KEY) — and mode=llm requested',
       );
     }
     const result = await llmJudge(resolved.model, resolved.modelId, input, opts.signal);

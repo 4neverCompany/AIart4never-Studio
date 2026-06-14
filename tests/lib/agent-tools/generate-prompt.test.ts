@@ -43,7 +43,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   // Pretend MiniMax is configured by default for these tests.
   process.env.MINIMAX_API_KEY = 'test-key';
-  process.env.OPENAI_API_KEY = '';
 });
 
 describe('executeGeneratePrompt — input validation', () => {
@@ -73,7 +72,6 @@ describe('executeGeneratePrompt — input validation', () => {
 describe('executeGeneratePrompt — provider resolution', () => {
   it('throws ToolNotAvailableError when no AI provider is configured', async () => {
     delete process.env.MINIMAX_API_KEY;
-    delete process.env.OPENAI_API_KEY;
     const r = await executeGeneratePrompt({
       niches: ['X'],
       genres: ['Y'],
@@ -83,7 +81,7 @@ describe('executeGeneratePrompt — provider resolution', () => {
     if (!r.ok) expect(r.error).toBeInstanceOf(ToolNotAvailableError);
   });
 
-  it('prefers MiniMax over OpenAI when both are configured', async () => {
+  it('uses MiniMax and ignores a stray OPENAI_API_KEY (4NE-20: no fallback)', async () => {
     process.env.MINIMAX_API_KEY = 'm';
     process.env.OPENAI_API_KEY = 'o';
     generateTextMock.mockResolvedValue({ text: 'A draft prompt of sufficient length to pass the validation gate.' });
@@ -96,17 +94,16 @@ describe('executeGeneratePrompt — provider resolution', () => {
     if (r.ok) expect(r.value.modelId).toBe('MiniMax-M3');
   });
 
-  it('falls back to OpenAI when only OpenAI is configured', async () => {
+  it('throws ToolNotAvailableError when only OPENAI_API_KEY is set (4NE-20: no OpenAI fallback)', async () => {
     delete process.env.MINIMAX_API_KEY;
     process.env.OPENAI_API_KEY = 'o';
-    generateTextMock.mockResolvedValue({ text: 'A draft prompt of sufficient length to pass the validation gate.' });
     const r = await executeGeneratePrompt({
       niches: ['Mythic Legends'],
       genres: ['Cinematic Crossovers'],
-      angle: 'Darth Vader as Iron Man',
+      angle: 'some angle here',
     });
-    expect(r.ok).toBe(true);
-    if (r.ok) expect(r.value.modelId).toBe('gpt-4o-mini');
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toBeInstanceOf(ToolNotAvailableError);
   });
 });
 

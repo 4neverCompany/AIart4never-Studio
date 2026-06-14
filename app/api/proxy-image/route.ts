@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
 
 // SSRF guard: only proxy images from hosts we actually use.
-// cdn.leonardo.ai           — Leonardo image CDN
-// *.storage.googleapis.com  — Leonardo's underlying GCS bucket
+// *.storage.googleapis.com  — underlying GCS bucket
 // i.uguu.se                 — uguu image host (used by Pinterest upload path)
 // *.aliyuncs.com             — MiniMax `image_generation` signed URLs
-const ALLOWED_HOSTS = new Set<string>(['cdn.leonardo.ai', 'i.uguu.se']);
+const ALLOWED_HOSTS = new Set<string>(['i.uguu.se']);
 const ALLOWED_HOST_SUFFIXES = ['.storage.googleapis.com', '.aliyuncs.com'];
 
 // Hosts that may also be fetched over plain HTTP (in addition to

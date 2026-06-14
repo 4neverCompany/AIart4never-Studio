@@ -85,9 +85,6 @@ export const MODEL_PRICING: Readonly<Record<string, PricingTable>> = Object.free
   'MiniMax-M3': { inputPerMTokens: 0.50, outputPerMTokens: 2.00 },
   'MiniMax-M2.7-highspeed': { inputPerMTokens: 0.40, outputPerMTokens: 1.50 },
   'MiniMax-M2.5': { inputPerMTokens: 0.20, outputPerMTokens: 1.50 },
-  // OpenAI.
-  'gpt-4o-mini': { inputPerMTokens: 0.15, outputPerMTokens: 0.60 },
-  'gpt-4o': { inputPerMTokens: 2.50, outputPerMTokens: 10.00 },
   // Mock / eval — free.
   mock: { inputPerMTokens: 0, outputPerMTokens: 0 },
 });

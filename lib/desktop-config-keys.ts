@@ -32,11 +32,10 @@ export type DesktopConfigFieldMeta = SecretFieldMeta | SelectFieldMeta | TextFie
 // top of the panel — provider choice gates which API key matters most.
 export const DESKTOP_CONFIG_KEYS: readonly DesktopConfigFieldMeta[] = [
   { key: 'PI_PROVIDER',            label: 'Pi.dev Provider',        hint: 'AI backend used by pi for chat / ideas / captions.', kind: 'select', options: PI_PROVIDER_OPTIONS },
-  { key: 'PI_DEFAULT_MODEL',       label: 'Default Model',          hint: 'Model ID for the chosen provider (e.g. glm-4.6, claude-sonnet-4-5, gpt-4o, gemini-2.5-pro).', kind: 'text' },
+  { key: 'PI_DEFAULT_MODEL',       label: 'Default Model',          hint: 'Model ID for the chosen provider (e.g. glm-4.6, claude-sonnet-4-5, gemini-2.5-pro).', kind: 'text' },
   { key: 'LEONARDO_API_KEY',       label: 'Leonardo AI API Key',    hint: 'From app.leonardo.ai/api-access' },
   { key: 'ZAI_API_KEY',            label: 'Z.AI API Key',           hint: 'From console.z.ai — used when provider = zai (GLM).' },
   { key: 'ANTHROPIC_API_KEY',      label: 'Anthropic API Key',      hint: 'From console.anthropic.com — used when provider = anthropic (Claude).' },
-  { key: 'OPENAI_API_KEY',         label: 'OpenAI API Key',         hint: 'From platform.openai.com — used when provider = openai (GPT).' },
   { key: 'GOOGLE_API_KEY',         label: 'Google API Key',         hint: 'From aistudio.google.com — used when provider = google (Gemini).' },
   { key: 'MINIMAX_API_KEY',        label: 'MiniMax API Key',        hint: 'From platform.minimax.io — used by the nca AI agent (default provider). Same key the legacy mmx CLI uses.' },
   { key: 'NCA_MODEL',              label: 'nca model override',     hint: 'Optional. e.g. MiniMax-M2.5 (default), MiniMax-M2.7, MiniMax-M2.7-highspeed. Leave empty for nca default.', kind: 'text' },

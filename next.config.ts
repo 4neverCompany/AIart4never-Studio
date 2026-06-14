@@ -2,28 +2,7 @@ import type {NextConfig} from 'next';
 
 const projectDir = import.meta.dirname;
 
-// ---- V1.1.3-CORS: Web-Build CSP for camofox direct-connect ----
-//
-// The Tauri build CSP is in `src-tauri/tauri.conf.json` and already
-// permits `connect-src http://127.0.0.1:9377-9380`. The Vercel web
-// build (which loads at `https://mashupforge.vercel.app`) needs
-// the same rule so a user with a standalone-installed camofox
-// (see `docs/camofox-standalone-install.md`) can be reached from
-// the browser. Vercel adds its own CSP by default that strips
-// `connect-src` of loopback entries; we re-declare the full policy
-// here so the sidecar can be reached.
-//
-// IMPORTANT: the 4-port range mirrors the 3-stage discovery in
-// `src-tauri/src/lib.rs` (`CAMOFOX_PORTS = [9377, 9378, 9379, 9380]`).
-// The two MUST stay in sync; a vitest regression test
-// (`tests/api/next-config-csp.test.ts`) asserts the union on every CI
-// run. We also add `127.0.0.1:9889` as the CORS-proxy fallback port
-// (see `scripts/camofox-cors-proxy.mjs`) — the proxy listens on 9889
-// by default and bridges to the real sidecar port.
-const CAMOFOX_LOOPBACK_PORTS = [9377, 9378, 9379, 9380, 9889];
-const CAMOFOX_CONNECT_SRC = CAMOFOX_LOOPBACK_PORTS
-  .map((p) => `http://127.0.0.1:${p}`)
-  .join(' ');
+// AIart4never Studio web-build CSP (camofox sidecar CSP removed with the strip; the Tauri build CSP lives in src-tauri/tauri.conf.json).
 
 const WEB_CSP = [
   `default-src 'self'`,
@@ -32,12 +11,8 @@ const WEB_CSP = [
   // both inline attributes and <style> tags.
   `style-src 'self' 'unsafe-inline'`,
   `font-src 'self' data:`,
-  `img-src 'self' https://cdn.leonardo.ai https://picsum.photos data:`,
-  // V1.1.3-CORS: the sidecar is reachable on 127.0.0.1:9377-9380
-  // (CAMOFOX_PORTS) and the CORS-proxy fallback on 9889
-  // (scripts/camofox-cors-proxy.mjs). Both are loopback so the
-  // risk surface is the user's own machine.
-  `connect-src 'self' ${CAMOFOX_CONNECT_SRC} https://cdn.leonardo.ai https://api.minimaxi.chat https://generativelanguage.googleapis.com`,
+  `img-src 'self' https://picsum.photos data:`,
+  `connect-src 'self' https://api.minimax.io`,
   `script-src 'self' 'unsafe-inline'`,
   // frame-src: allow the Higgsfield OAuth iframe-style auth flow
   // (it uses a popup window, not an iframe, but the directive
@@ -89,15 +64,9 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
-      {
-        protocol: 'https',
-        hostname: 'cdn.leonardo.ai',
-        port: '',
-        pathname: '/**',
-      },
     ],
   },
-  // V1.1.3-CORS: Web-Build CSP. Vercel strips the default
+  // Web-Build CSP. The web build strips the default
   // Content-Security-Policy and replaces it with its own
   // Next-managed header, so we re-declare the policy here. On the
   // Tauri build the CSP comes from `src-tauri/tauri.conf.json` and
@@ -105,11 +74,8 @@ const nextConfig: NextConfig = {
   // Next.js from a static dist and does not pass through
   // Next-managed headers).
   //
-  // The Tauri-CSP test (`tests/api/tauri-csp.test.ts`) pins the
-  // Tauri build's policy; this test pins the Vercel build's policy.
-  // The two lists must agree on `connect-src` for the sidecar
-  // ports — the `tests/api/next-config-csp.test.ts` regression
-  // test asserts the union.
+  // The `tests/api/next-config-csp.test.ts` regression test pins
+  // this web build's policy.
   async headers() {
     return [
       {
@@ -141,4 +107,4 @@ const nextConfig: NextConfig = {
 
 export default nextConfig;
 // Re-export so the regression test can introspect the policy.
-export { WEB_CSP, CAMOFOX_LOOPBACK_PORTS, CAMOFOX_CONNECT_SRC };
+export { WEB_CSP };

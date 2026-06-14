@@ -14,22 +14,19 @@
 //   - The SSE shape is identical, so lib/aiClient.ts can route to this
 //     route by URL alone; no client-side reader changes.
 //
-// Provider selection priority (first env var wins):
-//   1. MINIMAX_API_KEY     → minimax (default model: MiniMax-M2.5)
-//   2. OPENAI_API_KEY      → openai (default model: gpt-4o-mini)
+// Provider: MiniMax only (default model: MiniMax-M3).
+//   MINIMAX_API_KEY  → minimax
 //
-// 0513-CONSOLIDATION: the v1.0 chain was MiniMax → OpenAI → Anthropic →
-// OpenRouter. Post-v1.0 cleanup cut the secondary providers to keep the
-// dependency surface minimal. MiniMax remains the default (project has
-// long-standing MiniMax credentials from the nca subprocess path);
-// OpenAI is the only fallback. The pi route and nca route are unaffected
-// by this trim and remain the AI Agent settings options.
+// 4NE-20: the app is MiniMax-only for LLM text/agent calls. Earlier
+// revisions carried an OpenAI fallback (and, before that, Anthropic /
+// OpenRouter); those have been removed. MiniMax has long-standing
+// credentials in this project (used by the nca subprocess path) and is
+// the sole text/agent provider. The pi route and nca route are
+// unaffected and remain the AI Agent settings options.
 //
-// MiniMax sits at the top because the project already has long-standing
-// MiniMax credentials (used by the nca subprocess path). The release/
-// production deploy starts with no key set — the user pastes one in the
-// Settings setup flow (or sets MINIMAX_API_KEY on Vercel) just like the
-// other providers.
+// The release/production deploy starts with no key set — the user
+// pastes one in the Settings setup flow (or sets MINIMAX_API_KEY on
+// Vercel).
 //
 // Per-request `model` body field, or VERCEL_AI_MODEL env var, overrides
 // the default. Per-request always wins over env.
@@ -53,9 +50,6 @@
 //   (lib/aiClient.ts, the Studio's mode switcher) keep
 //   working untouched.
 
-import { streamText } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
-import type { LanguageModel } from 'ai';
 import { getErrorMessage } from '@/lib/errors';
 import { buildSkillSystemBlock } from '@/lib/skill-loader';
 import {
@@ -78,7 +72,7 @@ export const runtime = 'nodejs';
 // pi-client). If you change the wording here, mirror it there to keep
 // the two routes producing comparable output.
 const BASE_SYSTEM_PROMPT =
-  "You are a creative AI assistant for MashupForge, an AI-driven studio that generates crossover image prompts across Star Wars, Marvel, DC, Warhammer 40k, and other fictional universes. Follow instructions precisely. When asked to return JSON, return ONLY valid JSON with no preamble, no commentary, and no markdown code fences. When asked for a single string, return ONLY that string.";
+  "You are the creative AI engine for AIart4never Studio. You generate on-canon image prompts and captions for Master4never (also called Kael) — an original AI multiverse character who travels across self-contained, original fictional realities. All concepts must be ORIGINAL intellectual property: never rely on copyrighted universes, brands, trademarks, or named third-party characters. Follow instructions precisely. When asked to return JSON, return ONLY valid JSON with no preamble, no commentary, and no markdown code fences. When asked for a single string, return ONLY that string.";
 
 type AiMode =
   | 'chat'
@@ -104,8 +98,9 @@ const MODE_DIRECTIVES: Record<AiMode, string> = {
     'You are an elite creative AI assistant. Be vivid, direct, and spectacular. No hedging.',
   generate:
     'You are a world-class prompt engineer. Every prompt you write must be visually breathtaking. Follow the output format exactly. No preamble.',
+  // M1: the canon engine will inject the full Master4never persona + Elements here.
   idea:
-    'You are a creative genius generating crossover concepts that break the internet. Marvel, DC, Star Wars, Warhammer 40k, anime, games — the wildest, most visually spectacular mashups imaginable. Avoid overused characters. Return ONLY the requested format.',
+    'You are a creative genius generating concepts that break the internet — original Master4never multiverse realities, each a self-contained original fictional world the character Kael travels through. The wildest, most visually spectacular original concepts imaginable, with NO copyrighted franchises, brands, or named third-party characters. Avoid clichés. Return ONLY the requested format.',
   enhance:
     'You are an elite prompt enhancer. Transform the input into the most visually stunning, cinematic prompt possible. Maximize drama, detail, and visual impact. Return ONLY the enhanced prompt.',
   caption:
@@ -122,7 +117,7 @@ const MODE_DIRECTIVES: Record<AiMode, string> = {
   // is intentionally minimal — the loop owns the role
   // definition, the route just routes to the loop.
   director:
-    'You are the Director agent of MashupForge. Operate the multi-step plan as described in your system prompt.',
+    'You are the Director agent of AIart4never Studio. Operate the multi-step plan as described in your system prompt.',
 };
 
 function directiveFor(mode: unknown): string | null {
@@ -156,21 +151,21 @@ function buildFocusBlock(niches: string[], genres: string[]): string {
 }
 
 interface ResolvedProvider {
-  // 0513-CONSOLIDATION: chain trimmed from {minimax, openai, anthropic,
-  // openrouter} to {minimax, openai}. See module header for rationale.
-  name: 'minimax' | 'openai';
-  model: LanguageModel;
+  // 4NE-20: MiniMax-only. The SDK `LanguageModel` field is gone — MiniMax
+  // streams via the hand-rolled `streamMinimaxChat` (raw fetch to
+  // /chat/completions), so the route only needs the model id.
+  name: 'minimax';
   modelId: string;
 }
 
 /**
- * Pick a provider from env vars + optional per-request model override.
- * Returns null when no API key is configured — caller should 503.
+ * Resolve the MiniMax model from env vars + optional per-request model
+ * override. Returns null when MINIMAX_API_KEY is not configured —
+ * caller should 503.
  *
- * `modelOverride` (when present) is passed through verbatim. There's no
- * cross-provider validation: if a caller asks openai for an Anthropic
- * model name they get an opaque API error from the provider, which is
- * the right behaviour — we shouldn't second-guess the user.
+ * `modelOverride` (when present) is passed through verbatim after alias
+ * normalisation. Unknown ids pass through so the upstream provider gets
+ * the call — we shouldn't second-guess the user.
  */
 /**
  * Stream MiniMax Chat Completions directly, bypassing the ai SDK.
@@ -198,7 +193,7 @@ async function streamMinimaxChat(
   params?: TextGenParams,
 ): Promise<void> {
   const baseURL =
-    process.env.MINIMAX_API_BASE_URL?.trim() || 'https://api.minimaxi.chat/v1';
+    process.env.MINIMAX_API_BASE_URL?.trim() || 'https://api.minimax.io/v1';
   const url = `${baseURL.replace(/\/$/, '')}/chat/completions`;
   const messages: Array<{ role: 'system' | 'user'; content: string }> = [];
   if (system) messages.push({ role: 'system', content: system });
@@ -297,17 +292,10 @@ function resolveProvider(modelOverride?: string): ResolvedProvider | null {
     // VERCEL_AI_MODEL or the per-call `model` body field.
     const modelId =
       requestedModel || getDefaultTextModelForProvider('minimax') || 'MiniMax-M3';
-    const minimax = createOpenAI({
-      apiKey: process.env.MINIMAX_API_KEY,
-      baseURL: 'https://api.minimaxi.chat/v1',
-    });
-    return { name: 'minimax', model: minimax(modelId), modelId };
-  }
-  if (process.env.OPENAI_API_KEY) {
-    const modelId =
-      requestedModel || getDefaultTextModelForProvider('openai') || 'gpt-4o-mini';
-    const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    return { name: 'openai', model: openai(modelId), modelId };
+    // 4NE-20: no SDK client built here — streaming goes through
+    // `streamMinimaxChat` (raw fetch to /chat/completions). The route
+    // only needs the resolved model id.
+    return { name: 'minimax', modelId };
   }
   return null;
 }
@@ -362,8 +350,7 @@ export async function POST(req: Request): Promise<Response> {
   if (!provider) {
     return new Response(
       JSON.stringify({
-        error:
-          'No AI provider configured. Set MINIMAX_API_KEY (preferred) or OPENAI_API_KEY.',
+        error: 'No AI provider configured. Set MINIMAX_API_KEY.',
       }),
       { status: 503, headers: { 'Content-Type': 'application/json' } },
     );
@@ -423,17 +410,14 @@ export async function POST(req: Request): Promise<Response> {
 
   const encoder = new TextEncoder();
 
-  // Synthesise our own SSE stream. The SDK exposes textStream as an
-  // AsyncIterable<string>, which makes the per-delta SSE wrap trivial
-  // and keeps the route's wire shape identical to /api/pi/prompt and
-  // /api/nca/prompt without depending on Vercel's data-protocol wrapper.
+  // Synthesise our own SSE stream so the route's wire shape stays
+  // identical to /api/pi/prompt and /api/nca/prompt without depending
+  // on Vercel's data-protocol wrapper.
   //
-  // MiniMax exception: the ai SDK v6 OpenAI adapter calls /v1/responses
-  // (the new OpenAI Responses API), but MiniMax only exposes the older
-  // /v1/chat/completions endpoint. So for MiniMax we bypass streamText
-  // and call the chat endpoint directly. The output SSE wire shape is
-  // unchanged — every chunk still leaves this route as
-  // `data: {"text":"<delta>"}\n\n`.
+  // MiniMax only exposes /v1/chat/completions (it does NOT implement the
+  // OpenAI Responses API the ai SDK v6 adapter targets), so we call the
+  // chat endpoint directly via `streamMinimaxChat`. Every chunk leaves
+  // this route as `data: {"text":"<delta>"}\n\n`.
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
@@ -448,24 +432,7 @@ export async function POST(req: Request): Promise<Response> {
           );
         }
 
-        if (provider.name === 'minimax') {
-          await streamMinimaxChat(controller, encoder, system, enrichedMessage, provider.modelId, textParams);
-        } else {
-          const result = streamText({
-            model: provider.model,
-            system,
-            prompt: enrichedMessage,
-            ...(textParams.temperature !== undefined && { temperature: textParams.temperature }),
-            ...(textParams.maxTokens !== undefined && { maxTokens: textParams.maxTokens }),
-            ...(textParams.topP !== undefined && { topP: textParams.topP }),
-          });
-          for await (const delta of result.textStream) {
-            if (!delta) continue;
-            controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ text: delta })}\n\n`),
-            );
-          }
-        }
+        await streamMinimaxChat(controller, encoder, system, enrichedMessage, provider.modelId, textParams);
       } catch (e: unknown) {
         controller.enqueue(
           encoder.encode(
@@ -504,7 +471,7 @@ export async function POST(req: Request): Promise<Response> {
 // Request body:
 //   {
 //     "mode": "director",
-//     "ideaConcept": "Darth Vader in Iron Man suit",
+//     "ideaConcept": "Kael in a storm-wreathed sky-temple reality",
 //     "niches": ["Multiverse Crossovers", "Mythic Legends"],
 //     "genres": ["Noir & Gritty", "Vibrant & Neon"],
 //     "skillContext": [{ "name": "framing:camera-angles" }],
@@ -642,8 +609,7 @@ async function handleDirectorMode(
     if (result.provider === 'unknown' && result.truncatedBy === 'error') {
       return new Response(
         JSON.stringify({
-          error:
-            'No AI provider configured. Set MINIMAX_API_KEY (preferred) or OPENAI_API_KEY.',
+          error: 'No AI provider configured. Set MINIMAX_API_KEY.',
         }),
         { status: 503, headers: { 'Content-Type': 'application/json' } },
       );

@@ -1,10 +1,9 @@
 /**
  * Text-generation model catalog for the vercel-ai prompt route.
  *
- * Single source of truth for every text model MashupForge knows how
- * to call via the Vercel AI SDK (currently: MiniMax via the
- * OpenAI-compatible Chat Completions endpoint + OpenAI's native
- * Chat Completions endpoint).
+ * Single source of truth for every text model AIart4never Studio
+ * knows how to call via the Vercel AI SDK (4NE-20: MiniMax-only, via
+ * its OpenAI-compatible Chat Completions endpoint).
  *
  * Why a catalog rather than the old hardcoded `TEXT_MODEL_SPECS` map:
  *   - Users can see every model the app knows about, with metadata
@@ -61,11 +60,10 @@ export interface TextGenParams {
 
 export interface TextModelCatalogEntry {
   /**
-   * The model ID as it appears in API requests. For MiniMax this is
-   * the published upstream ID (e.g. `MiniMax-M2.7`); for OpenAI this
-   * is the OpenAI-published ID (e.g. `gpt-4o-mini`). The model picker
-   * writes this verbatim to the `model` field in `/api/ai/prompt` /
-   * `VERCEL_AI_MODEL`.
+   * The model ID as it appears in API requests — the published
+   * upstream MiniMax ID (e.g. `MiniMax-M3`, `MiniMax-M2.7`). The
+   * model picker writes this verbatim to the `model` field in
+   * `/api/ai/prompt` / `VERCEL_AI_MODEL`.
    */
   modelId: string;
   /**
@@ -208,22 +206,6 @@ export const TEXT_MODEL_CATALOG: readonly TextModelCatalogEntry[] = [
     defaultTemperature: 0.8,
     defaults: { temperature: 0.8, maxTokens: 4_096 },
   },
-  // ── OpenAI ───────────────────────────────────────────────────────
-  {
-    modelId: 'gpt-4o-mini',
-    provider: 'openai',
-    family: 'GPT-4o mini',
-    generation: '4o-mini',
-    description:
-      'OpenAI\'s small-but-capable model. Strong JSON instruction following; used as the fallback when MiniMax is unavailable.',
-    recommendedFor: ['caption', 'tag', 'enhance', 'collection-info', 'chat'],
-    contextWindow: 128_000,
-    defaultMaxTokens: 4_096,
-    defaultTemperature: 0.7,
-    defaults: { temperature: 0.7, maxTokens: 4_096 },
-    modeOverrides: SHARED_MODE_OVERRIDES,
-    isDefault: true,
-  },
 ] as const;
 
 /**
@@ -303,7 +285,6 @@ export function getDefaultTextModelForProvider(
  */
 export interface TextModelEnvKeys {
   minimax: boolean;
-  openai: boolean;
 }
 
 /**
@@ -323,9 +304,6 @@ export function getAvailableTextModels(
 ): readonly TextModelAvailability[] {
   return TEXT_MODEL_CATALOG.map((entry) => ({
     entry,
-    available:
-      entry.provider === 'minimax' ? envKeys.minimax :
-      entry.provider === 'openai' ? envKeys.openai :
-      false,
+    available: entry.provider === 'minimax' ? envKeys.minimax : false,
   }));
 }

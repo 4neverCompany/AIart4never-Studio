@@ -38,7 +38,6 @@ import { ValidationError } from '@/lib/agent-tools/errors';
 beforeEach(() => {
   vi.clearAllMocks();
   process.env.MINIMAX_API_KEY = 'test-key';
-  process.env.OPENAI_API_KEY = '';
 });
 
 // ---------------------------------------------------------------------------
@@ -162,7 +161,6 @@ describe('executeCritiquePrompt — happy paths', () => {
 
   it('mode=auto defaults to heuristic when no provider is configured', async () => {
     delete process.env.MINIMAX_API_KEY;
-    delete process.env.OPENAI_API_KEY;
     const r = await executeCritiquePrompt({
       prompt: 'A cinematic portrait, shot on 35mm, dramatic rim lighting, natural light, film grain. Marvel Comics and Star Wars vibes collide in a dramatic crossover scene with multiple heroes.',
       requirements: {

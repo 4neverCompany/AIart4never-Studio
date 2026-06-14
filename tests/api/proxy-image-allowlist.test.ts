@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { isAllowedUrl, getCacheEntry, getStaleEntry, setCacheEntry, clearCache, getCacheSize } from '@/app/api/proxy-image/route';
 
 describe('proxy-image isAllowedUrl', () => {
-  it('allows cdn.leonardo.ai', () => {
-    expect(isAllowedUrl('https://cdn.leonardo.ai/users/abc/generations/x.png')).toBe(true);
+  it('does not allow cdn.leonardo.ai (Leonardo stripped)', () => {
+    expect(isAllowedUrl('https://cdn.leonardo.ai/users/abc/generations/x.png')).toBe(false);
   });
 
   it('allows i.uguu.se', () => {
@@ -15,7 +15,7 @@ describe('proxy-image isAllowedUrl', () => {
   });
 
   it('rejects http (downgrade attack vector)', () => {
-    expect(isAllowedUrl('http://cdn.leonardo.ai/x.png')).toBe(false);
+    expect(isAllowedUrl('http://i.uguu.se/x.png')).toBe(false);
   });
 
   it('rejects file:// protocol', () => {
@@ -38,8 +38,8 @@ describe('proxy-image isAllowedUrl', () => {
     expect(isAllowedUrl('https://127.0.0.1/internal')).toBe(false);
   });
 
-  it('rejects host suffix lookalike (e.g. cdn.leonardo.ai.evil.com)', () => {
-    expect(isAllowedUrl('https://cdn.leonardo.ai.evil.com/x.png')).toBe(false);
+  it('rejects host suffix lookalike (e.g. i.uguu.se.evil.com)', () => {
+    expect(isAllowedUrl('https://i.uguu.se.evil.com/x.png')).toBe(false);
   });
 
   it('rejects empty string', () => {
@@ -51,7 +51,7 @@ describe('proxy-image isAllowedUrl', () => {
   });
 
   it('treats hostname case-insensitively', () => {
-    expect(isAllowedUrl('https://CDN.LEONARDO.AI/x.png')).toBe(true);
+    expect(isAllowedUrl('https://I.UGUU.SE/x.png')).toBe(true);
   });
 
   it('rejects bare suffix without leading dot (storage.googleapis.com itself)', () => {

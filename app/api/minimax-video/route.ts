@@ -19,7 +19,7 @@
  * `minimax` (Hailuo 2.3) and goes through this route.
  *
  * Endpoint: POST {MINIMAX_API_BASE_URL}/video_generation  (defaults
- * to https://api.minimaxi.chat/v1, the same base URL the chat +
+ * to https://api.minimax.io/v1, the same base URL the chat +
  * image paths use).
  * Auth: `Authorization: Bearer ${MINIMAX_API_KEY}`.
  *
@@ -111,7 +111,7 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 
-  const baseURL = process.env.MINIMAX_API_BASE_URL?.trim() || 'https://api.minimaxi.chat/v1';
+  const baseURL = process.env.MINIMAX_API_BASE_URL?.trim() || 'https://api.minimax.io/v1';
   const url = `${baseURL.replace(/\/$/, '')}/video_generation`;
 
   const opts = body.options ?? {};

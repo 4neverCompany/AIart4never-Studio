@@ -23,56 +23,10 @@
  * if the policy is malformed).
  */
 import { describe, expect, it } from 'vitest';
-import nextConfig, {
-  CAMOFOX_LOOPBACK_PORTS,
-  CAMOFOX_CONNECT_SRC,
-  WEB_CSP,
-} from '@/next.config';
+import nextConfig, { WEB_CSP } from '@/next.config';
 
-describe('next.config — V1.1.3 Web-Build CSP', () => {
-  describe('CAMOFOX_LOOPBACK_PORTS', () => {
-    it('contains exactly 4 sidecar ports (9377-9380) plus the CORS-proxy port (9889)', () => {
-      // The CORS-proxy port is the workaround fallback so
-      // MashupForge can reach camofox via the proxy when
-      // upstream CORS support lands. The 4 sidecar ports must
-      // match the Rust CAMOFOX_PORTS exactly.
-      expect(CAMOFOX_LOOPBACK_PORTS).toContain(9377);
-      expect(CAMOFOX_LOOPBACK_PORTS).toContain(9378);
-      expect(CAMOFOX_LOOPBACK_PORTS).toContain(9379);
-      expect(CAMOFOX_LOOPBACK_PORTS).toContain(9380);
-    });
-
-  });
-
-  describe('CAMOFOX_CONNECT_SRC', () => {
-    it('includes http://127.0.0.1:9377-9380 for every loopback port', () => {
-      for (const port of CAMOFOX_LOOPBACK_PORTS) {
-        expect(CAMOFOX_CONNECT_SRC).toContain(`http://127.0.0.1:${port}`);
-      }
-    });
-
-    it('never contains the wildcard', () => {
-      expect(CAMOFOX_CONNECT_SRC).not.toContain('*');
-    });
-
-    it('uses http:// scheme (the sidecar binds loopback, not https)', () => {
-      // CSP distinguishes http: from https: — the sidecar uses
-      // plain HTTP because the loopback binding is the
-      // security boundary, not TLS.
-      expect(CAMOFOX_CONNECT_SRC).toMatch(/http:\/\/127\.0\.0\.1:\d+/);
-    });
-  });
-
+describe('next.config — Web-Build CSP', () => {
   describe('WEB_CSP', () => {
-    it('declares a connect-src directive that includes the sidecar ports', () => {
-      const connectSrcMatch = WEB_CSP.match(/connect-src[^;]+/);
-      expect(connectSrcMatch).not.toBeNull();
-      const connectSrc = connectSrcMatch![0];
-      for (const port of CAMOFOX_LOOPBACK_PORTS) {
-        expect(connectSrc).toContain(`127.0.0.1:${port}`);
-      }
-    });
-
     it('never contains the wildcard in any directive', () => {
       expect(WEB_CSP).not.toContain('*');
     });
@@ -81,18 +35,25 @@ describe('next.config — V1.1.3 Web-Build CSP', () => {
       expect(WEB_CSP).toMatch(/default-src\s+'self'/);
     });
 
-    it('includes img-src with the existing CDN allowlist (regression for v1.0.8)', () => {
-      // V1.0.8 fix: cdn.leonardo.ai was added to img-src so
-      // generated images load. The V1.1.3 CSP must keep it.
+    it('includes img-src with picsum.photos', () => {
       const imgSrcMatch = WEB_CSP.match(/img-src[^;]+/);
       expect(imgSrcMatch).not.toBeNull();
-      expect(imgSrcMatch![0]).toContain('cdn.leonardo.ai');
       expect(imgSrcMatch![0]).toContain('picsum.photos');
     });
 
-    it('does not duplicate the connect-src directive', () => {
+    it('declares a single connect-src directive that allows the MiniMax LLM host', () => {
       const matches = WEB_CSP.match(/connect-src/g);
       expect(matches?.length).toBe(1);
+      const connectSrcMatch = WEB_CSP.match(/connect-src[^;]+/);
+      expect(connectSrcMatch).not.toBeNull();
+      expect(connectSrcMatch![0]).toContain('https://api.minimax.io');
+    });
+
+    it('does not reference any of the stripped services', () => {
+      expect(WEB_CSP).not.toContain('cdn.leonardo.ai');
+      expect(WEB_CSP).not.toContain('api.minimaxi.chat');
+      expect(WEB_CSP).not.toContain('generativelanguage');
+      expect(WEB_CSP).not.toContain('127.0.0.1');
     });
   });
 

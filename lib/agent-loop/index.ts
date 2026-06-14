@@ -148,7 +148,7 @@ export interface RunDirectorLoopResult {
   /** The model id that was used. */
   modelId: string;
   /** The model provider that was used. */
-  provider: 'minimax' | 'openai' | 'mock' | 'unknown';
+  provider: 'minimax' | 'mock' | 'unknown';
 }
 
 // ---------------------------------------------------------------------------
@@ -215,21 +215,20 @@ function validateInput(input: RunDirectorLoopInput): void {
 interface ResolvedModel {
   model: LanguageModel;
   modelId: string;
-  provider: 'minimax' | 'openai' | 'mock' | 'unknown';
+  provider: 'minimax' | 'mock' | 'unknown';
 }
 
 /**
  * Pick a Vercel AI SDK `LanguageModel` from env vars + an
- * optional per-request model id. Same precedence as the
- * route handler (MINIMAX_API_KEY wins over OPENAI_API_KEY)
- * so the Director loop and the streaming route pick the
- * same model when no override is given.
+ * optional per-request model id. MiniMax-only (4NE-20), same
+ * as the streaming route, so the Director loop and the route
+ * pick the same model when no override is given.
  *
- * Returns `null` when no API key is configured. The caller
- * turns that into a 503-style `RunDirectorLoopResult` with
- * `truncatedBy: 'error'` rather than a hard throw — the
- * route layer can detect the `provider: 'unknown'` and
- * respond with a clear "no provider configured" error.
+ * Returns `null` when MINIMAX_API_KEY is not configured. The
+ * caller turns that into a 503-style `RunDirectorLoopResult`
+ * with `truncatedBy: 'error'` rather than a hard throw — the
+ * route layer detects `provider: 'unknown'` and responds with
+ * a clear "no provider configured" error.
  */
 export async function resolveDirectorModel(
   modelOverride: string | undefined,
@@ -241,7 +240,7 @@ export async function resolveDirectorModel(
   if (process.env.MINIMAX_API_KEY) {
     const openai = createOpenAI({
       apiKey: process.env.MINIMAX_API_KEY,
-      baseURL: 'https://api.minimaxi.chat/v1',
+      baseURL: 'https://api.minimax.io/v1',
     });
     const modelId = modelOverride || process.env.VERCEL_AI_MODEL || 'MiniMax-M3';
     // V1.5-DIRECTOR-MINIMAX-TOOLCALL: use `.chat()` (chat completions),
@@ -256,13 +255,6 @@ export async function resolveDirectorModel(
     // streamMinimaxChat hits the same endpoint but passes no tools;
     // here we keep the SDK so the agent loop gets real tool-calling.
     return { model: openai.chat(modelId), modelId, provider: 'minimax' };
-  }
-  if (process.env.OPENAI_API_KEY) {
-    const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const modelId = modelOverride || 'gpt-4o-mini';
-    // OpenAI also goes through chat completions for consistent
-    // tool-calling behaviour across both providers.
-    return { model: openai.chat(modelId), modelId, provider: 'openai' };
   }
   return null;
 }
@@ -446,7 +438,7 @@ export async function runDirectorLoop(
     const errStep: Step = logger.append({
       type: 'error',
       reasoning:
-        'No AI provider configured for the Director loop. Set MINIMAX_API_KEY (preferred) or OPENAI_API_KEY.',
+        'No AI provider configured for the Director loop. Set MINIMAX_API_KEY.',
       cost: 0,
       timestamp: clock(),
     });
