@@ -37,7 +37,7 @@ export default function GlobalError({
           <h1 className="text-2xl font-bold text-red-400">Something went wrong</h1>
           <p className="text-zinc-400 text-sm">
             An unexpected error occurred. If this keeps happening, check the crash
-            logs in your MashupForge app data folder.
+            logs in your AIart4never Studio app data folder.
           </p>
           {error?.message && (
             <pre className="text-xs text-zinc-500 bg-zinc-900 rounded-lg p-3 text-left overflow-auto max-h-40">

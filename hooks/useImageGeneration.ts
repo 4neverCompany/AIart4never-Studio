@@ -630,7 +630,7 @@ Keep it under 100 words. Return ONLY the negative prompt text, nothing else.`,
       // Pillars + Style Tags (was Niches + Genres) are appended as
       // live context so the active tag chips in Settings still shape
       // each batch.
-      // AI-ROLE-REDESIGN (2026-05-22): MashupForge AI persona fallback
+      // AI-ROLE-REDESIGN (2026-05-22): AIart4never Studio AI persona fallback
       // + label rename; agentNiches/agentGenres keys unchanged.
       const systemContext = `${settings.agentPrompt || MASHUPFORGE_AI_PERSONA}
 Content Pillars: ${settings.agentNiches?.join(', ') || 'All — pick freely'}

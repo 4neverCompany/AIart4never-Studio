@@ -61,7 +61,7 @@ export default function LoginPage() {
             <Sparkles className="w-8 h-8 text-[#00e6ff]" />
           </div>
           <h1 className="type-display text-3xl tracking-tight">Welcome Back</h1>
-          <p className="type-muted mt-2">Log in to MashupForge</p>
+          <p className="type-muted mt-2">Log in to AIart4never Studio</p>
         </div>
 
         <div className="card p-8 shadow-2xl">

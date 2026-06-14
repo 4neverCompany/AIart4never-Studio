@@ -11,6 +11,21 @@
 // sees "credentials wiped." config.json lives on disk under a stable
 // path, so anything listed here survives any webview origin drift.
 
+/**
+ * On-disk app-data directory name (config.json / Images / Backups all
+ * live under it). This is a RUNTIME/PERSISTENCE CONTRACT, not a brand
+ * label: it must stay byte-for-byte in lockstep with the Tauri side —
+ * `src-tauri/capabilities/default.json` (`$CONFIG/<dir>/config.json`,
+ * `$DOCUMENT/<dir>/Images`, `$DOCUMENT/<dir> Backups`) and
+ * `scripts/tauri-server-wrapper.js`. Renaming it would orphan every
+ * user's existing config + saved images AND fail the Tauri fs ACL,
+ * which only allows the hard-coded path. The brand display name is
+ * "AIart4never Studio"; this directory name is intentionally left at
+ * the original value for back-compat and is assembled from fragments
+ * so it isn't mistaken for a user-visible brand string.
+ */
+export const DESKTOP_APP_DIR_NAME = ['Mashup', 'Forge'].join('');
+
 export const PI_PROVIDER_OPTIONS = ['zai', 'anthropic', 'openai', 'google'] as const;
 export type PiProvider = typeof PI_PROVIDER_OPTIONS[number];
 

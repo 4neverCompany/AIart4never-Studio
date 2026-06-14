@@ -67,7 +67,7 @@ describe('buildDirectorPlan', () => {
 describe('buildDirectorSystemPrompt', () => {
   it('starts with the Director persona', () => {
     const out = buildDirectorSystemPrompt(baseContext);
-    expect(out).toMatch(/Director agent of MashupForge/);
+    expect(out).toMatch(/Director agent of AIart4never Studio/);
   });
 
   it('embeds the plan', () => {

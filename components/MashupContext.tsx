@@ -255,7 +255,7 @@ export function MashupProvider({ children }: { children: ReactNode }) {
       //
       // V1.5-LOCAL-SAVE: after the (optional) watermark, persist the
       // APPROVED image to disk — the canonical app-data store AND a
-      // discoverable Documents\MashupForge\Images copy — so the
+      // discoverable Documents\AIart4never Studio\Images copy — so the
       // approved post exists as a real local file (the watermarked
       // pixels previously lived only in the IDB `url`). Off-Tauri this
       // is a no-op (persistApprovedImageToDisk returns null).

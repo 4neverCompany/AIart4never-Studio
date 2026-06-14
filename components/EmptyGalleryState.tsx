@@ -49,7 +49,7 @@ export function EmptyGalleryState({ firstRun, ideaCount, setView }: EmptyGallery
         )}
       </div>
       <h2 className="text-xl font-medium text-zinc-300 mb-2 text-center">
-        {firstRun ? 'Welcome to MashupForge' : 'Your Gallery is Empty'}
+        {firstRun ? 'Welcome to AIart4never Studio' : 'Your Gallery is Empty'}
       </h2>
       <p className="text-sm max-w-md text-center text-zinc-500 mb-6">
         {firstRun

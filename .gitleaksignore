@@ -11,6 +11,7 @@
 # entries require a justification comment.
 
 # Storage key string in lib/trademark-outcomes.ts:44. gitleaks' generic-api-key
-# rule's high-entropy heuristic flags the `mashup_trademark_outcomes_v2`
-# literal as a possible key. The string is an IDB store name, not a secret.
-lib/trademark-outcomes.ts:44:generic-api-key
+# rule's high-entropy heuristic flags the `mashup_trademark_outcomes_v2` literal
+# (an IDB store name, not a secret) on the baseline-import commit. gitleaks-action
+# matches .gitleaksignore by the FULL fingerprint (commit:file:rule:line).
+021d8e0189f7b3884532366b88e8f69068187f78:lib/trademark-outcomes.ts:generic-api-key:44

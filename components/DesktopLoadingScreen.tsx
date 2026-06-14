@@ -45,7 +45,7 @@ export function DesktopLoadingScreen() {
     <div
       className="fixed inset-0 z-[9990] flex flex-col items-center justify-center bg-[#050505]"
       role="status"
-      aria-label="Loading MashupForge"
+      aria-label="Loading AIart4never Studio"
     >
       {/* Radial depth glow */}
       <div
@@ -101,7 +101,7 @@ export function DesktopLoadingScreen() {
         }}
         aria-hidden="true"
       >
-        MashupForge
+        AIart4never Studio
       </div>
 
       {/* ── Tagline ── */}
@@ -110,7 +110,7 @@ export function DesktopLoadingScreen() {
         style={{ color: 'rgba(0,230,255,0.45)' }}
         aria-hidden="true"
       >
-        MashupForge
+        AIart4never Studio
       </div>
 
       {/* ── Gold rule ── */}

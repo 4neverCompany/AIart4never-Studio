@@ -261,7 +261,7 @@ export function UpdateChecker() {
         void (async () => {
           try {
             const latestRes = await fetch(
-              'https://github.com/4neverCompany/MashupForge/releases/latest/download/latest.json',
+              'https://github.com/4neverCompany/AIart4never-Studio/releases/latest/download/latest.json',
               { cache: 'no-cache' },
             );
             if (!latestRes.ok) return;
@@ -401,7 +401,7 @@ export function UpdateChecker() {
       // If relaunch itself fails (unlikely once we reach this point) we
       // can't really recover here — the update is already installed.
       // Surface an error so the user knows to restart manually.
-      setState({ kind: 'error', message: `Restart failed: ${detail}. Please restart MashupForge manually.` });
+      setState({ kind: 'error', message: `Restart failed: ${detail}. Please restart AIart4never Studio manually.` });
     }
   }, []);
 
@@ -557,7 +557,7 @@ export function UpdateChecker() {
             </h2>
           </div>
           <p className="text-xs text-zinc-400 leading-relaxed">
-            MashupForge is restarting to apply update{' '}
+            AIart4never Studio is restarting to apply update{' '}
             <span className="font-mono text-[#c5a062]">v{state.update.version}</span>. Any
             in-flight pipeline work has finished — you can wait or restart now.
           </p>
@@ -566,7 +566,7 @@ export function UpdateChecker() {
               type="button"
               onClick={() => void triggerRelaunch()}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-semibold bg-[#00e6ff] hover:bg-[#33eaff] active:bg-[#00b8cc] text-[#050505] transition-colors"
-              aria-label="Restart MashupForge now"
+              aria-label="Restart AIart4never Studio now"
             >
               <RotateCw className="w-3 h-3" />
               Restart now

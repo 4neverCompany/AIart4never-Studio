@@ -53,7 +53,7 @@ export function FirstRunBanner() {
         <Sparkles className="w-4 h-4 text-[#c5a062] mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-xs text-zinc-200 leading-relaxed">
-            Welcome to <span className="text-[#c5a062] font-semibold">MashupForge</span> — configure your API keys in{' '}
+            Welcome to <span className="text-[#c5a062] font-semibold">AIart4never Studio</span> — configure your API keys in{' '}
             <button
               type="button"
               onClick={openSettings}

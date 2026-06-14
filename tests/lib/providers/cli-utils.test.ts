@@ -285,7 +285,7 @@ describe('cli-utils binaryExists', () => {
 describe('cli-utils pickSafeCwd (V1.8.1-UNC-CWD)', () => {
   const TMP = '/tmp/x';
   it('overrides to tmp when the Windows cwd is an extended-length \\\\?\\ path', () => {
-    expect(pickSafeCwd('win32', '\\\\?\\G:\\MashupForge\\resources\\app', TMP)).toBe(TMP);
+    expect(pickSafeCwd('win32', '\\\\?\\G:\\AIart4never Studio\\resources\\app', TMP)).toBe(TMP);
   });
   it('overrides to tmp for a true UNC \\\\server\\share cwd', () => {
     expect(pickSafeCwd('win32', '\\\\server\\share\\app', TMP)).toBe(TMP);

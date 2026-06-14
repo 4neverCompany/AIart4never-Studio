@@ -88,7 +88,7 @@ describe('DesktopSettingsPanel — V060-003 update check ACL handling', () => {
 
     const link = screen.getByRole('link', { name: /Releases/i });
     expect(link.getAttribute('href')).toBe(
-      'https://github.com/4neverCompany/MashupForge/releases',
+      'https://github.com/4neverCompany/AIart4never-Studio/releases',
     );
 
     // The friendly state must not appear in the red 'error' AlertCircle path.

@@ -1,7 +1,7 @@
 /**
  * v1.2.3 — Eval heuristic: camera angle.
  *
- * Checks whether the prompt specifies a camera angle. MashupForge
+ * Checks whether the prompt specifies a camera angle. AIart4never Studio
  * ships a "framing:camera-angles" skill that nudges the model
  * to include one; this heuristic measures compliance.
  *

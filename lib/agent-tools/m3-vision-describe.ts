@@ -8,7 +8,7 @@
  * the `mmx` CLI's `vision describe` subcommand instead.
  *
  * The mmx CLI is the v1.2.0-recommended production path for
- * MiniMax in MashupForge (see `docs/bmad/briefs/mmx-cli-integration.md`).
+ * MiniMax in AIart4never Studio (see `docs/bmad/briefs/mmx-cli-integration.md`).
  * It handles auth (`mmx auth login` → MiniMax Token Plan /
  * API key), file upload, and the multimodal payload.
  *

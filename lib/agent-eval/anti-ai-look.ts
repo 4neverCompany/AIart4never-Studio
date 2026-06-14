@@ -8,7 +8,7 @@
  * the loop appends these; this heuristic verifies that
  * appending actually happened.
  *
- * Keyword set is conservative — the MashupForge MCSLA director
+ * Keyword set is conservative — the AIart4never Studio MCSLA director
  * protocol has a documented list in `lib/ai/skills/anti-ai-look.md`
  * (not yet extracted to a constant here). v1.3 will import
  * from there; v1.2.3 hardcodes a small starter set.

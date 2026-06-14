@@ -138,7 +138,7 @@ function MashupApp() {
           </div>
           <div>
             <h2 className="text-xl font-bold text-white mb-1">Access Restricted</h2>
-            <p className="text-zinc-500 text-sm">Please log in to access MashupForge.</p>
+            <p className="text-zinc-500 text-sm">Please log in to access AIart4never Studio.</p>
           </div>
         </div>
       </div>

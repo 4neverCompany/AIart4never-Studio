@@ -333,7 +333,7 @@ export function usePipelineDaemon(deps: UsePipelineDaemonDeps) {
       : '';
 
     // AI-ROLE-REDESIGN (2026-05-22): Content Pillars / Style Tags
-    // labels + MashupForge AI persona fallback. agentNiches /
+    // labels + AIart4never Studio AI persona fallback. agentNiches /
     // agentGenres keys unchanged for storage back-compat.
     const base = `${s.agentPrompt || MASHUPFORGE_AI_PERSONA}
 Content Pillars: ${s.agentNiches?.join(', ') || 'All — pick freely'}

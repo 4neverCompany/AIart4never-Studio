@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
   const ts = Date.now();
   const lines = [
-    'MashupForge webview crash report',
+    'AIart4never Studio webview crash report',
     `source: ${body.source ?? 'unknown'}`,
     `timestamp: ${new Date(ts).toISOString()}`,
     body.url ? `url: ${body.url}` : null,

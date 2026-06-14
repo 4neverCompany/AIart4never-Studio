@@ -297,7 +297,7 @@ export async function POST(req: Request) {
         'echo.',
         'echo === MMX CLI ===',
         'echo.',
-        'echo Authenticate via the MashupForge Settings ^> AI Agent panel by',
+        'echo Authenticate via the AIart4never Studio Settings ^> AI Agent panel by',
         'echo pasting your MiniMax API key. That is the recommended path.',
         'echo.',
         'echo Get an API key at: https://platform.minimax.io/',
@@ -312,7 +312,7 @@ export async function POST(req: Request) {
         'echo.',
       ].join(' & ');
       spawn(
-        `start "MashupForge — MiniMax mmx CLI" cmd /k "${winInstructions}"`,
+        `start "AIart4never Studio — MiniMax mmx CLI" cmd /k "${winInstructions}"`,
         { shell: true, detached: true, stdio: 'ignore' },
       ).unref();
 
@@ -371,7 +371,7 @@ export async function POST(req: Request) {
       '  echo "MMX is not yet authenticated."',
       '  echo',
       '  echo "RECOMMENDED: close this terminal and paste your MiniMax API key"',
-      '  echo "in MashupForge Settings → AI Agent. That is the working path."',
+      '  echo "in AIart4never Studio Settings → AI Agent. That is the working path."',
       '  echo',
       '  echo "Get an API key at: https://platform.minimax.io/"',
       '  echo',

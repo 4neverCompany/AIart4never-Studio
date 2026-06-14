@@ -46,6 +46,7 @@
  */
 
 import { type GeneratedImage } from '@/types/mashup'
+import { DESKTOP_APP_DIR_NAME } from '@/lib/desktop-config-keys'
 
 const IMAGES_SUBDIR = ['images', 'generated'] as const
 
@@ -156,9 +157,10 @@ export async function persistImageToDisk(
 /**
  * Where approved images are exported for discoverability — the user's
  * real Documents folder, NOT the hidden appdata dir. Returns
- * `Documents\MashupForge\Images` (or the platform equivalent) in Tauri,
- * or `null` off-Tauri (web/test). Scoped in
- * src-tauri/capabilities/default.json under `$DOCUMENT/MashupForge/Images`.
+ * `Documents\<app-dir>\Images` (or the platform equivalent) in Tauri,
+ * where <app-dir> is DESKTOP_APP_DIR_NAME (kept at its original on-disk
+ * value for back-compat), or `null` off-Tauri (web/test). Scoped in
+ * src-tauri/capabilities/default.json under `$DOCUMENT/<app-dir>/Images`.
  */
 export async function getApprovedImagesDocDir(): Promise<string | null> {
   if (typeof window === 'undefined') return null
@@ -168,7 +170,7 @@ export async function getApprovedImagesDocDir(): Promise<string | null> {
   try {
     const { documentDir, join } = await import('@tauri-apps/api/path')
     const base = await documentDir()
-    return await join(base, 'MashupForge', 'Images')
+    return await join(base, DESKTOP_APP_DIR_NAME, 'Images')
   } catch {
     return null
   }
@@ -180,7 +182,7 @@ export async function getApprovedImagesDocDir(): Promise<string | null> {
  *
  *   1. the canonical app-data store (`images/generated/`) — the source
  *      of truth that `displayUrlAsync` / `deleteImageFile` resolve, and
- *   2. a discoverable copy in `Documents\MashupForge\Images` so the user
+ *   2. a discoverable copy in `Documents\<app-dir>\Images` so the user
  *      can find their approved posts as ordinary files.
  *
  * Returns the canonical app-data filename (to write into `localPath`) on

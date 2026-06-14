@@ -183,7 +183,7 @@ export async function executePersistAsset(
 
 export const persistAssetTool = tool({
   description:
-    "Save a generated image/video to the user's local store (Studio gallery). Takes the AssetRef returned by generate_image/generate_video plus a metadata block (title, caption, tags, kind). Returns the MashupForge-internal asset id under which the asset was persisted.",
+    "Save a generated image/video to the user's local store (Studio gallery). Takes the AssetRef returned by generate_image/generate_video plus a metadata block (title, caption, tags, kind). Returns the AIart4never Studio-internal asset id under which the asset was persisted.",
   inputSchema: zPersistAssetInput,
   outputSchema: zPersistAssetOutput,
   execute: async (input, options) => {

@@ -37,7 +37,7 @@ interface UpdaterModule {
   } | null>;
 }
 
-const RELEASES_URL = 'https://github.com/4neverCompany/MashupForge/releases';
+const RELEASES_URL = 'https://github.com/4neverCompany/AIart4never-Studio/releases';
 
 const WIN_MODES = ['passive', 'basicUi', 'quiet'] as const;
 type WinInstallMode = typeof WIN_MODES[number];

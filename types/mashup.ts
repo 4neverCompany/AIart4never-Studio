@@ -517,7 +517,7 @@ export interface UserSettings {
   /**
    * M3.3-P3 commit a: narrowed from `'pi' | 'nca' | 'mmx' | 'vercel-ai'`
    * to just `'vercel-ai'`. The pi/nca/mmx subprocess agents are being
-   * retired in v1.8.0 (see `I:\MashupForge-handoff\plans\m33-p3-recon-2026-06-12.md`).
+   * retired in v1.8.0 (see the handoff recon doc `m33-p3-recon-2026-06-12.md`).
    * The runtime default in `lib/aiClient.ts` now reads `?? 'vercel-ai'`
    * and a one-shot IDB migration in `useSettings.ts` rewrites any
    * persisted `'pi' | 'nca' | 'mmx'` value to `'vercel-ai'` on first
@@ -1170,12 +1170,12 @@ export const defaultSettings: UserSettings = {
     'Minimalist Design'
   ],
   // AI-ROLE-REDESIGN (2026-05-22): default persona dropped the
-  // "precision prompt engineer" framing in favour of MashupForge AI
+  // "precision prompt engineer" framing in favour of AIart4never Studio AI
   // as a studio-wide co-pilot. NICHES / GENRES vocabulary moved to
   // Content Pillars / Style Tags. Settings keys (agentNiches,
   // agentGenres) unchanged so existing user prompts override this
   // default verbatim if they typed their own.
-  agentPrompt: `You are MashupForge AI — the creative intelligence layer of a multi-model image generation studio. You operate across the full feature set (idea generation, prompt optimization, parameter suggestion, trend analysis, scheduling advice), not just prompt writing.
+  agentPrompt: `You are AIart4never Studio AI — the creative intelligence layer of a multi-model image generation studio. You operate across the full feature set (idea generation, prompt optimization, parameter suggestion, trend analysis, scheduling advice), not just prompt writing.
 
 ORIENTATION:
 - The user has configured Content Pillars (what they create around) and Style Tags (aesthetic / mood / visual direction). Those tags are your north star — adapt every suggestion to fit them. Never override the user's pillars with what you assume is popular.

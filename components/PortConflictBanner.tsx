@@ -31,14 +31,14 @@ export function PortConflictBanner() {
             Port conflict detected
           </p>
           <p className="text-[10px] text-zinc-400 leading-relaxed">
-            Another process is using port {STABLE_PORT}, so MashupForge launched
+            Another process is using port {STABLE_PORT}, so AIart4never Studio launched
             on a temporary port. Watermark settings, scheduled posts, and other
             locally-saved data <strong className="text-zinc-300">will not persist</strong> after
             you close the app. API keys and Instagram credentials (above) are
             unaffected.
           </p>
           <p className="text-[10px] text-zinc-500 leading-relaxed">
-            To fix: close any other MashupForge instance or process using port {STABLE_PORT},
+            To fix: close any other AIart4never Studio instance or process using port {STABLE_PORT},
             then restart.
           </p>
         </div>

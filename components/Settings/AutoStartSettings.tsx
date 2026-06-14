@@ -68,7 +68,7 @@ export function AutoStartSettings({ isDesktop }: AutoStartSettingsProps) {
       <div className="rounded-lg border border-zinc-800/60 bg-[#050505]/40 px-3">
         <ToggleRow
           label="Start with Windows"
-          description="Launch MashupForge in the background when you sign in. The window minimises to the system tray so the auto-poster can keep firing while you work."
+          description="Launch AIart4never Studio in the background when you sign in. The window minimises to the system tray so the auto-poster can keep firing while you work."
           enabled={enabled ?? false}
           onToggle={handleToggle}
           disabled={enabled === null}

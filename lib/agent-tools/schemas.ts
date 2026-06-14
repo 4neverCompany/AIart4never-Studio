@@ -438,12 +438,12 @@ export const zPersistAssetInput = z.object({
 export type PersistAssetInput = z.infer<typeof zPersistAssetInput>;
 
 export const zPersistAssetOutput = z.object({
-  /** The MashupForge-internal asset id (idb/tauri-store key). */
+  /** The AIart4never Studio-internal asset id (idb/tauri-store key). */
   assetId: z
     .string()
     .min(1)
     .max(120)
-    .describe('MashupForge-internal id under which the asset was persisted.'),
+    .describe('AIart4never Studio-internal id under which the asset was persisted.'),
   persistedAt: z
     .number()
     .int()
@@ -459,7 +459,7 @@ export type PersistAssetOutput = z.infer<typeof zPersistAssetOutput>;
  * V1.2.6: MiniMax-M3 vision describe — image INPUT, text OUTPUT.
  *
  * M3 is a text+vision model (per the MiniMax-M3 announcement,
- * 2026-06-01). MashupForge's primary text-AI path
+ * 2026-06-01). AIart4never Studio's primary text-AI path
  * (`app/api/ai/prompt`) uses the OpenAI-compatible chat
  * completions endpoint which is text-only. This tool exposes
  * M3's vision capability through the `mmx` CLI's
@@ -474,7 +474,7 @@ export type PersistAssetOutput = z.infer<typeof zPersistAssetOutput>;
  *   3. The critique result is fed back into `critique_prompt`
  *      and the loop iterates.
  *
- * The mmx CLI is the production path for M3 in MashupForge
+ * The mmx CLI is the production path for M3 in AIart4never Studio
  * (per the v1.2.0 mmx-cli-integration brief). It calls
  * `mmx vision describe` which handles auth + the actual
  * multimodal request. This tool is a thin Zod-validated
@@ -506,7 +506,7 @@ export const zM3VisionDescribeInput = z
       .min(1)
       .max(120)
       .optional()
-      .describe('MashupForge-internal asset id; mmx resolves it to a local path.'),
+      .describe('AIart4never Studio-internal asset id; mmx resolves it to a local path.'),
     /**
      * Question to ask about the image. Defaults to a generic
      * description when omitted. The model is multimodal but

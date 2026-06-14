@@ -6,7 +6,7 @@
  * `job_set_type` identifiers the MCP `higgsfield_generate` tool
  * accepts in its `model` field.
  *
- * MashupForge surfaces 4 image models + 3 video models in the UI
+ * AIart4never Studio surfaces 4 image models + 3 video models in the UI
  * (the "kitchen-sink" picker would overwhelm the Studio panel).
  * Users who want every model can call them via the CLI:
  *

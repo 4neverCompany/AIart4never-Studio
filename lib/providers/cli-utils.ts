@@ -208,7 +208,7 @@ interface RunOnceResult {
  * V1.8.1-UNC-CWD: pick a spawn cwd cmd.exe can actually use.
  *
  * In the bundled Tauri build the Next.js sidecar's working directory is
- * the extended-length resources path `\\?\G:\MashupForge\resources\app`.
+ * the extended-length resources path `\\?\G:\AIart4never Studio\resources\app`.
  * When we spawn a `.cmd` shim via cmd.exe, cmd inherits that cwd and
  * prints "UNC paths are not supported. Defaulting to Windows directory."
  * — noise in the user-facing error, and a real footgun (relative path

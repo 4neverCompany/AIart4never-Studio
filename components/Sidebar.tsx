@@ -84,7 +84,7 @@ export function Sidebar() {
       ]);
       try {
         // AI-ROLE-REDESIGN (2026-05-22): chat-mode system prompt now
-        // uses the MashupForge AI persona + Content Pillars / Style
+        // uses the AIart4never Studio AI persona + Content Pillars / Style
         // Tags vocabulary. Settings keys (agentNiches, agentGenres)
         // unchanged for storage back-compat.
         const systemInstruction = `${settings.agentPrompt || MASHUPFORGE_AI_PERSONA}
@@ -177,7 +177,7 @@ export function Sidebar() {
         const trendingBlock = trendingSummary
           ? `\n\nCURRENT TRENDING CONTEXT — base your ideas on these real trends to make them timely and shareable:\n${trendingSummary}\n`
           : '';
-        // AI-ROLE-REDESIGN (2026-05-22): MashupForge AI persona +
+        // AI-ROLE-REDESIGN (2026-05-22): AIart4never Studio AI persona +
         // Content Pillars / Style Tags vocabulary. Settings fallback
         // values stay as concrete examples so empty-configuration
         // users still see useful idea-gen output.

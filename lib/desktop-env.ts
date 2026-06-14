@@ -1,17 +1,18 @@
 /**
  * Desktop-mode environment hydration.
  *
- * When MashupForge runs inside the Tauri desktop bundle, the Next.js server
+ * When AIart4never Studio runs inside the Tauri desktop bundle, the Next.js server
  * is spawned as a sidecar and has no Vercel dashboard to read API keys from.
  * Instead, we load a per-user JSON config file from the platform-standard
  * app-data dir and copy every string entry into `process.env` BEFORE the
  * Next server boots. API routes then read keys via `process.env.X` exactly
  * as they would on Vercel.
  *
- * Platform paths:
- *   Windows: %APPDATA%\MashupForge\config.json
- *   macOS:   ~/Library/Application Support/MashupForge/config.json
- *   Linux:   $XDG_CONFIG_HOME/MashupForge/config.json  (or ~/.config/...)
+ * Platform paths (the app-data dir name is DESKTOP_APP_DIR_NAME — kept at
+ * its original on-disk value for back-compat; see desktop-config-keys.ts):
+ *   Windows: %APPDATA%\<app-dir>\config.json
+ *   macOS:   ~/Library/Application Support/<app-dir>/config.json
+ *   Linux:   $XDG_CONFIG_HOME/<app-dir>/config.json  (or ~/.config/...)
  *
  * The env var MASHUPFORGE_CONFIG_DIR overrides the resolved dir — useful
  * for tests and for the Tauri launcher to force a specific location.
@@ -30,6 +31,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 
+import { DESKTOP_APP_DIR_NAME } from './desktop-config-keys';
+
 export interface HydrateResult {
   loaded: boolean;
   path: string;
@@ -44,13 +47,13 @@ export function getDesktopConfigPath(): string {
   const platform = process.platform;
   if (platform === 'win32') {
     const appdata = process.env.APPDATA || join(homedir(), 'AppData', 'Roaming');
-    return join(appdata, 'MashupForge', 'config.json');
+    return join(appdata, DESKTOP_APP_DIR_NAME, 'config.json');
   }
   if (platform === 'darwin') {
-    return join(homedir(), 'Library', 'Application Support', 'MashupForge', 'config.json');
+    return join(homedir(), 'Library', 'Application Support', DESKTOP_APP_DIR_NAME, 'config.json');
   }
   const xdg = process.env.XDG_CONFIG_HOME || join(homedir(), '.config');
-  return join(xdg, 'MashupForge', 'config.json');
+  return join(xdg, DESKTOP_APP_DIR_NAME, 'config.json');
 }
 
 /**

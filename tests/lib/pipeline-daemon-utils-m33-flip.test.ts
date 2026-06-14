@@ -6,7 +6,7 @@ import {
 
 // M3.3-P3 commit a: the legacy `activeAiAgent: 'pi' | 'nca' | 'mmx'`
 // literal values no longer match the narrowed `'vercel-ai'` type
-// (MashupForge's UserSettings now permits only `'vercel-ai'`). The
+// (AIart4never Studio's UserSettings now permits only `'vercel-ai'`). The
 // migration shim still has to *handle* the legacy strings — that's
 // the whole point of the rewrite — so the tests cast through `unknown`
 // to reach the shim's input type without disabling the production

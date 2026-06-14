@@ -64,9 +64,9 @@ describe('buildDefaultAgentPrompt — V080-DES-003', () => {
     expect(out).not.toMatch(/Warhammer 40k/i);
   });
 
-  it('AI-ROLE-REDESIGN: opens with the MashupForge AI persona, drops "prompt generator" framing', () => {
+  it('AI-ROLE-REDESIGN: opens with the AIart4never Studio AI persona, drops "prompt generator" framing', () => {
     const out = buildDefaultAgentPrompt({ niches: ['X'], genres: ['Y'] });
-    expect(out).toMatch(/MashupForge AI/);
+    expect(out).toMatch(/AIart4never Studio AI/);
     expect(out).toMatch(/co-pilot/i);
     expect(out).not.toMatch(/prompt generator/i);
     expect(out).not.toMatch(/Master Content Creator and Social Media Growth Strategist/);

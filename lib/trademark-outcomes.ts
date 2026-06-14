@@ -41,7 +41,7 @@ import { TRADEMARK_SEED_LIST, extractTrademarkNames } from './extract-trademark-
 
 export type NameOutcome = 'blocked' | 'allowed' | 'unknown';
 
-const STORAGE_KEY = 'mashup_trademark_outcomes_v2';
+const STORAGE_KEY = 'mashup_trademark_outcomes_v2'; // gitleaks:allow — IDB store name, not a secret
 const LEGACY_STORAGE_KEY = 'mashup_trademark_outcomes';
 
 /** name → modelId → outcome. */

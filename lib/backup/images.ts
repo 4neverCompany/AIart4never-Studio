@@ -1,6 +1,7 @@
 import { get, set } from '@/lib/persistence'
 import { slimForBackup } from '@/lib/images/slim'
 import { type GeneratedImage } from '@/types/mashup'
+import { DESKTOP_APP_DIR_NAME } from '@/lib/desktop-config-keys'
 import pkg from '@/package.json'
 
 /**
@@ -37,7 +38,7 @@ async function getBackupDir(): Promise<string | null> {
     // and isn't where a user would ever look for their backups.
     const { documentDir, join } = await import('@tauri-apps/api/path')
     const baseDir = await documentDir()
-    return await join(baseDir, 'MashupForge Backups')
+    return await join(baseDir, `${DESKTOP_APP_DIR_NAME} Backups`)
   } catch { return null }
 }
 
@@ -105,14 +106,15 @@ export async function autoBackupImages(images: GeneratedImage[]): Promise<void> 
 export async function backupHiggsfieldSalt(): Promise<void> {
   try {
     // lib/desktop-env.ts writes config.json to
-    // `%APPDATA%\MashupForge\config.json` (i.e. $CONFIG/MashupForge/
-    // in Tauri path terms — note: the brand dir, NOT the app
-    // identifier dir). The pre-v1.4.5 code read `appDataDir()/../
+    // `%APPDATA%\<app-dir>\config.json` (i.e. $CONFIG/<app-dir>/
+    // in Tauri path terms, where <app-dir> is DESKTOP_APP_DIR_NAME —
+    // note: the app-data dir, NOT the bundle-identifier dir). The
+    // pre-v1.4.5 code read `appDataDir()/../
     // config.json`, a path nothing ever writes to, so the salt
     // backup silently never happened.
     const { configDir, join } = await import('@tauri-apps/api/path')
     const baseDir = await configDir()
-    const configPath = await join(baseDir, 'MashupForge', 'config.json')
+    const configPath = await join(baseDir, DESKTOP_APP_DIR_NAME, 'config.json')
     const configContent = await (await import('@tauri-apps/plugin-fs')).readTextFile(configPath)
     const config = JSON.parse(configContent)
     const salt = config[SALT_CONFIG_KEY] || config['HIGGSFIELD_OAUTH_SALT']

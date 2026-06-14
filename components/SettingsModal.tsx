@@ -1306,7 +1306,7 @@ export function SettingsModal({
         <div className="p-6 border-t border-zinc-800 bg-zinc-950/50 flex items-center justify-between gap-3">
           <span
             className="text-[10px] text-zinc-500 font-mono select-text"
-            title="MashupForge app version"
+            title="AIart4never Studio app version"
           >
             v{appVersion}
           </span>
