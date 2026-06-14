@@ -21,12 +21,10 @@ import {
   LEONARDO_MODELS,
   getLeonardoDimensions,
 } from '../types/mashup';
-// V1.7.0-PIPELINE-HIGGSFIELD: unified registry (provider lookup) + the
-// shared Higgsfield submit so the comparison/pipeline path can route a
-// `higgsfield:<slug>` model id to the real backend instead of silently
-// falling back to Leonardo.
+// V1.7.0-PIPELINE-HIGGSFIELD: unified registry (provider lookup). The
+// in-app Higgsfield submit adapter has been removed; Higgsfield model
+// ids are no longer routed to a backend from the comparison path.
 import { getImageModel } from '../lib/image-models';
-import { submitHiggsfieldImageShared } from '../lib/higgsfield/submit-image';
 
 function getModelName(id: string) {
   return LEONARDO_MODELS.find(m => m.id === id)?.name || getImageModel(id)?.name || id;
@@ -244,20 +242,6 @@ export function useComparison({ settings, saveImage, applyWatermark }: UseCompar
             failedPrompt?: string;
           };
           const submitOnce = async (prompt: string): Promise<SubmitSuccess> => {
-            if (submitProvider === 'higgsfield') {
-              // V1.7.0-PIPELINE-HIGGSFIELD: route to the real Higgsfield
-              // backend via the shared submit. apiName is the backend slug
-              // (UnifiedImageModel.apiModelId, e.g. 'nano_banana_2'); the
-              // CLI token (when set) makes the route use the CLI binary.
-              const r = await submitHiggsfieldImageShared({
-                prompt,
-                apiName: unifiedModel?.apiModelId ?? modelId.replace(/^higgsfield:/, ''),
-                aspectRatio: modelRatio,
-                resolution: unifiedModel?.resolutions?.[0] as '1k' | '2k' | '4k' | undefined,
-                higgsfieldCliToken: settings.higgsfieldCliToken,
-              });
-              return { imageUrl: r.imageUrl, imageId: r.imageId, seed: r.seed };
-            }
             if (submitProvider === 'minimax') {
               const res = await fetch('/api/minimax-image', {
                 method: 'POST',

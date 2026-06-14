@@ -10,6 +10,13 @@
  *   - requireFirstAvailable throws ProviderUnavailableError when none work
  *   - __registerProvider overrides work; __resetRegistry clears them
  *   - __registerFactory adds a new provider id
+ *
+ * NOTE: the Higgsfield CLI/text adapters and the Leonardo HTTP adapter
+ * were removed in the MiniMax-only strip. `minimax-video` is now the
+ * sole built-in. The generic registry mechanics (singleton memoization,
+ * overrides, factory registration, first-available walk) are still
+ * exercised below — using `minimax-video` and test-registered factories
+ * via `__registerFactory` instead of the deleted adapters.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -51,6 +58,17 @@ class FakeAdapter implements ProviderAdapter {
   }
 }
 
+/** A test-only adapter, registered via __registerFactory so the
+ *  factory-catalogue + memoization mechanics can be exercised without
+ *  relying on a built-in adapter beyond minimax-video. */
+class TestFactoryAdapter implements ProviderAdapter {
+  readonly name = 'test-factory';
+  readonly label = 'Test Factory';
+  async isAvailable(): Promise<boolean> { return true; }
+  async generateImage(): Promise<AssetRef> { return { kind: 'image', provider: 'test-factory' }; }
+  async generateVideo(): Promise<AssetRef> { return { kind: 'video', provider: 'test-factory' }; }
+}
+
 beforeEach(() => {
   __resetRegistry();
 });
@@ -59,21 +77,13 @@ afterEach(() => {
 });
 
 describe('registry.getProvider', () => {
-  it('returns a HiggsfieldCliAdapter for "higgsfield"', () => {
-    const p = getProvider('higgsfield');
-    expect(p.name).toBe('higgsfield');
-  });
-  it('returns a LeonardoHttpAdapter for "leonardo"', () => {
-    const p = getProvider('leonardo');
-    expect(p.name).toBe('leonardo');
-  });
   it('returns a MinimaxVideoAdapter for "minimax-video"', () => {
     const p = getProvider('minimax-video');
     expect(p.name).toBe('minimax-video');
   });
   it('returns the same singleton on repeated calls', () => {
-    const a = getProvider('higgsfield');
-    const b = getProvider('higgsfield');
+    const a = getProvider('minimax-video');
+    const b = getProvider('minimax-video');
     expect(a).toBe(b);
   });
   it('throws ProviderError for unknown id', () => {
@@ -88,9 +98,6 @@ describe('registry.getProvider', () => {
   });
   it('exposes the full list of built-in provider ids', () => {
     expect(BUILTIN_PROVIDER_IDS).toEqual([
-      'higgsfield',
-      'higgsfield-text',
-      'leonardo',
       'minimax-video',
     ]);
   });
@@ -107,23 +114,25 @@ describe('registry.listProviders', () => {
     }
   });
 
-  it('marks a provider with a missing CLI as not available', async () => {
-    // Override higgsfield with a fake that is not available.
-    __registerProvider('higgsfield', new FakeAdapter('higgsfield', false));
+  it('marks a provider with a failing isAvailable() probe as not available', async () => {
+    // Override the built-in with a fake that is not available.
+    __registerProvider('minimax-video', new FakeAdapter('minimax-video', false));
     const list = await listProviders();
-    const h = list.find((p) => p.name === 'higgsfield');
-    expect(h).toBeDefined();
-    expect(h!.available).toBe(false);
+    const m = list.find((p) => p.name === 'minimax-video');
+    expect(m).toBeDefined();
+    expect(m!.available).toBe(false);
   });
 });
 
 describe('registry.getFirstAvailable', () => {
   it('returns the first available provider in priority order', async () => {
-    __registerProvider('higgsfield', new FakeAdapter('higgsfield', false));
-    __registerProvider('higgsfield-text', new FakeAdapter('higgsfield-text', false));
-    __registerProvider('leonardo', new FakeAdapter('leonardo', true));
-    const p = await getFirstAvailable();
-    expect(p!.name).toBe('leonardo');
+    // Built-in unavailable; a test-registered factory is available
+    // later in the priority list, so the walk should skip to it.
+    __registerProvider('minimax-video', new FakeAdapter('minimax-video', false));
+    __registerProvider('a', new FakeAdapter('a', false));
+    __registerProvider('b', new FakeAdapter('b', true));
+    const p = await getFirstAvailable(['minimax-video', 'a', 'b']);
+    expect(p!.name).toBe('b');
   });
 
   it('returns null when no provider is available', async () => {
@@ -134,21 +143,21 @@ describe('registry.getFirstAvailable', () => {
   });
 
   it('respects the priority argument ordering', async () => {
-    for (const id of BUILTIN_PROVIDER_IDS) {
-      __registerProvider(id, new FakeAdapter(id, true));
-    }
-    const p = await getFirstAvailable(['minimax-video', 'leonardo']);
-    expect(p!.name).toBe('minimax-video');
+    __registerProvider('minimax-video', new FakeAdapter('minimax-video', true));
+    __registerProvider('alt', new FakeAdapter('alt', true));
+    // Both available — first in the explicit priority list wins.
+    const p = await getFirstAvailable(['alt', 'minimax-video']);
+    expect(p!.name).toBe('alt');
   });
 });
 
 describe('registry.requireFirstAvailable', () => {
   it('returns the first available provider', async () => {
-    __registerProvider('higgsfield', new FakeAdapter('higgsfield', false));
-    __registerProvider('higgsfield-text', new FakeAdapter('higgsfield-text', false));
-    __registerProvider('leonardo', new FakeAdapter('leonardo', true));
-    const p = await requireFirstAvailable();
-    expect(p.name).toBe('leonardo');
+    __registerProvider('minimax-video', new FakeAdapter('minimax-video', false));
+    __registerProvider('a', new FakeAdapter('a', false));
+    __registerProvider('b', new FakeAdapter('b', true));
+    const p = await requireFirstAvailable(['minimax-video', 'a', 'b']);
+    expect(p.name).toBe('b');
   });
 
   it('throws ProviderUnavailableError when none are available', async () => {
@@ -163,18 +172,18 @@ describe('registry.requireFirstAvailable', () => {
 
 describe('registry.__registerProvider / __resetRegistry', () => {
   it('overrides the built-in adapter for an id', () => {
-    const fake = new FakeAdapter('higgsfield', true);
-    __registerProvider('higgsfield', fake);
-    expect(getProvider('higgsfield')).toBe(fake);
+    const fake = new FakeAdapter('minimax-video', true);
+    __registerProvider('minimax-video', fake);
+    expect(getProvider('minimax-video')).toBe(fake);
   });
 
   it('__resetRegistry clears overrides and the singleton cache', () => {
-    const fake = new FakeAdapter('higgsfield', true);
-    __registerProvider('higgsfield', fake);
+    const fake = new FakeAdapter('minimax-video', true);
+    __registerProvider('minimax-video', fake);
     __resetRegistry();
-    const p = getProvider('higgsfield');
+    const p = getProvider('minimax-video');
     expect(p).not.toBe(fake);
-    expect(p.name).toBe('higgsfield');
+    expect(p.name).toBe('minimax-video');
   });
 });
 
@@ -192,36 +201,47 @@ describe('registry.__registerFactory', () => {
     expect(p.name).toBe('custom');
   });
 
+  it('memoizes the factory-built instance across getProvider() calls', () => {
+    __registerFactory('test-factory', TestFactoryAdapter);
+    const a = getProvider('test-factory');
+    const b = getProvider('test-factory');
+    expect(a).toBe(b);
+    expect(a.name).toBe('test-factory');
+  });
+
   it('drops the cached instance for a factory-overridden id', () => {
-    const before = getProvider('higgsfield');
+    const before = getProvider('minimax-video');
     class Swap implements ProviderAdapter {
-      readonly name = 'higgsfield';
+      readonly name = 'minimax-video';
       readonly label = 'swap';
       async isAvailable() { return true; }
-      async generateImage(): Promise<AssetRef> { return { kind: 'image', provider: 'higgsfield' }; }
-      async generateVideo(): Promise<AssetRef> { return { kind: 'video', provider: 'higgsfield' }; }
+      async generateImage(): Promise<AssetRef> { return { kind: 'image', provider: 'minimax-video' }; }
+      async generateVideo(): Promise<AssetRef> { return { kind: 'video', provider: 'minimax-video' }; }
     }
-    __registerFactory('higgsfield', Swap);
-    const after = getProvider('higgsfield');
+    __registerFactory('minimax-video', Swap);
+    const after = getProvider('minimax-video');
     expect(after).not.toBe(before);
+    expect(after.label).toBe('swap');
   });
 });
 
-describe('registry.setProviderRuntimeConfig (V1.2.5)', () => {
-  it('forces a fresh Higgsfield adapter instance on the next getProvider() call', () => {
-    const before = getProvider('higgsfield');
-    setProviderRuntimeConfig({ higgsfieldCliToken: 'hfg_test_token_123' });
-    const after = getProvider('higgsfield');
-    expect(after).not.toBe(before);
-    // Same provider id, same label — only the internal
-    // cliToken option should have changed.
-    expect(after.name).toBe('higgsfield');
+describe('registry.setProviderRuntimeConfig', () => {
+  // The Higgsfield CLI adapter that consumed this token was removed;
+  // setProviderRuntimeConfig is now a harmless no-op store. It must
+  // remain callable (the Director still passes `{ higgsfieldCliToken }`)
+  // and must NOT evict or mutate the existing singleton cache.
+  it('is callable and stores config without throwing', () => {
+    expect(() =>
+      setProviderRuntimeConfig({ higgsfieldCliToken: 'hfg_test_token_123' }),
+    ).not.toThrow();
+    // Also valid with an empty config object.
+    expect(() => setProviderRuntimeConfig({})).not.toThrow();
   });
 
-  it('leaves non-higgsfield singleton cache untouched', () => {
-    const leoBefore = getProvider('leonardo');
+  it('leaves the singleton cache untouched (no eviction)', () => {
+    const before = getProvider('minimax-video');
     setProviderRuntimeConfig({ higgsfieldCliToken: 'hfg_test_token_456' });
-    const leoAfter = getProvider('leonardo');
-    expect(leoAfter).toBe(leoBefore);
+    const after = getProvider('minimax-video');
+    expect(after).toBe(before);
   });
 });

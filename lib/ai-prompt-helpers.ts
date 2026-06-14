@@ -18,8 +18,6 @@
 // left in place during this preflight — collapsing it belongs with the
 // eventual `ai/prompt` rewrite and is out of scope here.
 
-import type { WebSearchResult } from './web-search';
-
 /**
  * V080-DES-003 — Build a "focus" system-prompt block from the user's
  * configured niches/genres. Added to the composed system prompt on every
@@ -95,24 +93,6 @@ export function pickFromPool<T>(pool: readonly T[], offset: number, bucket: numb
   if (pool.length === 0) throw new Error('pickFromPool called with empty pool');
   const idx = Math.abs((bucket + offset) % pool.length);
   return pool[idx];
-}
-
-/**
- * Dedupe by URL, preserving first-seen order. Different search queries
- * frequently surface the same top-ranked result, so without dedup the
- * trending block fills up with duplicate entries of whatever subreddit
- * or news site is dominating at the moment.
- */
-export function dedupeByUrl(results: WebSearchResult[]): WebSearchResult[] {
-  const seen = new Set<string>();
-  const out: WebSearchResult[] = [];
-  for (const r of results) {
-    const key = r.url;
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    out.push(r);
-  }
-  return out;
 }
 
 function sanitizeStringArray(raw: unknown): string[] {

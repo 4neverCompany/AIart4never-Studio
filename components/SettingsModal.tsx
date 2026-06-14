@@ -38,7 +38,6 @@ import type { UserSettings, WatermarkSettings } from '@/types/mashup';
 import { getAllTextModelSpecs } from '@/lib/text-model-specs';
 import { DesktopSettingsPanel } from './DesktopSettingsPanel';
 import { VercelAiModelPicker, defaultVercelAiModel } from './Settings/VercelAiModelPicker';
-import { HiggsfieldConnection } from './Settings/HiggsfieldConnection';
 import { CameraAnglePicker } from './Settings/CameraAnglePicker';
 import { CreditBudgetSettings } from './Settings/CreditBudgetSettings';
 import { SettingsSection } from './Settings/SettingsSection';
@@ -49,11 +48,7 @@ import { Switch } from './Settings/Switch';
 import { WatermarkSettings as WatermarkSettingsPanel } from './Settings/WatermarkSettings';
 import { SystemPromptEditor } from './Settings/SystemPromptEditor';
 import {
-  HIGGSFIELD_DEFAULT_IMAGE_MODEL,
-  HIGGSFIELD_DEFAULT_VIDEO_MODEL,
   HIGGSFIELD_IMAGE_MODELS,
-  type HiggsfieldImageModelSlug,
-  type HiggsfieldVideoModelSlug,
 } from '@/lib/higgsfield/models';
 import { getImageModel } from '@/lib/image-models';
 
@@ -931,39 +926,6 @@ export function SettingsModal({
               provider config lives in one tab. Component + props unchanged. It
               is the single owner of defaultHiggsfieldVideoModel (the duplicate
               per-provider video select in the Video block below was removed). */}
-          {activeTab === 'imageVideo' && (
-          <>
-          <div className="space-y-4 pt-4 border-t border-zinc-800">
-            {/* HIGGSFIELD-INTEGRATION: image generation provider
-                alongside Leonardo. OAuth-based — each user connects
-                their own Higgsfield account. Peer, not replacement. */}
-            <HiggsfieldConnection
-              selectedImageModel={
-                (settings.defaultHiggsfieldImageModel as never) ||
-                HIGGSFIELD_DEFAULT_IMAGE_MODEL
-              }
-              selectedVideoModel={
-                (settings.defaultHiggsfieldVideoModel as never) ||
-                HIGGSFIELD_DEFAULT_VIDEO_MODEL
-              }
-              onSelectImageModel={(slug) =>
-                updateSettings({ defaultHiggsfieldImageModel: slug })
-              }
-              onSelectVideoModel={(slug) =>
-                updateSettings({ defaultHiggsfieldVideoModel: slug })
-              }
-              cliToken={settings.higgsfieldCliToken}
-              onSaveCliToken={(token) =>
-                updateSettings({ higgsfieldCliToken: token })
-              }
-              onConnectionChange={(connected) =>
-                updateSettings({ higgsfieldConnected: connected })
-              }
-            />
-          </div>
-          </>
-          )}
-
           {activeTab === 'general' && (
           <>
           {/* M3.4-P4-B2: Watermark block moved to ./Settings/WatermarkSettings.tsx.

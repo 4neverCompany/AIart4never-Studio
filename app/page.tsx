@@ -1,23 +1,8 @@
-import { Nav } from '@/components/landing/Nav';
-import { Hero } from '@/components/landing/Hero';
-import { Stats } from '@/components/landing/Stats';
-import { Features } from '@/components/landing/Features';
-import { Pipeline } from '@/components/landing/Pipeline';
-import { TechStack } from '@/components/landing/TechStack';
-import { CTA } from '@/components/landing/CTA';
-import { Footer } from '@/components/landing/Footer';
+import { redirect } from 'next/navigation';
 
-export default function LandingPage() {
-  return (
-    <main className="min-h-screen bg-[#050505] text-white">
-      <Nav />
-      <Hero ctaHref="/studio" />
-      <Stats />
-      <Features />
-      <Pipeline />
-      <TechStack />
-      <CTA />
-      <Footer />
-    </main>
-  );
+// AIart4never Studio is a desktop app shell; the Tauri window loads /studio
+// directly. The marketing landing page was removed in the M0 strip, so the
+// web root simply forwards to the studio.
+export default function RootPage() {
+  redirect('/studio');
 }

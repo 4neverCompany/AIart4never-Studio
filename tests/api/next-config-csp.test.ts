@@ -28,7 +28,6 @@ import nextConfig, {
   CAMOFOX_CONNECT_SRC,
   WEB_CSP,
 } from '@/next.config';
-import { CAMOFOX_STANDALONE_PORTS } from '@/lib/camofox/standalone-discovery';
 
 describe('next.config — V1.1.3 Web-Build CSP', () => {
   describe('CAMOFOX_LOOPBACK_PORTS', () => {
@@ -43,15 +42,6 @@ describe('next.config — V1.1.3 Web-Build CSP', () => {
       expect(CAMOFOX_LOOPBACK_PORTS).toContain(9380);
     });
 
-    it('matches the TypeScript CAMOFOX_STANDALONE_PORTS union (no drift)', () => {
-      // The TypeScript constant is the source of truth for the
-      // Vercel-Web path; the next.config constant is for the
-      // CSP. If they drift, the policy either over- or
-      // under-permits.
-      for (const port of CAMOFOX_STANDALONE_PORTS) {
-        expect(CAMOFOX_LOOPBACK_PORTS).toContain(port);
-      }
-    });
   });
 
   describe('CAMOFOX_CONNECT_SRC', () => {

@@ -396,140 +396,20 @@ export async function POST(req: Request): Promise<Response> {
       .filter((s): s is string => typeof s === 'string' && s.length > 0)
       .join('\n\n') || undefined;
 
-  // Web-search pre-enrichment. MiniMax and OpenAI don't have built-in
-  // browsing on the vercel AI SDK adapter (pi.dev and nca route their
-  // own search), so we pre-fetch a short snippet block and append it
-  // to the user's message before the model sees it. Strictly
-  // best-effort: any failure falls through with no enrichment so a
-  // flaky search backend can't break the request.
-  //
-  // Two modes get enrichment:
-  //   - `idea`: query built from niches + genres + trending keywords,
-  //     surfaces what's currently hot in the user's fandom areas.
-  //   - `chat`: query is the user's message itself, gives the model
-  //     a snapshot of recent web context for whatever they asked
-  //     about (news, releases, "what's the latest on X").
-  //
-  // Other modes (enhance, caption, tag, etc.) skip enrichment — the
-  // benefit doesn't justify the latency cost or rate-limit footprint
-  // for prompt-rewrite / metadata generation work.
-  let enrichedMessage = message;
+  // The user's message is forwarded to the model as-is. The previous
+  // web/trending pre-enrichment (camofox sidecar + web-search fallback)
+  // has been removed; idea generation will be driven by the agent's own
+  // analysis in future work rather than live web context.
+  const enrichedMessage = message;
   // Source attribution forwarded to the client via an SSE `sources`
-  // event before the text stream starts. Same shape as TrendSource in
-  // Sidebar.tsx so the existing trending-sources render path can show
-  // these alongside /api/trending hits without a separate UI affordance.
-  let gatheredSources: Array<{
+  // event before the text stream starts. Kept (empty) so the client's
+  // existing sources render path stays a harmless no-op.
+  const gatheredSources: Array<{
     topic: string;
     headline: string;
     source: string;
     url: string;
   }> = [];
-  const shouldEnrich = mode === 'idea' || mode === 'chat';
-  if (shouldEnrich) {
-    let query: string;
-    let enrichmentLabel: string;
-    let bucketLabel: string;
-    if (mode === 'idea') {
-      const queryParts = [
-        'trending',
-        ...cleanNiches,
-        ...cleanGenres,
-        'fandom crossover fanart 2026',
-      ].filter((s) => s.length > 0);
-      query = queryParts.join(' ');
-      enrichmentLabel = 'Trending context for inspiration (recent search results, use as flavour, do not quote verbatim):';
-      bucketLabel = 'trending';
-    } else {
-      // chat mode — search backends (DDG/Brave) truncate around 400-500
-      // chars; cap the query so long chat messages still produce useful
-      // matches instead of being dropped.
-      query = message.trim().slice(0, 400);
-      enrichmentLabel = 'Recent web context for the question above (cite naturally only if relevant, do not invent URLs):';
-      bucketLabel = 'web search';
-    }
-
-    // Skip enrichment for trivially short chat messages (greetings,
-    // acknowledgements). Idea mode always runs even with empty niches
-    // because the trending-fandom suffix is itself a useful seed.
-    const minLength = mode === 'chat' ? 8 : 1;
-    if (query.length >= minLength) {
-      try {
-        // CAMOFOX-CAMOUFOX-1.1.0 (2026-06-06): route the AI prompt's
-        // trending/web context through the camofox sidecar first,
-        // fall back to webSearch() on any camofox failure. This is
-        // the highest-CAPTCHA-pressure call-site in the codebase
-        // (per master plan §4, call-site #4) so the migration has
-        // the most leverage here.
-        //
-        // KNOWN GAP: camofoxSearch returns empty snippets (the
-        // /extract + JSON-schema path is a Day 4 enhancement). The
-        // enrichment below drops the snippet filter and shows
-        // title-only lines. The UI source badge still works.
-        const { withCamofoxHealth, scrubPii } = await import('@/lib/camofox');
-        const results = await withCamofoxHealth(
-          () =>
-            import('@/lib/camofox').then((m) =>
-              m.camofoxSearch({
-                userId: 'ai-route',
-                sessionKey: `ai-${bucketLabel}-${Date.now()}`,
-                macro: '@google_search',
-                query,
-                count: 5,
-              }),
-            ),
-          () => import('@/lib/web-search').then((m) => m.webSearch(query, 5)),
-        );
-        if (results.length > 0) {
-          // CAMOFOX-CAMOUFOX-1.1.0: PII-scrub the snapshots before
-          // building the enrichment lines. We don't have a session
-          // config in this code path (ai/prompt is anonymous for
-          // v1.0.x), so currentUserHandle is null and scrubPii is
-          // a no-op. The hook is in place for the future
-          // SessionConfig integration.
-          const top3 = results
-            .slice(0, 3)
-            .filter((r) => r.title && r.url);
-          const snippetLines = top3
-            .map((r) => {
-              // PII-scrub defensively (no-op when currentUserHandle
-              // is null). Title and url don't need scrubbing in the
-              // camofox path, but the snapshot text would.
-              const title = scrubPii(r.title, null);
-              return r.snippet
-                ? `- ${title}: ${scrubPii(r.snippet, null)}`
-                : `- ${title}`;
-            })
-            .filter((line) => line.length > 4);
-          if (snippetLines.length > 0) {
-            enrichedMessage =
-              message +
-              '\n\n' +
-              enrichmentLabel +
-              '\n' +
-              snippetLines.join('\n');
-          }
-          // Build source records for the UI badge regardless of whether
-          // the snippets met the enrichment threshold — the user benefits
-          // from knowing the source list even when a single hit doesn't
-          // produce a usable snippet line.
-          gatheredSources = top3.map((r) => {
-            let host = '';
-            try {
-              host = new URL(r.url).hostname.replace(/^www\./, '');
-            } catch {
-              // URL constructor throws on malformed input; fall back to
-              // the raw URL so the badge still has something to render.
-              host = r.url;
-            }
-            return { topic: bucketLabel, headline: r.title, source: host, url: r.url };
-          });
-        }
-      } catch {
-        // Non-critical — leave enrichedMessage as the original message
-        // and gatheredSources empty.
-      }
-    }
-  }
 
   // P2 of PROV-AGNOSTIC-PARAMS: resolve text-gen params for the active
   // (model, mode) pair. The lib emits an empty object for models without

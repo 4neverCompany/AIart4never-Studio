@@ -21,12 +21,10 @@ import {
   ProviderError,
   ProviderUnavailableError,
 } from './interface';
-import { higgsfieldAdapter, HiggsfieldCliAdapter } from './higgsfield/cli-adapter';
-import { higgsfieldTextAdapter, HiggsfieldTextAdapter } from './higgsfield/text-adapter';
-import { leonardoAdapter, LeonardoHttpAdapter } from './leonardo/http-adapter';
-// M3.3-P3 commit b: minimax-text adapter deleted with the mmx-TEXT
-// path. The vercel-ai route is the new home for text/idea/caption
-// generation.
+// The Higgsfield CLI/text adapters and the Leonardo HTTP adapter have been
+// removed. minimax-video is the only built-in provider adapter. Image/video
+// generation will run via the Higgsfield MCP + MiniMax image-01 in future
+// work, not via in-app adapters.
 import { minimaxVideoAdapter, MinimaxVideoAdapter } from './minimax/video-adapter';
 
 // ---------------------------------------------------------------------------
@@ -39,9 +37,6 @@ import { minimaxVideoAdapter, MinimaxVideoAdapter } from './minimax/video-adapte
  * `getProvider()` lookup.
  */
 export const BUILTIN_PROVIDER_IDS = [
-  'higgsfield',
-  'higgsfield-text',
-  'leonardo',
   'minimax-video',
 ] as const;
 
@@ -63,16 +58,13 @@ type AdapterCtor = new (...args: any[]) => ProviderAdapter;
 let _runtimeConfig: { higgsfieldCliToken?: string } = {};
 
 export function setProviderRuntimeConfig(cfg: { higgsfieldCliToken?: string }): void {
+  // Harmless no-op store. The Higgsfield CLI adapter that consumed this
+  // token has been removed; callers still pass `{ higgsfieldCliToken }`
+  // so the signature is preserved, but nothing reads it anymore.
   _runtimeConfig = cfg;
-  // Force the higgsfield singleton to rebuild on the next
-  // getProvider() call so the new token takes effect.
-  _instances.delete('higgsfield');
 }
 
 const FACTORIES: Record<string, () => ProviderAdapter> = {
-  higgsfield: () => new HiggsfieldCliAdapter({ cliToken: _runtimeConfig.higgsfieldCliToken }),
-  'higgsfield-text': () => new HiggsfieldTextAdapter({ cliToken: _runtimeConfig.higgsfieldCliToken }),
-  leonardo: () => new LeonardoHttpAdapter(),
   'minimax-video': () => new MinimaxVideoAdapter(),
 };
 
@@ -221,8 +213,5 @@ export function __resetRegistry(): void {
 // ---------------------------------------------------------------------------
 
 export {
-  higgsfieldAdapter,
-  higgsfieldTextAdapter,
-  leonardoAdapter,
   minimaxVideoAdapter,
 };

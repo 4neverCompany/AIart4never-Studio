@@ -12,7 +12,6 @@ import { describe, it, expect } from 'vitest';
 import {
   AGENT_TOOLS,
   describeAgentTools,
-  trendingSearchTool,
   generatePromptTool,
   critiquePromptTool,
   generateImageTool,
@@ -26,14 +25,14 @@ import {
 } from '@/lib/agent-tools';
 
 describe('AGENT_TOOLS — barrel contents', () => {
-  // V1.3.0: 11 tools total (was 10) — job_lookup added for T1.5.
-  it('contains exactly the 11 documented tools', () => {
-    expect(AGENT_TOOLS).toHaveLength(11);
+  // V1.3.0: 11 tools, minus trending_search (removed with the
+  // web-trending strip) = 10 tools total.
+  it('contains exactly the 10 documented tools', () => {
+    expect(AGENT_TOOLS).toHaveLength(10);
   });
 
-  it('contains the 11 expected tool references (in any order)', () => {
+  it('contains the 10 expected tool references (in any order)', () => {
     const set = new Set(AGENT_TOOLS);
-    expect(set.has(trendingSearchTool)).toBe(true);
     expect(set.has(generatePromptTool)).toBe(true);
     expect(set.has(critiquePromptTool)).toBe(true);
     expect(set.has(generateImageTool)).toBe(true);
@@ -50,7 +49,6 @@ describe('AGENT_TOOLS — barrel contents', () => {
 describe('AGENT_TOOLS — per-tool contract', () => {
   const docs = describeAgentTools();
   const expectedNames = [
-    'trending_search',
     'generate_prompt',
     'critique_prompt',
     'generate_image',
@@ -64,10 +62,10 @@ describe('AGENT_TOOLS — per-tool contract', () => {
   ];
 
   it('exposes one description row per tool', () => {
-    expect(docs).toHaveLength(11);
+    expect(docs).toHaveLength(10);
   });
 
-  it('names match the 11 documented tools', () => {
+  it('names match the 10 documented tools', () => {
     const names = docs.map((d) => d.name).sort();
     expect(names).toEqual([...expectedNames].sort());
   });

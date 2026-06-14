@@ -37,7 +37,6 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Sparkles, Image as ImageIcon, Film, Loader2, X, Check } from 'lucide-react'
-import { loadSkillContentForModel } from '@/lib/actions/higgsfield-skills'
 import { useSettings } from '@/hooks/useSettings'
 import { type GeneratedImage } from '@/types/mashup'
 import {
@@ -422,21 +421,8 @@ export function ManualGenerationPanel({ onImageGenerated }: { onImageGenerated?:
           // V1.3.6-CLI-TOKEN: forward the user's CLI token (if any)
           // so the server uses the CLI path instead of OAuth.
           if (cliToken) body.higgsfieldCliToken = cliToken
-          // V1.4.3-MANUAL-SKILLS: in manual mode (Studio panel),
-          // the pipeline's `activeSkills`-based skill injection
-          // doesn't run. The skill files live on the server's disk,
-          // so a Server Action resolves the binding + content
-          // (loading them here would pull node:fs into the client
-          // bundle — the v1.4.4 Turbopack build break).
-          try {
-            const skillContent = await loadSkillContentForModel(`higgsfield:${modelId}`)
-            if (skillContent) {
-              body.prompt = `${skillContent}\n\n---\n\n# Idea to render\n\n${body.prompt}`
-            }
-          } catch {
-            // Non-fatal — proceed with the raw prompt if the
-            // skill loader fails.
-          }
+          // Manual-mode skill injection has been removed along with the
+          // higgsfield-skills Server Action; the raw prompt is sent as-is.
           res = await fetch('/api/higgsfield/image', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

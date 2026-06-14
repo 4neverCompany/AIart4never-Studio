@@ -22,7 +22,6 @@
  */
 import type { Tool } from 'ai';
 
-import { trendingSearchTool, executeTrendingSearch } from './trending-search';
 import { generatePromptTool, executeGeneratePrompt } from './generate-prompt';
 import { critiquePromptTool, executeCritiquePrompt, heuristicJudge } from './critique-prompt';
 import { generateImageTool, executeGenerateImage } from './generate-image';
@@ -147,8 +146,6 @@ export type { ToolResult } from './errors';
 // ---------------------------------------------------------------------------
 
 export {
-  trendingSearchTool,
-  executeTrendingSearch,
   generatePromptTool,
   executeGeneratePrompt,
   critiquePromptTool,
@@ -196,7 +193,6 @@ export { heuristicJudge, toGeneratedImage, upsertImage, makeAssetId };
  * of six different input/output shapes without a nudge.
  */
 export const AGENT_TOOLS = [
-  trendingSearchTool,
   generatePromptTool,
   critiquePromptTool,
   generateImageTool,
@@ -246,7 +242,6 @@ export function describeAgentTools(): Array<{ name: string; description: string;
     // test just checks the list length — exact-name mapping is
     // enforced by the route's own type-check.
     const name = (() => {
-      if (t === trendingSearchTool) return 'trending_search';
       if (t === generatePromptTool) return 'generate_prompt';
       if (t === critiquePromptTool) return 'critique_prompt';
       if (t === generateImageTool) return 'generate_image';

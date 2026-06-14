@@ -234,34 +234,12 @@ export function useIdeaProcessor(deps: UseIdeaProcessorDeps) {
       let imageReadyPromise: Promise<GeneratedImage[]> | null = null;
 
       const processorDeps: ProcessIdeaDeps = {
-        fetchTrendingContext: async ideaArg => {
-          const s = getSettings();
-          // V1.2.5-HOTFIX: route through the hybrid trending
-          // orchestrator instead of calling /api/trending
-          // directly. The direct call returns "" when the
-          // Server-Side camofox sidecar is UNHEALTHY (which
-          // is the common case in Maurice's Tauri install —
-          // camoufox-js bundling issue). The hybrid path:
-          //  1. POSTs /api/trending with x-client-can-search
-          //  2. Falls back to clientSideCamofoxSearch via the
-          //     Tauri `camofox_search` command when the route
-          //     returns CLIENT_SEARCH_REQUIRED
-          //  3. POSTs the merged results back to
-          //     /api/trending/results for dedup + cache
-          // This eliminates the "No trending data" error in
-          // the pipeline for the common case where the
-          // sidecar is up but the route's Server-Side path is
-          // not.
-          const { fetchTrendingHybrid } = await import('@/lib/trending-client');
-          const data = await fetchTrendingHybrid({
-            tags: [],
-            niches: s.agentNiches,
-            genres: s.agentGenres,
-            ideaConcept: ideaArg.concept,
-          });
-          if (data.success && data.summary) return data.summary;
-          return '';
-        },
+        // Web-trending enrichment has been removed. Idea generation will
+        // be driven by the agent's own-post analysis in future work; for
+        // now there is no live trending context, so this returns '' (the
+        // pipeline treats an empty string as "no trending data" and
+        // continues without it).
+        fetchTrendingContext: async () => '',
         // V1.6: thread the per-idea skip signal into the Director call
         // so "Skip idea" (and the idea timeout) abort the in-flight
         // fetch instead of letting it run — and bill — to completion.
