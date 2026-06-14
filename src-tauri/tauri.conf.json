@@ -40,7 +40,7 @@
     "targets": [
       "nsis"
     ],
-    "createUpdaterArtifacts": true,
+    "createUpdaterArtifacts": false,
     "publisher": "4neverCompany",
     "copyright": "Copyright \u00a9 2026 4neverCompany. Licensed under AGPL-3.0-or-later.",
     "shortDescription": "Autonomous AI influencer-agent studio for on-canon multiverse art",

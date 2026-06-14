@@ -207,13 +207,13 @@ jobs:
             ls -la "$BUNDLE_DIR" || true
             exit 1
           fi
+          # Updater signing is OFF for this release (bundle.createUpdaterArtifacts=false),
+          # so there is no .exe.sig — that is expected. Ship the unsigned installer and
+          # skip the updater manifest. Re-enable signed auto-update later by flipping
+          # createUpdaterArtifacts back to true and providing the signing secrets.
           if [ -z "$SIG" ] || [ ! -f "$SIG" ]; then
-            echo "::error::Signature (.exe.sig) not found under $BUNDLE_DIR — signing env vars missing?"
-            ls -la "$BUNDLE_DIR" || true
-            exit 1
-          fi
-
-          if [ ! -f "$LATEST" ]; then
+            echo "::notice::No .exe.sig — updater signing disabled; shipping unsigned installer, no latest.json."
+          elif [ ! -f "$LATEST" ]; then
             echo "latest.json not emitted by Tauri; generating it manually"
             jq -n \
               --arg version "${TAG#v}" \
@@ -319,23 +319,21 @@ jobs:
             echo "Artifact contents:"; ls -la bundle/ || true
             exit 1
           fi
+          # .sig + latest.json are OPTIONAL — they exist only when updater signing is
+          # enabled. For an unsigned release we still ship the installer (+ portable zip).
           if [ -z "$SIG" ] || [ ! -f "$SIG" ]; then
-            echo "::error::Signature file (.exe.sig) not found in downloaded artifact"
-            echo "Artifact contents:"; ls -la bundle/ || true
-            exit 1
+            echo "::notice::No signature (.exe.sig) — unsigned release."; SIG=""
           fi
           if [ ! -f "$LATEST" ]; then
-            echo "::error::latest.json not found in downloaded artifact"
-            echo "Artifact contents:"; ls -la bundle/ || true
-            exit 1
+            echo "::notice::No latest.json — no updater manifest in this release."; LATEST=""
           fi
 
-          echo "Uploading $EXE, $SIG, and $LATEST to release $TAG"
+          echo "Creating release $TAG and uploading installer $EXE"
           gh release create "$TAG" --title "AIart4never Studio $TAG" --notes "Tauri desktop build for Windows." 2>/dev/null || true
           gh release upload "$TAG" "$EXE" --clobber
-          gh release upload "$TAG" "$SIG" --clobber
-          gh release upload "$TAG" "$LATEST" --clobber
-          echo "Uploaded installer, signature, and updater manifest to $TAG"
+          if [ -n "$SIG" ]; then gh release upload "$TAG" "$SIG" --clobber; fi
+          if [ -n "$LATEST" ]; then gh release upload "$TAG" "$LATEST" --clobber; fi
+          echo "Uploaded installer (+ sig/manifest if present) to $TAG"
 
           # Portable zip is best-effort: missing zip should not fail the
           # release upload (the installer is the canonical distribution).
