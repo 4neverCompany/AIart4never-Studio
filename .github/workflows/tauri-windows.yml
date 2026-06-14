@@ -189,46 +189,20 @@ jobs:
           npm install
           npx tauri build
 
-      - name: Synthesize latest.json if Tauri didn't emit one
+      - name: Verify installer artifact
         shell: bash
         run: |
-          # Tauri v2 with bundle.createUpdaterArtifacts=true sometimes still
-          # does not emit latest.json for the NSIS target. Generate from the
-          # .sig + .exe so the updater endpoint has something to serve. jq
-          # handles JSON escaping of the multi-line minisign signature.
-          TAG="${{ steps.tag.outputs.value }}"
+          # Updater signing is off (createUpdaterArtifacts=false), so there is no
+          # .exe.sig / latest.json to synthesize. Just confirm the NSIS installer
+          # was produced; the installer is the release deliverable.
           BUNDLE_DIR="src-tauri/target/release/bundle/nsis"
-          EXE=$(ls "$BUNDLE_DIR"/*.exe 2>/dev/null | head -n1)
-          SIG=$(ls "$BUNDLE_DIR"/*.exe.sig 2>/dev/null | head -n1)
-          LATEST="$BUNDLE_DIR/latest.json"
-
-          if [ -z "$EXE" ] || [ ! -f "$EXE" ]; then
-            echo "::error::Tauri NSIS .exe not found under $BUNDLE_DIR"
+          if ! ls "$BUNDLE_DIR"/*.exe >/dev/null 2>&1; then
+            echo "::error::No NSIS installer (.exe) found under $BUNDLE_DIR"
             ls -la "$BUNDLE_DIR" || true
             exit 1
           fi
-          # Updater signing is OFF for this release (bundle.createUpdaterArtifacts=false),
-          # so there is no .exe.sig — that is expected. Ship the unsigned installer and
-          # skip the updater manifest. Re-enable signed auto-update later by flipping
-          # createUpdaterArtifacts back to true and providing the signing secrets.
-          if [ -z "$SIG" ] || [ ! -f "$SIG" ]; then
-            echo "::notice::No .exe.sig — updater signing disabled; shipping unsigned installer, no latest.json."
-          elif [ ! -f "$LATEST" ]; then
-            echo "latest.json not emitted by Tauri; generating it manually"
-            jq -n \
-              --arg version "${TAG#v}" \
-              --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-              --arg signature "$(cat "$SIG")" \
-              --arg url "https://github.com/${{ github.repository }}/releases/download/$TAG/$(basename "$EXE")" \
-              '{
-                version: $version,
-                notes: "",
-                pub_date: $pub_date,
-                platforms: {
-                  "windows-x86_64": { signature: $signature, url: $url }
-                }
-              }' > "$LATEST"
-          fi
+          echo "Installer present under $BUNDLE_DIR:"
+          ls -la "$BUNDLE_DIR"/*.exe
 
       # Portable ZIP build. Tauri v2 does NOT have a "portable" bundle
       # target (valid BundleType enum: deb, rpm, appimage, msi, nsis, app,
@@ -319,13 +293,13 @@ jobs:
             echo "Artifact contents:"; ls -la bundle/ || true
             exit 1
           fi
-          # .sig + latest.json are OPTIONAL — they exist only when updater signing is
+          # .sig + latest.json are OPTIONAL - they exist only when updater signing is
           # enabled. For an unsigned release we still ship the installer (+ portable zip).
           if [ -z "$SIG" ] || [ ! -f "$SIG" ]; then
-            echo "::notice::No signature (.exe.sig) — unsigned release."; SIG=""
+            echo "::notice::No signature (.exe.sig) - unsigned release."; SIG=""
           fi
           if [ ! -f "$LATEST" ]; then
-            echo "::notice::No latest.json — no updater manifest in this release."; LATEST=""
+            echo "::notice::No latest.json - no updater manifest in this release."; LATEST=""
           fi
 
           echo "Creating release $TAG and uploading installer $EXE"
