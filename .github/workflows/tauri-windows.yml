@@ -173,8 +173,10 @@ jobs:
         run: bunx tauri build
 
       # MUSTFIX-001: real fallback. Fires if EITHER the JS build OR the
-      # Tauri build under Bun failed. `npm ci` rebuilds node_modules in
+      # Tauri build under Bun failed. `npm install` rebuilds node_modules in
       # the npm-shaped layout (with .bin shims) so `npx tauri` resolves.
+      # NOT `npm ci` — there is no package-lock.json (bun.lock is the only
+      # lockfile), so `npm ci` hard-errors with EUSAGE before installing.
       # No continue-on-error here: if this step fails, the job fails.
       - name: Build Tauri bundle (npm fallback)
         if: steps.tauri_bun.outcome == 'failure' || steps.bun_build.outcome == 'failure'
@@ -184,7 +186,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           echo "::warning::Bun-driven Tauri build failed (bun_build=${{ steps.bun_build.outcome }} tauri_bun=${{ steps.tauri_bun.outcome }}). Reinstalling with npm and retrying."
-          npm ci
+          npm install
           npx tauri build
 
       - name: Synthesize latest.json if Tauri didn't emit one
