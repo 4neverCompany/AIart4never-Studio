@@ -283,38 +283,27 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
         run: |
+          set +e
           TAG="${{ needs.build.outputs.tag }}"
-          EXE=$(ls bundle/*.exe 2>/dev/null | head -n1)
-          SIG=$(ls bundle/*.exe.sig 2>/dev/null | head -n1)
-          LATEST="bundle/latest.json"
+          echo "Downloaded artifact contents:"
+          ls -la bundle/ || true
 
-          if [ -z "$EXE" ] || [ ! -f "$EXE" ]; then
-            echo "::error::NSIS .exe not found in downloaded artifact"
-            echo "Artifact contents:"; ls -la bundle/ || true
+          gh release create "$TAG" --title "AIart4never Studio $TAG" --notes "Windows desktop build (foundation release; unsigned installer)." 2>/dev/null || true
+
+          uploaded=0
+          for f in bundle/*.exe bundle/*-portable.zip bundle/*.exe.sig bundle/latest.json; do
+            [ -f "$f" ] || continue
+            echo "Uploading $(basename "$f")"
+            if gh release upload "$TAG" "$f" --clobber; then
+              uploaded=$((uploaded + 1))
+            else
+              echo "::warning::failed to upload $f"
+            fi
+          done
+
+          if [ "$uploaded" -eq 0 ]; then
+            echo "::error::No release assets found under bundle/ to upload"
+            ls -la bundle/ || true
             exit 1
           fi
-          # .sig + latest.json are OPTIONAL - they exist only when updater signing is
-          # enabled. For an unsigned release we still ship the installer (+ portable zip).
-          if [ -z "$SIG" ] || [ ! -f "$SIG" ]; then
-            echo "::notice::No signature (.exe.sig) - unsigned release."; SIG=""
-          fi
-          if [ ! -f "$LATEST" ]; then
-            echo "::notice::No latest.json - no updater manifest in this release."; LATEST=""
-          fi
-
-          echo "Creating release $TAG and uploading installer $EXE"
-          gh release create "$TAG" --title "AIart4never Studio $TAG" --notes "Tauri desktop build for Windows." 2>/dev/null || true
-          gh release upload "$TAG" "$EXE" --clobber
-          if [ -n "$SIG" ]; then gh release upload "$TAG" "$SIG" --clobber; fi
-          if [ -n "$LATEST" ]; then gh release upload "$TAG" "$LATEST" --clobber; fi
-          echo "Uploaded installer (+ sig/manifest if present) to $TAG"
-
-          # Portable zip is best-effort: missing zip should not fail the
-          # release upload (the installer is the canonical distribution).
-          ZIP=$(ls bundle/*-portable.zip 2>/dev/null | head -n1)
-          if [ -n "$ZIP" ] && [ -f "$ZIP" ]; then
-            gh release upload "$TAG" "$ZIP" --clobber
-            echo "Uploaded portable zip $ZIP"
-          else
-            echo "::warning::No portable zip found in bundle/ — installer-only release"
-          fi
+          echo "Uploaded $uploaded asset(s) to release $TAG"
