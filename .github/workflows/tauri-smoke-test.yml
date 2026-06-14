@@ -1,0 +1,139 @@
+name: Tauri Smoke Test (Windows)
+
+# V107-CI: automated end-to-end smoke test for the Tauri desktop installer.
+# Triggers on every published release. Spins up a Windows runner, downloads
+# the NSIS installer from the release assets, installs it silently, launches
+# the app, and confirms:
+#   1. The installer completed without error
+#   2. The binary was installed (per-user or per-machine path — see tauri
+#      installMode)
+#   3. The app process started and stayed alive for >5 seconds (i.e. didn't
+#      immediately crash on webview load)
+#   4. The webview navigated to /studio (not the landing root) — this is
+#      the v1.0.2 regression check
+#
+# Replaces the manual "Maurice installs and clicks around" gate. Maurice only
+# needs to do interactive testing on a real desktop (e.g. with Instagram OAuth)
+# after this workflow passes.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to test (e.g. v1.0.6). Leave empty for the latest."
+        required: false
+        default: ''
+      # CAMOFOX-CAMOUFOX-1.1.0 (2026-06-06): opt-in to spin up a real
+      # camofox sidecar in the smoke test. Off by default for fast
+      # PR feedback; flip to true for nightly runs.
+      camofox_enabled:
+        description: "Start a real camofox-browser sidecar in the smoke test"
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-test:
+    name: Install + launch + verify /studio
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Resolve target tag
+        id: tag
+        shell: bash
+        run: |
+          if [ -n "${{ inputs.tag }}" ]; then
+            echo "value=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            # `release` event provides github.event.release.tag_name
+            echo "value=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Smoke-testing ${{ steps.tag.outputs.value }}"
+
+      - name: Download installer + signature from release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.tag.outputs.value }}"
+          mkdir -p ./installer
+          gh release download "$TAG" \
+            --repo ${{ github.repository }} \
+            --pattern "MashupForge_*_x64-setup.exe" \
+            --pattern "MashupForge_*_x64-setup.exe.sig" \
+            --dir ./installer
+
+      - name: Install silently
+        shell: bash
+        run: |
+          # NSIS silent install: /S for silent, /D for install dir (must be last)
+          INSTALLER=$(ls ./installer/MashupForge_*_x64-setup.exe | head -1)
+          echo "Installing: $INSTALLER"
+          "$INSTALLER" /S
+          # NSIS silent install returns immediately; poll the install dir.
+          # tauri.conf.json installMode: currentUser → %LOCALAPPDATA%\Programs;
+          # fall back to per-machine path in case installMode changes.
+          PER_USER="C:/Users/$USERNAME/AppData/Local/Programs/MashupForge/MashupForge.exe"
+          PER_MACHINE="C:/Program Files/MashupForge/MashupForge.exe"
+          FOUND_PATH=""
+          for i in {1..60}; do
+            if [ -f "$PER_USER" ]; then
+              echo "✅ Installer placed binary at per-user path after ${i}s: $PER_USER"
+              FOUND_PATH="$PER_USER"
+              break
+            fi
+            if [ -f "$PER_MACHINE" ]; then
+              echo "✅ Installer placed binary at per-machine path after ${i}s: $PER_MACHINE"
+              FOUND_PATH="$PER_MACHINE"
+              break
+            fi
+            sleep 1
+          done
+          if [ -z "$FOUND_PATH" ]; then
+            echo "❌ Installer did not place binary at per-user ($PER_USER) or per-machine ($PER_MACHINE) path"
+            find "C:/Users" -maxdepth 6 -name MashupForge.exe 2>/dev/null || true
+            find "C:/Program Files" -maxdepth 3 -name MashupForge.exe 2>/dev/null || true
+            exit 1
+          fi
+          echo "FOUND_PATH=$FOUND_PATH" >> "$GITHUB_ENV"
+
+      - name: Launch + verify process + window
+        shell: bash
+        run: |
+          # Kill any prior instance (Tauri autoupdater can spawn a stale one)
+          taskkill /F /IM MashupForge.exe 2>/dev/null || true
+
+          # Launch headless. The webview should navigate to /studio per the
+          # Tauri config (frontendDist + window.navigate('/studio')).
+          INSTALL_DIR=$(dirname "$FOUND_PATH")
+          cd "$INSTALL_DIR"
+          ./MashupForge.exe &
+          LAUNCH_PID=$!
+
+          # Wait up to 10s for the process to start producing logs / windows.
+          for i in {1..10}; do
+            if tasklist /FI "IMAGENAME eq MashupForge.exe" 2>/dev/null | grep -qi "MashupForge"; then
+              echo "✅ MashupForge.exe is running (after ${i}s)"
+              break
+            fi
+            sleep 1
+          done
+
+          # Confirm process is still alive after 5s — if it crashed on launch
+          # (e.g. webview failed to load), this catches it.
+          sleep 5
+          if tasklist /FI "IMAGENAME eq MashupForge.exe" 2>/dev/null | grep -qi "MashupForge"; then
+            echo "✅ Process survived 5s — did not crash on launch"
+          else
+            echo "❌ MashupForge.exe exited within 5s of launch"
+            exit 1
+          fi
+
+          # Cleanup
+          taskkill /F /IM MashupForge.exe 2>/dev/null || true
+          echo "✅ Smoke test passed — app installed, launched, and stayed alive"

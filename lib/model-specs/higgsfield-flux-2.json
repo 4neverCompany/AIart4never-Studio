@@ -1,0 +1,74 @@
+{
+  "modelId": "higgsfield-flux-2",
+  "apiName": "flux_2",
+  "type": "image",
+  "provider": "higgsfield",
+  "endpoint": "POST /api/higgsfield/image (MCP tool: higgsfield_generate)",
+
+  "parameters": {
+    "prompt": {
+      "type": "string",
+      "required": true,
+      "description": "Text prompt. 1-2000 chars."
+    },
+    "model": {
+      "type": "string",
+      "required": true,
+      "value": "flux_2",
+      "description": "Always flux_2."
+    },
+    "aspect_ratio": {
+      "type": "string",
+      "required": false,
+      "default": "1:1",
+      "allowedValues": ["1:1", "4:3", "3:4", "16:9", "9:16"],
+      "description": "Aspect ratio."
+    },
+    "resolution": {
+      "type": "string",
+      "required": false,
+      "default": "1k",
+      "allowedValues": ["1k", "2k"],
+      "description": "Output resolution. FLUX.2 maxes at 2k."
+    },
+    "submodel": {
+      "type": "string",
+      "required": false,
+      "default": "pro",
+      "allowedValues": ["pro", "flex", "max"],
+      "description": "FLUX.2 sub-model. 'pro' is balanced, 'flex' is more creative, 'max' is highest quality."
+    }
+  },
+
+  "aspectRatios": {
+    "1:1":  { "1K": [1024, 1024], "2K": [2048, 2048] },
+    "4:3":  { "1K": [1536, 1152], "2K": [3072, 2304] },
+    "3:4":  { "1K": [1152, 1536], "2K": [2304, 3072] },
+    "16:9": { "1K": [1376, 768],  "2K": [2752, 1536] },
+    "9:16": { "1K": [768, 1376],  "2K": [1536, 2752] }
+  },
+
+  "capabilities": {
+    "styles": false,
+    "negativePrompt": false,
+    "imageSize": false,
+    "alchemy": false,
+    "presetStyles": false,
+    "tiling": false,
+    "audio": false,
+    "promptEnhance": false,
+    "startFrame": true,
+    "endFrame": false,
+    "imageReference": true,
+    "videoReference": false,
+    "seed": false
+  },
+
+  "rules": [
+    "DO NOT pass negativePrompt — not in flux_2 schema.",
+    "DO NOT pass styleIds — FLUX uses its own aesthetic, not presets.",
+    "submodel='pro' is the default. Use 'max' for hero shots, 'flex' for batch.",
+    "Resolution max is 2k. Use nano_banana_2 if 4k is needed.",
+    "Higgsfield credit cost: ~3 at 1k/pro, ~5 at 2k/pro, ~8 at 2k/max."
+  ]
+}

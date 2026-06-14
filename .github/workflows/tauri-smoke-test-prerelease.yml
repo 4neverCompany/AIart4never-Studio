@@ -1,0 +1,236 @@
+name: Tauri Smoke Test (Pre-release)
+
+# V107-CI: pre-release smoke test for the Tauri desktop build.
+# Run this BEFORE publishing a release to validate the build artifacts.
+# Pulls the tauri-nsis-bundle artifact from a workflow run_id (not a release),
+# validates the **portable** build (extract zip, launch exe, verify alive).
+#
+# Why portable and not the NSIS installer:
+# The NSIS installer in tauri-nsis-bundle hangs silently on headless
+# Windows runners when run with /S — the install never completes and the
+# process must be killed by the job timeout. The portable build is a
+# self-contained .zip that just needs to be extracted and run; no
+# installer invocation, no UAC, no NSIS quirks. Same MashupForge.exe,
+# same WebView2 runtime, same behavior.
+#
+# NSIS install hang is being investigated separately for v1.0.7.x.
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Workflow run ID of a Tauri Windows Build (e.g. 26951409570). Must be from the same repo."
+        required: true
+        type: string
+      variant:
+        description: "Which bundle variant to test: portable (default, recommended) or nsis (known hang on headless)"
+        required: false
+        type: choice
+        default: portable
+        options:
+          - portable
+          - nsis
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  smoke-test-portable:
+    if: ${{ inputs.variant == 'portable' || inputs.variant == '' }}
+    name: Extract + launch + verify (portable zip)
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Validate run_id input
+        shell: bash
+        run: |
+          RUN_ID="${{ inputs.run_id }}"
+          if ! [[ "$RUN_ID" =~ ^[0-9]+$ ]]; then
+            echo "::error::run_id must be numeric (got: $RUN_ID)"
+            exit 1
+          fi
+          echo "Smoke-testing portable zip from run $RUN_ID"
+
+      - name: Download tauri-nsis-bundle artifact from run
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RUN_ID="${{ inputs.run_id }}"
+          mkdir -p ./bundle
+          gh run download "$RUN_ID" \
+            --repo ${{ github.repository }} \
+            --name tauri-nsis-bundle \
+            --dir ./bundle
+          ls -la ./bundle
+          ZIP=$(ls ./bundle/MashupForge_*_x64-portable.zip | head -1)
+          if [ -z "$ZIP" ]; then
+            echo "::error::No MashupForge_*_x64-portable.zip in artifact"
+            ls -la ./bundle
+            exit 1
+          fi
+          echo "Portable zip: $ZIP ($(stat -c '%s' "$ZIP") bytes)"
+
+      - name: Extract portable zip
+        shell: bash
+        run: |
+          ZIP=$(ls ./bundle/MashupForge_*_x64-portable.zip | head -1)
+          # Use a workspace-relative path — Git Bash path translation is
+          # unreliable when mixing bash and Windows-native tools.
+          STAGE="$(pwd)/stage"
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE"
+          # `unzip` from Git Bash is the most reliable on windows-latest
+          # runners. Expand-Archive was hanging on 280+ MB zips and 7z
+          # extraction has surfaced ACL issues in past runs. Keep the
+          # call simple: -q quiet, -o overwrite, -d destination.
+          unzip -q -o "$ZIP" -d "$STAGE"
+          echo "--- Extracted contents ---"
+          ls -la "$STAGE"
+          EXE="$STAGE/MashupForge.exe"
+          if [ ! -f "$EXE" ]; then
+            echo "::error::MashupForge.exe not found at $EXE after extraction"
+            find "$STAGE" -name "*.exe" 2>/dev/null
+            exit 1
+          fi
+          echo "EXE=$EXE"
+          SIZE=$(stat -c '%s' "$EXE")
+          echo "Binary size: $SIZE bytes ($(( SIZE / 1024 / 1024 )) MB)"
+          echo "FOUND_PATH=$EXE" >> "$GITHUB_ENV"
+
+      - name: Launch + verify process alive
+        shell: bash
+        run: |
+          taskkill /F /IM MashupForge.exe 2>/dev/null || true
+
+          INSTALL_DIR=$(dirname "$FOUND_PATH")
+          echo "Launching: $FOUND_PATH"
+          cd "$INSTALL_DIR"
+          # Capture stdout + stderr to a log file so we can see crash reasons
+          # when the process exits within seconds. Tauri prints fatal
+          # WebView2 / DLL / config errors to stderr before exiting.
+          ./MashupForge.exe > "$INSTALL_DIR/launch.out" 2> "$INSTALL_DIR/launch.err" &
+          LAUNCH_PID=$!
+          echo "Launched PID $LAUNCH_PID"
+
+          # Wait up to 15s for process to be visible. Tauri webview cold-start
+          # can take 3-8s on first run.
+          ALIVE=false
+          for i in {1..15}; do
+            sleep 1
+            if tasklist /FI "IMAGENAME eq MashupForge.exe" 2>/dev/null | grep -qi "MashupForge"; then
+              echo "✅ MashupForge.exe is running (after ${i}s)"
+              ALIVE=true
+              break
+            fi
+          done
+
+          if [ "$ALIVE" = false ]; then
+            echo "::error::MashupForge.exe exited within 15s of launch (PID $LAUNCH_PID gone)"
+            echo "--- launch.out ---"
+            cat "$INSTALL_DIR/launch.out" 2>/dev/null || echo "(empty)"
+            echo "--- launch.err ---"
+            cat "$INSTALL_DIR/launch.err" 2>/dev/null || echo "(empty)"
+            echo "--- process info ---"
+            tasklist /FI "IMAGENAME eq MashupForge.exe" 2>&1 || true
+            echo "--- last 20 lines of Windows Application event log ---"
+            powershell -Command "Get-WinEvent -LogName Application -MaxEvents 20 -ErrorAction SilentlyContinue | Where-Object { $_.ProviderName -match 'Application Error|.NET Runtime|Windows Error Reporting' } | Select-Object -First 5 | ForEach-Object { Write-Output (\"[{0}] {1}\" -f $_.TimeCreated, $_.Message) }" 2>&1 || echo "(event log unavailable)"
+            exit 1
+          fi
+
+          # Confirm survives another 5s
+          sleep 5
+          if tasklist /FI "IMAGENAME eq MashupForge.exe" 2>/dev/null | grep -qi "MashupForge"; then
+            echo "✅ Process survived 20s total — webview loaded, app stable"
+          else
+            echo "::error::MashupForge.exe exited between 15s and 20s — webview crash after initial load"
+            cat "$INSTALL_DIR/launch.err" 2>/dev/null || echo "(no stderr captured)"
+            exit 1
+          fi
+
+          # Cleanup
+          taskkill /F /IM MashupForge.exe 2>/dev/null || true
+          rm -rf "$(pwd)/stage"
+          echo "✅ Pre-release smoke test PASSED (portable variant)"
+
+  # NSIS variant retained for investigation. Currently expected to time out
+  # at 10 min on headless Windows; CI will mark it as failed but that's
+  # documented behavior while we debug the install hang.
+  smoke-test-nsis:
+    if: ${{ inputs.variant == 'nsis' }}
+    name: NSIS install + launch (experimental)
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Validate run_id input
+        shell: bash
+        run: |
+          RUN_ID="${{ inputs.run_id }}"
+          if ! [[ "$RUN_ID" =~ ^[0-9]+$ ]]; then
+            echo "::error::run_id must be numeric (got: $RUN_ID)"
+            exit 1
+          fi
+          echo "Smoke-testing NSIS installer from run $RUN_ID"
+
+      - name: Download tauri-nsis-bundle artifact from run
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RUN_ID="${{ inputs.run_id }}"
+          mkdir -p ./installer
+          gh run download "$RUN_ID" \
+            --repo ${{ github.repository }} \
+            --name tauri-nsis-bundle \
+            --dir ./installer
+          ls -la ./installer
+
+      - name: Run NSIS installer with hard 60s timeout
+        shell: bash
+        run: |
+          INSTALLER=$(ls ./installer/MashupForge_*_x64-setup.exe | head -1)
+          echo "Installing: $INSTALLER (with 60s hard timeout)"
+          # Use Windows timeout to kill installer if it hangs past 60s
+          cmd //c "timeout /T 60 /NOBREAK >NUL & taskkill /F /IM MashupForge_1.0.7_x64-setup.exe 2>NUL & taskkill /F /IM MashupForge.exe 2>NUL & exit /B 0" &
+          KILLER_PID=$!
+          "$INSTALLER" /S
+          INSTALL_EXIT=$?
+          echo "Installer exited with code $INSTALL_EXIT after $(($SECONDS))s"
+
+          # Search for installed binary
+          PER_USER="C:/Users/$USERNAME/AppData/Local/Programs/MashupForge/MashupForge.exe"
+          PER_MACHINE="C:/Program Files/MashupForge/MashupForge.exe"
+          for path in "$PER_USER" "$PER_MACHINE"; do
+            if [ -f "$path" ]; then
+              echo "✅ Binary found at $path"
+              echo "FOUND_PATH=$path" >> "$GITHUB_ENV"
+              exit 0
+            fi
+          done
+          echo "::error::NSIS install did not produce a binary at $PER_USER or $PER_MACHINE within 60s"
+          echo "This is a known issue — see https://github.com/4neverCompany/MashupForge/issues for status"
+          exit 1
+
+      - name: Launch + verify
+        shell: bash
+        run: |
+          taskkill /F /IM MashupForge.exe 2>/dev/null || true
+          INSTALL_DIR=$(dirname "$FOUND_PATH")
+          cd "$INSTALL_DIR"
+          ./MashupForge.exe &
+          for i in {1..15}; do
+            sleep 1
+            if tasklist /FI "IMAGENAME eq MashupForge.exe" 2>/dev/null | grep -qi "MashupForge"; then
+              echo "✅ MashupForge.exe running (after ${i}s)"
+              break
+            fi
+          done
+          sleep 5
+          if tasklist /FI "IMAGENAME eq MashupForge.exe" 2>/dev/null | grep -qi "MashupForge"; then
+            echo "✅ NSIS install + launch smoke test PASSED"
+          else
+            echo "::error::App crashed after install"
+            exit 1
+          fi
+          taskkill /F /IM MashupForge.exe 2>/dev/null || true

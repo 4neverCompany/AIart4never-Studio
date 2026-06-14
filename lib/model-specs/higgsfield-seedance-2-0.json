@@ -1,0 +1,105 @@
+{
+  "modelId": "higgsfield-seedance-2-0",
+  "apiName": "seedance_2_0",
+  "type": "video",
+  "provider": "higgsfield",
+  "endpoint": "POST /api/higgsfield/video (MCP tool: higgsfield_generate)",
+
+  "parameters": {
+    "prompt": {
+      "type": "string",
+      "required": true,
+      "description": "Cinematic text prompt. 2-15 lines of natural language is ideal (Higgsfield's prompt style). 1-4000 chars."
+    },
+    "model": {
+      "type": "string",
+      "required": true,
+      "value": "seedance_2_0",
+      "description": "Always seedance_2_0."
+    },
+    "aspect_ratio": {
+      "type": "string",
+      "required": false,
+      "default": "16:9",
+      "allowedValues": ["auto", "16:9", "9:16", "4:3", "3:4", "1:1", "21:9"],
+      "description": "Aspect ratio. '9:16' is the default for vertical / TikTok / Reels / Shorts."
+    },
+    "duration": {
+      "type": "integer",
+      "required": false,
+      "default": 5,
+      "range": [1, 15],
+      "description": "Duration in seconds. Longer durations cost more credits."
+    },
+    "mode": {
+      "type": "string",
+      "required": false,
+      "default": "std",
+      "allowedValues": ["std", "fast"],
+      "description": "'fast' is ~2x cheaper, slightly lower quality. 'std' is the default."
+    },
+    "genre": {
+      "type": "string",
+      "required": false,
+      "default": "auto",
+      "allowedValues": ["auto", "action", "horror", "comedy", "noir", "drama", "epic"],
+      "description": "Cinematic genre hint. 'auto' lets Higgsfield pick from the prompt."
+    },
+    "resolution": {
+      "type": "string",
+      "required": false,
+      "default": "720p",
+      "allowedValues": ["480p", "720p", "1080p"],
+      "description": "Vertical resolution. 1080p costs ~2x of 720p."
+    },
+    "start_image": {
+      "type": "string",
+      "required": false,
+      "description": "Publicly-accessible image URL for the first frame (i2v). Triggers image-to-video mode."
+    },
+    "end_image": {
+      "type": "string",
+      "required": false,
+      "description": "Publicly-accessible image URL for the last frame. Both start_image and end_image can be set for a guided i2v."
+    }
+  },
+
+  "aspectRatios": {
+    "auto":  { "default": [1280, 720] },
+    "16:9":  { "default": [1280, 720],  "480p": [854, 480],  "720p": [1280, 720],  "1080p": [1920, 1080] },
+    "9:16":  { "default": [720, 1280],  "480p": [480, 854],  "720p": [720, 1280],  "1080p": [1080, 1920] },
+    "4:3":   { "default": [1024, 768],  "480p": [640, 480],  "720p": [960, 720],   "1080p": [1440, 1080] },
+    "3:4":   { "default": [768, 1024],  "480p": [480, 640],  "720p": [720, 960],   "1080p": [1080, 1440] },
+    "1:1":   { "default": [720, 720],   "480p": [480, 480],  "720p": [720, 720],   "1080p": [1080, 1080] },
+    "21:9":  { "default": [1680, 720],  "480p": [1120, 480], "720p": [1680, 720],  "1080p": [2520, 1080] }
+  },
+
+  "capabilities": {
+    "styles": false,
+    "negativePrompt": false,
+    "imageSize": false,
+    "alchemy": false,
+    "presetStyles": false,
+    "tiling": false,
+    "audio": false,
+    "promptEnhance": false,
+    "startFrame": true,
+    "endFrame": true,
+    "imageReference": false,
+    "videoReference": false,
+    "seed": false
+  },
+
+  "rules": [
+    "DO NOT pass negativePrompt — not in the seedance_2_0 schema.",
+    "DO NOT pass styleIds — Seedance generates cinematic style from the prompt + genre, not from a preset.",
+    "Higgsfield's prompt style: 2-15 lines of natural language, cinematic, with explicit camera/lighting/mood. Short product-style prompts underperform.",
+    "Default aspect_ratio for MashupForge video content: '9:16' (vertical for stories/reels/shorts).",
+    "Default duration: 5 seconds. Use 8-12s for ads / hero shots, 3-5s for stories.",
+    "Default mode: 'std'. Use 'fast' for batch generation / previews where 2x speed is worth the quality drop.",
+    "Default genre: 'auto'. Pick explicit genre only when the user asks for a specific tone.",
+    "Default resolution: '720p'. Use '1080p' for final assets (costs ~2x).",
+    "start_image: if set, the prompt is treated as the motion direction; the first frame is locked. This is the standard image-to-video path.",
+    "Higgsfield credit cost: ~10 at 5s/720p, ~20 at 10s/720p, ~40 at 5s/1080p."
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "enables the default permissions",
+  "windows": [
+    "main"
+  ],
+  "webviews": [
+    "*"
+  ],
+  "remote": {
+    "urls": [
+      "http://127.0.0.1:*/*",
+      "http://localhost:*/*"
+    ]
+  },
+  "permissions": [
+    "core:default",
+    "core:app:default",
+    "core:app:allow-version",
+    "opener:default",
+    "opener:allow-open-url",
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled",
+    "updater:default",
+    "updater:allow-check",
+    "updater:allow-download",
+    "updater:allow-download-and-install",
+    "updater:allow-install",
+    "store:default",
+    "process:default",
+    "process:allow-restart",
+    "deep-link:default",
+    "fs:default",
+    "fs:allow-mkdir",
+    "fs:allow-write-file",
+    "fs:allow-write-text-file",
+    "fs:allow-read-text-file",
+    "fs:allow-stat",
+    "fs:allow-remove",
+    "fs:allow-read-dir",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        { "path": "$APPDATA" },
+        { "path": "$APPDATA/**" },
+        { "path": "$DOCUMENT/MashupForge Backups" },
+        { "path": "$DOCUMENT/MashupForge Backups/**" },
+        { "path": "$DOCUMENT/MashupForge/Images" },
+        { "path": "$DOCUMENT/MashupForge/Images/**" },
+        { "path": "$CONFIG/MashupForge/config.json" }
+      ]
+    }
+  ]
+}

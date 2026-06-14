@@ -1,0 +1,70 @@
+                    GNU AFFERO GENERAL PUBLIC LICENSE
+                       Version 3, 19 November 2007
+
+ Copyright (C) 2026 4neverCompany
+ SPDX-License-Identifier: AGPL-3.0-or-later
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU Affero General Public License as published
+ by the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ GNU Affero General Public License for more details.
+
+ You should have received a copy of the GNU Affero General Public License
+ along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+ Full license text:    https://www.gnu.org/licenses/agpl-3.0.txt
+ Human-readable summary: https://www.gnu.org/licenses/agpl-3.0.html
+
+---
+
+# MashupForge
+
+AI-Powered Creative Crossover Studio.
+
+Copyright (C) 2026 4neverCompany
+
+This file is part of MashupForge.
+
+MashupForge is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+MashupForge is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with MashupForge.  If not, see <https://www.gnu.org/licenses/>.
+
+---
+
+## Why AGPL-3.0?
+
+MashupForge is open source. The core is licensed under AGPL-3.0 to
+ensure that improvements to the open-source project are shared back with
+the community, including when the software is run as a network service.
+
+The AGPL-3.0 license is the standard choice for open-source projects
+with a planned hosted / SaaS offering, and is used by projects such as
+Plausible Analytics, Bitwarden, Nextcloud, Mattermost, MinIO, Directus,
+and Mastodon.
+
+## What this means in practice
+
+- You can use, modify, and redistribute MashupForge freely.
+- If you run a modified version as a network service, you must publish
+  your modifications under the same license.
+- A separate, proprietary SaaS / hosted offering that talks to the
+  open-source core via a network API is permitted (this is the standard
+  open-core pattern; see AGPL §5 and §13 for the network use clause).
+
+See https://www.gnu.org/licenses/agpl-3.0.html for a human-readable
+explanation, or https://www.gnu.org/licenses/agpl-3.0.txt for the full
+legal text.

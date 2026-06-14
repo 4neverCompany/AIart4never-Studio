@@ -1,0 +1,110 @@
+{
+  "modelId": "veo-3.1",
+  "apiName": "VEO3_1",
+  "type": "video",
+  "provider": "leonardo",
+  "endpoint": "POST /api/rest/v2/generations",
+
+  "parameters": {
+    "prompt": {
+      "type": "string",
+      "required": true,
+      "description": "Text description guiding content, style, and motion of the video."
+    },
+    "model": {
+      "type": "string",
+      "required": true,
+      "value": "VEO3_1",
+      "description": "Model identifier. Use VEO3_1 for standard or VEO3_1FAST for fast generation."
+    },
+    "duration": {
+      "type": "number",
+      "required": false,
+      "allowedValues": [4, 6, 8],
+      "description": "Video length in seconds. Only 4, 6, or 8 are valid."
+    },
+    "resolution": {
+      "type": "string",
+      "required": false,
+      "allowedValues": ["RESOLUTION_720", "RESOLUTION_1080"],
+      "description": "Output resolution preset."
+    },
+    "width": {
+      "type": "number",
+      "required": false,
+      "description": "Video width in pixels. Must match one of the supported dimension pairs."
+    },
+    "height": {
+      "type": "number",
+      "required": false,
+      "description": "Video height in pixels. Must match one of the supported dimension pairs."
+    },
+    "imageId": {
+      "type": "string",
+      "required": false,
+      "description": "Start frame image ID for image-to-video generation. Must be an uploaded or previously generated asset."
+    },
+    "imageType": {
+      "type": "string",
+      "required": false,
+      "allowedValues": ["UPLOADED", "GENERATED"],
+      "description": "Source type of the start frame image. Set to UPLOADED or GENERATED."
+    },
+    "endFrameImage": {
+      "type": "object",
+      "required": false,
+      "description": "End frame for start-and-end-frame generation. Requires imageId and imageType to also be set.",
+      "itemSchema": {
+        "id": "string — image ID",
+        "type": "UPLOADED | GENERATED"
+      }
+    },
+    "isPublic": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Whether the generated video is public or private."
+    }
+  },
+
+  "aspectRatios": {
+    "720p": {
+      "16:9": { "width": 1280, "height": 720 },
+      "9:16": { "width": 720,  "height": 1280 }
+    },
+    "1080p": {
+      "16:9": { "width": 1920, "height": 1080 },
+      "9:16": { "width": 1080, "height": 1920 }
+    }
+  },
+
+  "capabilities": {
+    "styles": false,
+    "negativePrompt": false,
+    "imageSize": false,
+    "alchemy": false,
+    "audio": false,
+    "startFrame": true,
+    "endFrame": true,
+    "imageReference": false,
+    "videoReference": false
+  },
+
+  "rules": [
+    "VIDEO model — duration is ONLY 4, 6, or 8 seconds. No other values.",
+    "DO NOT set style — not available for video models.",
+    "DO NOT set negativePrompt — not available for this model.",
+    "DO NOT set prompt_enhance — not available for this model.",
+    "DO NOT set motion_has_audio — not available for this model.",
+    "DO NOT set guidances.* — this model uses flat imageId/imageType instead.",
+    "Only 2 aspect ratios: 16:9 and 9:16. No 1:1 or other ratios.",
+    "2 resolutions × 2 aspect ratios = 4 valid dimension combos.",
+    "Uploaded images will be CROPPED to fit the output dimensions.",
+    "Start frame: use imageId + imageType (flat params, NOT nested in guidances).",
+    "endFrameImage: use { id, type } object. REQUIRES imageId to also be set.",
+    "No image_reference or video_reference — only start/end frame modes.",
+    "Model variant VEO3_1FAST = faster generation at same quality.",
+    "When width/height not specified, resolution + aspect ratio determine dimensions.",
+    "Dimensions outside the 4 valid combos will be REJECTED by the API."
+  ]
+}

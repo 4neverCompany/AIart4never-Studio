@@ -1,0 +1,127 @@
+{
+  "modelId": "kling-3.0",
+  "apiName": "kling-3.0",
+  "type": "video",
+  "provider": "leonardo",
+  "endpoint": "POST /api/rest/v2/generations",
+
+  "parameters": {
+    "prompt": {
+      "type": "string",
+      "required": true,
+      "maxLength": 1500,
+      "description": "Text description of the video content to generate."
+    },
+    "model": {
+      "type": "string",
+      "required": true,
+      "value": "kling-3.0",
+      "description": "Model identifier, always kling-3.0."
+    },
+    "duration": {
+      "type": "number",
+      "required": false,
+      "range": [3, 15],
+      "description": "Video length in seconds."
+    },
+    "mode": {
+      "type": "string",
+      "required": false,
+      "allowedValues": ["RESOLUTION_720", "RESOLUTION_1080"],
+      "default": "RESOLUTION_1080",
+      "description": "Quality mode. RESOLUTION_720 for 720p, RESOLUTION_1080 for 1080p."
+    },
+    "width": {
+      "type": "number",
+      "required": false,
+      "description": "Video width in pixels. Must match a supported dimension pair."
+    },
+    "height": {
+      "type": "number",
+      "required": false,
+      "description": "Video height in pixels. Must match a supported dimension pair."
+    },
+    "motion_has_audio": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Whether to generate audio for the video."
+    },
+    "public": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Whether the generated video is public."
+    },
+    "guidances.start_frame": {
+      "type": "array",
+      "required": false,
+      "maxItems": 1,
+      "description": "Start frame image. Cannot coexist with image_reference.",
+      "itemSchema": {
+        "image.id": "string — Leonardo image ID",
+        "image.type": "GENERATED | UPLOADED"
+      }
+    },
+    "guidances.end_frame": {
+      "type": "array",
+      "required": false,
+      "maxItems": 1,
+      "description": "End frame image. Requires start_frame. Cannot coexist with image_reference.",
+      "itemSchema": {
+        "image.id": "string — Leonardo image ID",
+        "image.type": "GENERATED | UPLOADED"
+      }
+    },
+    "guidances.image_reference": {
+      "type": "array",
+      "required": false,
+      "maxItems": 7,
+      "description": "Reference images for style/content guidance. Cannot coexist with start_frame or end_frame.",
+      "itemSchema": {
+        "image.id": "string — Leonardo image ID",
+        "image.type": "GENERATED | UPLOADED"
+      }
+    }
+  },
+
+  "aspectRatios": {
+    "720p": {
+      "16:9": { "width": 1280, "height": 720 },
+      "1:1":  { "width": 960,  "height": 960 },
+      "9:16": { "width": 720,  "height": 1280 }
+    },
+    "1080p": {
+      "16:9": { "width": 1920, "height": 1080 },
+      "1:1":  { "width": 1440, "height": 1440 },
+      "9:16": { "width": 1080, "height": 1920 }
+    }
+  },
+
+  "capabilities": {
+    "styles": false,
+    "negativePrompt": false,
+    "imageSize": false,
+    "alchemy": false,
+    "audio": true,
+    "startFrame": true,
+    "endFrame": true,
+    "imageReference": true
+  },
+
+  "rules": [
+    "VIDEO model — duration is 3-15 seconds.",
+    "DO NOT set style — not available for video models.",
+    "DO NOT set negativePrompt — not available for this model.",
+    "DO NOT set prompt_enhance — not available for this model.",
+    "DO NOT set quality — use mode instead (RESOLUTION_720 or RESOLUTION_1080).",
+    "Prompt max 1500 characters.",
+    "MUTUAL EXCLUSION: image_reference AND start_frame/end_frame CANNOT coexist. Pick one or the other.",
+    "end_frame REQUIRES start_frame — cannot use end_frame alone.",
+    "start_frame and end_frame together = image-to-video with start and end frame.",
+    "When start_frame is set and width/height are omitted, dimensions auto-match the start_frame image.",
+    "3 aspect ratios × 2 resolutions = 6 valid dimension combos.",
+    "motion_has_audio: set true for music videos, false for silent/dramatic content.",
+    "Default mode is RESOLUTION_1080 (1080p). Use 720p only for fast previews."
+  ]
+}

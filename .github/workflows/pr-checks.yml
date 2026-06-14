@@ -1,0 +1,119 @@
+# PR Checks — runs on every PR to main / release/*
+# Catches the regressions that used to ship as "fix v2, fix v3, fix v4"
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [main, 'release/*']
+  push:
+    branches: [main]
+
+# Cancel any in-progress run for the same PR when a new commit lands
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  install:
+    name: Install dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install (bun primary, npm fallback)
+        run: |
+          if bun install --frozen-lockfile 2>/dev/null; then
+            echo "Installed with bun"
+          else
+            echo "::warning::bun install failed, falling back to npm"
+            # `npm install`, not `npm ci` — there is no package-lock.json
+            # anymore (bun.lock is the single lockfile since v1.4.4).
+            npm install
+          fi
+
+      - name: Cache Next.js build
+        uses: actions/cache@v5
+        with:
+          path: |
+            .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/bun.lock', '**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-
+
+  typecheck:
+    name: TypeScript type check
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: |
+          bun install --frozen-lockfile 2>/dev/null || npm install
+      - run: npx tsc --noEmit
+
+  lint:
+    name: ESLint
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: |
+          bun install --frozen-lockfile 2>/dev/null || npm install
+      - run: npm run lint
+
+  test:
+    name: Vitest (full suite)
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: |
+          bun install --frozen-lockfile 2>/dev/null || npm install
+      - run: npm test
+
+  bundle-size:
+    name: Bundle size check
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: |
+          bun install --frozen-lockfile 2>/dev/null || npm install
+      - run: npm run build
+      - run: node scripts/check-bundle-size.mjs
+
+  all-green:
+    name: All checks passed
+    needs: [typecheck, lint, test, bundle-size]
+    if: ${{ success() }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "All PR checks green ✅"

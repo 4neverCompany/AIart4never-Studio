@@ -1,0 +1,447 @@
+name: Tauri Windows Build
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to upload assets to (e.g. v0.1.5). Leave as 'auto' (or blank) to derive from package.json."
+        required: false
+        default: 'auto'
+
+# Don't cancel a release build if it gets a new tag mid-run
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    outputs:
+      tag: ${{ steps.tag.outputs.value }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve release tag
+        id: tag
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.release_tag }}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+          # TAURI-WF-AUTO-TAG: 'auto' (or empty) means "derive from package.json".
+          # A manual workflow_dispatch with the default value used to leak the
+          # literal string "auto" into the parity check below and the asset-
+          # upload URL builder further down, failing both. Normalize once here
+          # so every downstream step sees a real v-prefixed tag.
+          if [ "$TAG" = "auto" ] || [ -z "$TAG" ]; then
+            pkg=$(grep '"version"' package.json | sed 's/.*"version": "\(.*\)".*/\1/')
+            TAG="v$pkg"
+            echo "auto-resolved tag from package.json → $TAG"
+          fi
+          echo "value=$TAG" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG"
+
+      - name: Check version parity with tag
+        shell: bash
+        run: |
+          TAG="${{ steps.tag.outputs.value }}"
+          EXPECTED="${TAG#v}"
+          pkg=$(grep '"version"' package.json | sed 's/.*"version": "\(.*\)".*/\1/')
+          tauri=$(grep '"version"' src-tauri/tauri.conf.json | sed 's/.*"version": "\(.*\)".*/\1/')
+          cargo=$(grep '^version' src-tauri/Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
+          echo "tag=$TAG expected=$EXPECTED package.json=$pkg tauri.conf.json=$tauri Cargo.toml=$cargo"
+          if [ "$pkg" != "$tauri" ] || [ "$pkg" != "$cargo" ]; then
+            echo "::error::Internal version mismatch — files don't agree with each other."
+            exit 1
+          fi
+          if [ "$pkg" != "$EXPECTED" ]; then
+            echo "::error::Version/tag mismatch — package.json ($pkg) != tag ($EXPECTED). Run scripts/release.sh before tagging."
+            exit 1
+          fi
+
+      # CI-001: Bun is the primary install + build path because BETA-001 measured
+      # ~40× faster cold install (~700 ms vs ~30 s) and parity on `bun run build`.
+      # Node is still set up because (a) `npm run build` chains `node scripts/
+      # check-bundle-size.mjs` literally, (b) the bundled-app `npm install --force`
+      # step below runs on npm, and (c) the npm fallback below needs it.
+      # No `cache: 'npm'` — that option requires a package-lock.json,
+      # which was removed in v1.4.4 (bun.lock is the only lockfile).
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with: { node-version: '22' }
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.12'
+
+      - name: Cache Bun install
+        uses: actions/cache@v5
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      # Bun primary: install + build in one step. continue-on-error means a
+      # failure here drops to the npm fallback below instead of aborting CI.
+      # Both steps must succeed together; if Bun's install passes but the
+      # build fails (rare — Bun is a process spawner here, not a bundler),
+      # we still want the npm path to redo BOTH so node_modules and build
+      # artifacts come from the same toolchain.
+      - name: Build (Bun primary)
+        id: bun_build
+        continue-on-error: true
+        shell: bash
+        run: |
+          bun install --frozen-lockfile
+          bun run build
+
+      # npm fallback: only runs if the Bun step failed. Loud warning so the
+      # regression surfaces in the Actions UI summary instead of silently
+      # masking a Bun breakage.
+      - name: Build (npm fallback)
+        if: steps.bun_build.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "::warning::Bun build failed; falling back to npm. Investigate Bun step output."
+          # `npm install`, not `npm ci` — there is no package-lock.json
+          # anymore (bun.lock is the single lockfile since v1.4.4).
+          npm install
+          npm run build
+
+      - name: Fetch Windows Node runtime
+        shell: pwsh
+        run: scripts/fetch-windows-node.ps1
+
+      - name: Cache camofox-browser sidecar
+        # CAMOFOX-CAMOUFOX-1.1.0 (2026-06-06): cache the npm tarball so
+        # repeat builds skip the @askjo/camofox-browser@1.11.2 download.
+        # Cache key is version + script hash, so a script change OR
+        # version bump invalidates cleanly.
+        uses: actions/cache@v5
+        with:
+          path: .cache/camofox
+          key: camofox-v1.11.2-${{ hashFiles('scripts/fetch-camofox-browser.ps1') }}
+          restore-keys: |
+            camofox-v1.11.2-
+
+      - name: Fetch camofox-browser sidecar
+        # CAMOFOX-CAMOUFOX-1.1.0: bundled resource, NOT externalBin.
+        # Same lifecycle pattern as the Node sidecar (idempotent, cached,
+        # pattern-consistent with fetch-windows-node.ps1).
+        shell: pwsh
+        run: scripts/fetch-camofox-browser.ps1
+
+      - name: Stage Higgsfield CLI into Tauri resources
+        # V1.6: bundle @higgsfield/cli so every installer user gets the
+        # agentic Higgsfield path with zero setup. -NoEnv = install only (no
+        # user env var on the CI runner); lib.rs points the sidecar's
+        # HIGGSFIELD_BIN at the bundled shim at runtime (unless the user set
+        # their own). Bundled via resources/**/* (tauri.conf.json).
+        shell: pwsh
+        run: scripts/install-higgsfield-cli.ps1 -Dest src-tauri/resources/higgsfield-cli -NoEnv
+
+      - name: Copy standalone into Tauri resources
+        shell: pwsh
+        run: scripts/copy-standalone-to-resources.ps1
+
+      - name: Strip non-Windows sharp bindings from bundled app
+        shell: pwsh
+        working-directory: src-tauri/resources/app/node_modules/@img
+        run: |
+          # Linux build pulls linux+linuxmusl sharp bindings into
+          # .next/standalone. They're dead weight on Windows (~33 MB
+          # across libvips + sharp). Must run BEFORE the npm install
+          # step below so the win32 bindings it fetches survive.
+          Get-ChildItem -Directory | Where-Object {
+            $_.Name -like '*linux*' -or $_.Name -like '*darwin*'
+          } | ForEach-Object {
+            Write-Host "Removing $($_.Name)"
+            Remove-Item -Recurse -Force $_.FullName
+          }
+
+      - name: Install native Windows deps into bundled app
+        shell: pwsh
+        working-directory: src-tauri/resources/app
+        run: npm install --force --os=win32 --cpu=x64 @img/sharp-win32-x64 @next/swc-win32-x64-msvc
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      # NCA-BUNDLE: try to ship nca.exe inside the Tauri installer.
+      #
+      # Status as of 2026-05-02 (v0.9.26 build failure): nca v0.3.0 (and
+      # v0.2.0) does NOT compile on Windows — `crates/runtime/src/ipc.rs`
+      # imports `tokio::net::{UnixListener, UnixStream}` without a
+      # `#[cfg(unix)]` gate. That's why upstream only ships macOS +
+      # Linux release artifacts. We can't fix it from here without
+      # forking the project.
+      #
+      # The build step is left in place but marked `continue-on-error`
+      # so it does NOT block the Tauri build. If upstream eventually
+      # adds a Windows IPC backend (named pipes / interprocess crate /
+      # cfg-gated unix-only sockets), the build will start succeeding
+      # and the bundle will populate automatically. Until then:
+      #   - the Tauri Windows build ships WITHOUT bundled nca,
+      #   - the sidecar wrapper's existsSync guard sees no nca.exe,
+      #     leaves NCA_BIN unset, and falls back to PATH lookup,
+      #   - Settings → AI Agent renders the "Not Installed" branch
+      #     (no winget package, no platform binary, no PATH entry on
+      #     a clean Windows machine), so the user sees the install
+      #     instructions and can wait for upstream Windows support.
+      #
+      # See `docs/bmad/discoveries/NCA-WINDOWS-BUNDLE-2026-05-02.md`
+      # for the full upstream survey.
+      - name: Cache nca binary
+        id: cache-nca
+        uses: actions/cache@v5
+        with:
+          path: src-tauri/resources/nca/nca.exe
+          key: nca-windows-x86_64-v0.3.0
+
+      - name: Build nca for Windows
+        id: nca_build
+        if: steps.cache-nca.outputs.cache-hit != 'true'
+        continue-on-error: true
+        shell: pwsh
+        env:
+          NCA_TAG: v0.3.0
+        run: |
+          $src = Join-Path $env:RUNNER_TEMP "nca-src"
+          if (Test-Path $src) { Remove-Item -Recurse -Force $src }
+          git clone --depth 1 --branch $env:NCA_TAG https://github.com/madebyaris/native-cli-ai.git $src
+          Push-Location $src
+          cargo build --release --locked -p nca-cli --target x86_64-pc-windows-msvc
+          $cargoExit = $LASTEXITCODE
+          Pop-Location
+          $exe = Join-Path $src "target\x86_64-pc-windows-msvc\release\nca.exe"
+          if ($cargoExit -eq 0 -and -not (Test-Path $exe)) {
+            throw "nca.exe not produced at $exe"
+          }
+          if (Test-Path $exe) {
+            $dest = Join-Path $env:GITHUB_WORKSPACE "src-tauri\resources\nca"
+            New-Item -ItemType Directory -Force -Path $dest | Out-Null
+            Copy-Item $exe (Join-Path $dest "nca.exe") -Force
+            $size = (Get-Item (Join-Path $dest "nca.exe")).Length
+            Write-Host "nca.exe built: $($size / 1MB) MB"
+          }
+
+      - name: Verify bundled nca
+        if: steps.nca_build.outcome == 'success' || steps.cache-nca.outputs.cache-hit == 'true'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $nca = Join-Path $env:GITHUB_WORKSPACE "src-tauri\resources\nca\nca.exe"
+          if (-not (Test-Path $nca)) { throw "nca.exe missing at $nca — bundling step failed" }
+          & $nca --help | Out-Null
+          Write-Host "nca bundled and runnable at $nca"
+
+      - name: Note nca bundle absence
+        if: steps.nca_build.outcome == 'failure' && steps.cache-nca.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          echo "::warning::nca build failed (upstream is currently Unix-only — see docs/bmad/discoveries/NCA-WINDOWS-BUNDLE-2026-05-02.md). Continuing without bundled nca; users will see the 'Not Installed' UI in Settings → AI Agent."
+
+      # MUSTFIX-001: v0.2.2 CI run (24604871387) failed here with
+      # "npm error could not determine executable to run". Root cause:
+      # Bun does not populate node_modules/.bin the way npm does, so
+      # `npx tauri` can't resolve the CLI when Bun did the install.
+      # `bunx` reads from Bun's own bin layout, which IS populated.
+      # continue-on-error so a real tauri build failure (not a CLI
+      # resolution issue) drops to the npm fallback below.
+      - name: Build Tauri bundle (Bun)
+        id: tauri_bun
+        continue-on-error: true
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: bunx tauri build
+
+      # MUSTFIX-001: real fallback. Fires if EITHER the JS build OR the
+      # Tauri build under Bun failed. `npm ci` rebuilds node_modules in
+      # the npm-shaped layout (with .bin shims) so `npx tauri` resolves.
+      # No continue-on-error here: if this step fails, the job fails.
+      - name: Build Tauri bundle (npm fallback)
+        if: steps.tauri_bun.outcome == 'failure' || steps.bun_build.outcome == 'failure'
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          echo "::warning::Bun-driven Tauri build failed (bun_build=${{ steps.bun_build.outcome }} tauri_bun=${{ steps.tauri_bun.outcome }}). Reinstalling with npm and retrying."
+          npm ci
+          npx tauri build
+
+      - name: Synthesize latest.json if Tauri didn't emit one
+        shell: bash
+        run: |
+          # Tauri v2 with bundle.createUpdaterArtifacts=true sometimes still
+          # does not emit latest.json for the NSIS target. Generate from the
+          # .sig + .exe so the updater endpoint has something to serve. jq
+          # handles JSON escaping of the multi-line minisign signature.
+          TAG="${{ steps.tag.outputs.value }}"
+          BUNDLE_DIR="src-tauri/target/release/bundle/nsis"
+          EXE=$(ls "$BUNDLE_DIR"/*.exe 2>/dev/null | head -n1)
+          SIG=$(ls "$BUNDLE_DIR"/*.exe.sig 2>/dev/null | head -n1)
+          LATEST="$BUNDLE_DIR/latest.json"
+
+          if [ -z "$EXE" ] || [ ! -f "$EXE" ]; then
+            echo "::error::Tauri NSIS .exe not found under $BUNDLE_DIR"
+            ls -la "$BUNDLE_DIR" || true
+            exit 1
+          fi
+          if [ -z "$SIG" ] || [ ! -f "$SIG" ]; then
+            echo "::error::Signature (.exe.sig) not found under $BUNDLE_DIR — signing env vars missing?"
+            ls -la "$BUNDLE_DIR" || true
+            exit 1
+          fi
+
+          if [ ! -f "$LATEST" ]; then
+            echo "latest.json not emitted by Tauri; generating it manually"
+            jq -n \
+              --arg version "${TAG#v}" \
+              --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              --arg signature "$(cat "$SIG")" \
+              --arg url "https://github.com/${{ github.repository }}/releases/download/$TAG/$(basename "$EXE")" \
+              '{
+                version: $version,
+                notes: "",
+                pub_date: $pub_date,
+                platforms: {
+                  "windows-x86_64": { signature: $signature, url: $url }
+                }
+              }' > "$LATEST"
+          fi
+
+      # Portable ZIP build. Tauri v2 does NOT have a "portable" bundle
+      # target (valid BundleType enum: deb, rpm, appimage, msi, nsis, app,
+      # dmg). To produce a no-install zip we stage the raw Rust binary +
+      # resources tree in the layout that src-tauri/src/lib.rs expects
+      # at runtime (resource_dir() returns the executable's parent on
+      # Windows release builds), then zip it. Users extract anywhere and
+      # double-click MashupForge.exe — no NSIS uninstall prompt.
+      - name: Stage and zip portable build
+        shell: pwsh
+        run: |
+          $tag = "${{ steps.tag.outputs.value }}"
+          $version = $tag.TrimStart('v')
+          $stage = "src-tauri/target/release/portable-stage"
+          $bundleDir = "src-tauri/target/release/bundle/nsis"
+          $zipPath = "$bundleDir/MashupForge_${version}_x64-portable.zip"
+
+          # Cargo binary is named after [package].name = "app" → app.exe.
+          # NSIS bundler renames it to MashupForge.exe during packaging,
+          # but the raw build output keeps the cargo name. We rename here
+          # so the portable zip uses the user-facing name.
+          $exeSrc = "src-tauri/target/release/app.exe"
+          if (-not (Test-Path $exeSrc)) {
+            Write-Error "Cargo binary not found at $exeSrc — Tauri build did not complete?"
+            exit 1
+          }
+
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item $exeSrc "$stage/MashupForge.exe"
+          Copy-Item -Recurse "src-tauri/resources" "$stage/resources"
+
+          # WebView2Loader.dll is placed next to the binary by tauri-build
+          # on Windows release. Without it the webview will fail to
+          # initialize when the portable build is extracted to a directory
+          # that doesn't have it on PATH. Fail loud rather than ship broken.
+          $dllSrc = "src-tauri/target/release/WebView2Loader.dll"
+          if (Test-Path $dllSrc) {
+            Copy-Item $dllSrc "$stage/WebView2Loader.dll"
+          } else {
+            Write-Warning "WebView2Loader.dll not found at $dllSrc — portable zip may not run on systems without it on PATH. Continuing because Tauri 2.x sometimes statically links it."
+          }
+
+          Compress-Archive -Path "$stage/*" -DestinationPath $zipPath -Force
+          Write-Host "Portable zip:"
+          Get-ChildItem $zipPath | Select-Object Name, Length
+
+      - name: Upload build artifacts for release job
+        uses: actions/upload-artifact@v7
+        with:
+          name: tauri-nsis-bundle
+          # Directory path (not multi-glob). upload-artifact@v4 stores
+          # multi-glob entries relative to the workspace root, so globs
+          # under nsis/ would land at bundle/src-tauri/.../nsis/* after
+          # download — breaking `ls bundle/*.exe`. A directory path stores
+          # files relative to that directory, landing flat in bundle/.
+          # The portable zip is also written under nsis/ so it ships in
+          # the same artifact and lands flat alongside the .exe + .sig +
+          # latest.json after download.
+          path: src-tauri/target/release/bundle/nsis
+          if-no-files-found: error
+          retention-days: 7
+
+  upload:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: tauri-nsis-bundle
+          path: bundle
+
+      - name: Upload release assets (installer + updater manifest + signature)
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          TAG="${{ needs.build.outputs.tag }}"
+          EXE=$(ls bundle/*.exe 2>/dev/null | head -n1)
+          SIG=$(ls bundle/*.exe.sig 2>/dev/null | head -n1)
+          LATEST="bundle/latest.json"
+
+          if [ -z "$EXE" ] || [ ! -f "$EXE" ]; then
+            echo "::error::NSIS .exe not found in downloaded artifact"
+            echo "Artifact contents:"; ls -la bundle/ || true
+            exit 1
+          fi
+          if [ -z "$SIG" ] || [ ! -f "$SIG" ]; then
+            echo "::error::Signature file (.exe.sig) not found in downloaded artifact"
+            echo "Artifact contents:"; ls -la bundle/ || true
+            exit 1
+          fi
+          if [ ! -f "$LATEST" ]; then
+            echo "::error::latest.json not found in downloaded artifact"
+            echo "Artifact contents:"; ls -la bundle/ || true
+            exit 1
+          fi
+
+          echo "Uploading $EXE, $SIG, and $LATEST to release $TAG"
+          gh release create "$TAG" --title "MashupForge $TAG" --notes "Tauri desktop build for Windows." 2>/dev/null || true
+          gh release upload "$TAG" "$EXE" --clobber
+          gh release upload "$TAG" "$SIG" --clobber
+          gh release upload "$TAG" "$LATEST" --clobber
+          echo "Uploaded installer, signature, and updater manifest to $TAG"
+
+          # Portable zip is best-effort: missing zip should not fail the
+          # release upload (the installer is the canonical distribution).
+          ZIP=$(ls bundle/*-portable.zip 2>/dev/null | head -n1)
+          if [ -n "$ZIP" ] && [ -f "$ZIP" ]; then
+            gh release upload "$TAG" "$ZIP" --clobber
+            echo "Uploaded portable zip $ZIP"
+          else
+            echo "::warning::No portable zip found in bundle/ — installer-only release"
+          fi

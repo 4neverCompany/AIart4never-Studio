@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 420" role="img" aria-label="MashupForge features: Idea Generator, Image Generation, Compare Mode, Pipeline" font-family="'Space Grotesk','Inter',system-ui,sans-serif">
+  <defs>
+    <linearGradient id="goldLine" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#C5A062" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#C5A062" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#C5A062" stop-opacity="0"/>
+    </linearGradient>
+    <symbol id="card">
+      <rect width="340" height="260" rx="20" fill="#0A0A0A" stroke="#C5A062" stroke-opacity="0.22"/>
+    </symbol>
+  </defs>
+
+  <rect width="1600" height="420" fill="#050505"/>
+  <rect y="0" width="1600" height="1" fill="url(#goldLine)"/>
+
+  <g text-anchor="middle">
+    <text x="800" y="60" font-family="'JetBrains Mono',monospace" font-size="13" fill="#C5A062" letter-spacing="4">WHAT IT DOES</text>
+    <text x="800" y="100" font-size="30" font-weight="700" fill="#FFFFFF">One studio, the full creative loop</text>
+  </g>
+
+  <g transform="translate(60 140)">
+    <use href="#card"/>
+    <g transform="translate(24 26)">
+      <rect width="48" height="48" rx="12" fill="#00E6FF" fill-opacity="0.1" stroke="#00E6FF" stroke-opacity="0.3"/>
+      <path d="M 14 32 Q 24 10 34 32 M 20 32 L 28 32" fill="none" stroke="#00E6FF" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+    <text x="24" y="118" font-size="20" font-weight="600" fill="#FFFFFF">Idea Generator</text>
+    <text x="24" y="148" font-size="13" fill="#A1A1AA">
+      <tspan x="24" dy="0">AI riffs on your universes and</tspan>
+      <tspan x="24" dy="18">pairs fresh crossover angles.</tspan>
+    </text>
+  </g>
+
+  <g transform="translate(430 140)">
+    <use href="#card"/>
+    <g transform="translate(24 26)">
+      <rect width="48" height="48" rx="12" fill="#00E6FF" fill-opacity="0.1" stroke="#00E6FF" stroke-opacity="0.3"/>
+      <rect x="10" y="12" width="28" height="22" rx="2" fill="none" stroke="#00E6FF" stroke-width="2"/>
+      <circle cx="18" cy="20" r="2.5" fill="#00E6FF"/>
+      <path d="M 12 32 L 22 22 L 30 28 L 36 22" fill="none" stroke="#00E6FF" stroke-width="2" stroke-linejoin="round"/>
+    </g>
+    <text x="24" y="118" font-size="20" font-weight="600" fill="#FFFFFF">Image Generation</text>
+    <text x="24" y="148" font-size="13" fill="#A1A1AA">
+      <tspan x="24" dy="0">Leonardo.ai v2 — Flux, Phoenix,</tspan>
+      <tspan x="24" dy="18">Lightning XL, model presets.</tspan>
+    </text>
+  </g>
+
+  <g transform="translate(800 140)">
+    <use href="#card"/>
+    <g transform="translate(24 26)">
+      <rect width="48" height="48" rx="12" fill="#00E6FF" fill-opacity="0.1" stroke="#00E6FF" stroke-opacity="0.3"/>
+      <path d="M 12 16 L 36 16 M 30 10 L 36 16 L 30 22" fill="none" stroke="#00E6FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M 36 32 L 12 32 M 18 26 L 12 32 L 18 38" fill="none" stroke="#00E6FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="24" y="118" font-size="20" font-weight="600" fill="#FFFFFF">Compare Mode</text>
+    <text x="24" y="148" font-size="13" fill="#A1A1AA">
+      <tspan x="24" dy="0">Pit models or prompts</tspan>
+      <tspan x="24" dy="18">side-by-side, pick the winner.</tspan>
+    </text>
+  </g>
+
+  <g transform="translate(1170 140)">
+    <use href="#card"/>
+    <g transform="translate(24 26)">
+      <rect width="48" height="48" rx="12" fill="#00E6FF" fill-opacity="0.1" stroke="#00E6FF" stroke-opacity="0.3"/>
+      <circle cx="14" cy="16" r="3" fill="#00E6FF"/>
+      <circle cx="34" cy="16" r="3" fill="#00E6FF"/>
+      <circle cx="14" cy="32" r="3" fill="#00E6FF"/>
+      <circle cx="34" cy="32" r="3" fill="#00E6FF"/>
+      <path d="M 17 16 L 31 16 M 14 19 L 14 29 M 34 19 L 34 29 M 17 32 L 31 32" stroke="#00E6FF" stroke-width="2" fill="none"/>
+    </g>
+    <text x="24" y="118" font-size="20" font-weight="600" fill="#FFFFFF">Autonomous Pipeline</text>
+    <text x="24" y="148" font-size="13" fill="#A1A1AA">
+      <tspan x="24" dy="0">Ideas → images → captions →</tspan>
+      <tspan x="24" dy="18">scheduled posts. Smart slots.</tspan>
+    </text>
+  </g>
+
+  <text x="800" y="400" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="11" fill="#52525B" letter-spacing="3">AGENCY BLACK · METALLIC GOLD · ELECTRIC BLUE</text>
+</svg>

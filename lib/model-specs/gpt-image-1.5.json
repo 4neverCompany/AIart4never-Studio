@@ -1,0 +1,105 @@
+{
+  "modelId": "gpt-image-1.5",
+  "apiName": "gpt-image-1.5",
+  "type": "image",
+  "provider": "leonardo",
+  "endpoint": "POST /api/rest/v2/generations",
+
+  "parameters": {
+    "prompt": {
+      "type": "string",
+      "required": true,
+      "description": "Text prompt describing what image to generate."
+    },
+    "model": {
+      "type": "string",
+      "required": true,
+      "value": "gpt-image-1.5",
+      "description": "Model identifier, always gpt-image-1.5."
+    },
+    "width": {
+      "type": "integer",
+      "required": false,
+      "allowedValues": [1024, 1536],
+      "description": "Image width. Must be paired with matching height per aspect ratio."
+    },
+    "height": {
+      "type": "integer",
+      "required": false,
+      "allowedValues": [1024, 1536],
+      "description": "Image height. Must be paired with matching width per aspect ratio."
+    },
+    "quality": {
+      "type": "string",
+      "required": false,
+      "allowedValues": ["LOW", "MEDIUM", "HIGH"],
+      "default": "HIGH",
+      "description": "Generation quality level. Always HIGH — we want best quality. NOTE: replaces the deprecated `mode` parameter (deprecated 2026-05-04)."
+    },
+    "prompt_enhance": {
+      "type": "string",
+      "required": false,
+      "allowedValues": ["ON", "OFF"],
+      "default": "ON",
+      "description": "Auto-enhance the prompt before generation. Always ON."
+    },
+    "quantity": {
+      "type": "integer",
+      "required": false,
+      "range": [1, 8],
+      "default": 1,
+      "description": "Number of images per request. Always 1 — single best output."
+    },
+    "seed": {
+      "type": "integer",
+      "required": false,
+      "description": "Fixed seed for reproducible generations."
+    },
+    "public": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Whether the generation is publicly visible."
+    },
+    "guidances.image_reference": {
+      "type": "array",
+      "required": false,
+      "maxItems": 6,
+      "description": "Reference images to guide generation.",
+      "itemSchema": {
+        "image.id": "string — Leonardo image ID",
+        "image.type": "GENERATED | UPLOADED",
+        "strength": "LOW | MID | HIGH"
+      }
+    }
+  },
+
+  "aspectRatios": {
+    "2:3": { "width": 1024, "height": 1536 },
+    "1:1": { "width": 1024, "height": 1024 },
+    "3:2": { "width": 1536, "height": 1024 }
+  },
+
+  "capabilities": {
+    "styles": false,
+    "negativePrompt": false,
+    "imageSize": false,
+    "alchemy": false,
+    "presetStyles": false,
+    "tiling": false
+  },
+
+  "rules": [
+    "ONLY 3 aspect ratios: 2:3, 1:1, 3:2 — no other ratios exist for this model.",
+    "DO NOT set style — this model has no style parameter.",
+    "DO NOT set negativePrompt — this model has no negative prompt parameter.",
+    "DO NOT set imageSize (1K/2K) — not a parameter on this model.",
+    "DO NOT set mode — `mode` (FAST|QUALITY|ULTRA) is DEPRECATED as of 2026-05-04 and will FAIL after that date. Use `quality` (LOW|MEDIUM|HIGH) instead.",
+    "quality must always be HIGH.",
+    "prompt_enhance must always be ON.",
+    "quantity must always be 1.",
+    "Only user-facing choice is aspect ratio (2:3, 1:1, or 3:2) — pick based on prompt scene.",
+    "guidances.image_reference is optional — use for img2img / reference-based generation.",
+    "Width/height must match one of the 3 aspect ratio pairs exactly — no custom dimensions."
+  ]
+}

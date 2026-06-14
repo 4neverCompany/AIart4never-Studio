@@ -1,0 +1,209 @@
+# Brand / version / lockfile guard checks
+# Runs on every PR to enforce the §2 batch rules:
+#   1. Brand name consistency (no "ai-studio-applet" or "Multiverse Mashup Studio")
+#   2. Version sync (package.json, Cargo.toml, tauri.conf.json)
+#   3. bun.lock is newer than package-lock.json
+#   4. No `as any` in src/
+name: Brand & Version Guards
+
+on:
+  pull_request:
+    branches: [main, 'release/*']
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  brand-name:
+    name: Brand name consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check for forbidden legacy brand names
+        run: |
+          # Forbidden patterns from §1.2 of the analysis
+          FORBIDDEN=(
+            "ai-studio-applet"
+            "Multiverse Mashup Studio"
+            "Multiverse Mashup"
+            "Remix: Remix"
+          )
+
+          # Allow these files to mention the legacy names (changelog history, etc.)
+          # .github/workflows/brand-guards.yml is allowed because this file MUST list
+          # the forbidden patterns as data; the brand-guards job would otherwise
+          # self-match. BRAND.md is allowed because it documents the forbidden names
+          # for contributors without using them in any runtime surface.
+          # HANDOFF.md is allowed because it is a historical/contextual handoff
+          # doc that explains the workflow itself (including the legacy name in
+          # the workflow-design context). User-facing surfaces (landing pages,
+          # components/landing/, the renderer) are NOT allowlisted.
+          #
+          # The leading `(\./)?` accounts for the `./` prefix that `grep -r .` adds
+          # to relative paths — without it, none of these paths would actually
+          # match and the guard would always fail.
+          ALLOWLIST_REGEX='^(\./)?(CHANGELOG\.md|README\.md|HANDOFF\.md|docs/|app/landing/|app/components/landing/|\.github/workflows/brand-guards\.yml|BRAND\.md)'
+
+          # V105.6-BRAND-HARNES: .hermes/ is the previous orchestrator's working
+          # dir (Hermes sub-agent memory files), .harness/ is THIS orchestrator's
+          # working dir (Mavis team memory, reins, docs). Both legitimately
+          # reference the legacy project name in their own context — they
+          # document the brand history, they're not user-facing paths. Exclude
+          # both directories from the brand-name scan.
+          FAILED=0
+          for PATTERN in "${FORBIDDEN[@]}"; do
+            HITS=$(grep -rEn --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=target --exclude-dir=.git --exclude-dir=\.hermes --exclude-dir=\.harness "$PATTERN" . 2>/dev/null \
+              | grep -Ev "$ALLOWLIST_REGEX" || true)
+            if [ -n "$HITS" ]; then
+              echo "❌ Found forbidden legacy brand name: $PATTERN"
+              echo "$HITS"
+              FAILED=1
+            fi
+          done
+
+          if [ "$FAILED" -eq 1 ]; then
+            echo ""
+            echo "These files still reference the old product names."
+            echo "Use 'MashupForge' consistently. See §1.2 of the project analysis."
+            exit 1
+          fi
+          echo "✅ Brand name consistency OK"
+
+  version-sync:
+    name: Version sync (package.json / Cargo.toml / tauri.conf.json)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Extract and compare versions
+        run: |
+          # Read versions from the three sources
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          CARGO_VERSION=$(grep -E '^version\s*=' src-tauri/Cargo.toml | head -1 | sed -E 's/^version\s*=\s*"([^"]+)".*/\1/')
+          TAURI_VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+
+          echo "package.json:     $PKG_VERSION"
+          echo "Cargo.toml:       $CARGO_VERSION"
+          echo "tauri.conf.json:  $TAURI_VERSION"
+
+          if [ "$PKG_VERSION" != "$CARGO_VERSION" ] || [ "$PKG_VERSION" != "$TAURI_VERSION" ]; then
+            echo ""
+            echo "❌ Version mismatch across manifests."
+            echo "All three files must declare the same version. See §1.1 of the project analysis."
+            exit 1
+          fi
+          echo "✅ Version sync OK"
+
+  lockfile-freshness:
+    name: bun.lock freshness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check bun.lock vs package-lock.json
+        run: |
+          if [ ! -f bun.lock ]; then
+            echo "❌ bun.lock missing. The project is bun-primary; bun.lock must be committed."
+            exit 1
+          fi
+
+          if [ ! -f package-lock.json ]; then
+            echo "⚠️ package-lock.json missing. That's expected if bun has always worked — OK."
+            exit 0
+          fi
+
+          # V107-CI: the previous check used `stat -c %Y` (file mtime),
+          # which is wrong when a later commit touches package-lock.json
+          # without touching bun.lock — the mtime delta misleads the
+          # check. Switch to `git log -1` to get the actual commit time
+          # of each lockfile. If a lockfile isn't tracked yet (e.g. the
+          # very first commit), fall back to 0.
+          BUN_MTIME=$(git log -1 --format=%ct bun.lock 2>/dev/null || echo 0)
+          NPM_MTIME=$(git log -1 --format=%ct package-lock.json 2>/dev/null || echo 0)
+
+          if [ "$BUN_MTIME" -lt "$NPM_MTIME" ]; then
+            echo "❌ package-lock.json is committed after bun.lock."
+            echo "Someone ran 'npm install' without retrying 'bun install'."
+            echo "Run: bun install && git add bun.lock"
+            exit 1
+          fi
+
+          echo "✅ bun.lock is fresh (or newer than package-lock.json)"
+
+  no-pnpm:
+    name: No pnpm artifacts tracked
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Verify no pnpm-workspace.yaml / pnpm-lock.yaml is committed
+        run: |
+          # M3.4-Q6: MashupForge is bun-primary. A stray `pnpm install`
+          # (e.g. from a CI runner with stale corepack, or a contributor
+          # pasting a recipe from another repo) regenerates these files
+          # AND creates a node_modules/.pnpm store that the bun install
+          # in pr-checks.yml then refuses to overwrite — the install
+          # step falls back to npm and the resulting node_modules is
+          # missing native bindings (better-sqlite3, sharp, koffi).
+          #
+          # .gitignore already lists both filenames, so a clean tree has
+          # nothing tracked. This guard catches the case where someone
+          # `git add -f`'d them.
+          FAILED=0
+          for FILE in pnpm-workspace.yaml pnpm-lock.yaml; do
+            if git ls-files --error-unmatch "$FILE" >/dev/null 2>&1; then
+              echo "❌ $FILE is tracked. MashupForge is bun-primary; remove it with:"
+              echo "     git rm --cached $FILE"
+              echo "   (.gitignore already lists it, so the working-tree copy will be ignored.)"
+              FAILED=1
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then
+            exit 1
+          fi
+          echo "✅ No pnpm artifacts tracked"
+
+  no-any:
+    name: No `as any` in src/
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Search for as any casts (exclude comments)
+        run: |
+          # Search for "as any" in app/, components/, lib/, hooks/, types/.
+          # V107-CI: the previous regex matched the phrase in comments too
+          # (e.g. "// use 'as any' if you must" in doc-comments). Filter
+          # out lines that are 100% inside a line-comment (`//...as any...`)
+          # OR a block-comment context (heuristic: line that opens with `/*`,
+          # `*`, or contains `*` at the start of a non-blank region).
+          #
+          # What we still want to catch:
+          #   1. Real `as any` type assertions in code:
+          #        const x = foo as any;
+          #        const y: any = ...;
+          #   2. `as any` inside a string template (extremely rare but
+          #      legitimate to flag if it actually is a type hint).
+          #
+          # What we drop:
+          #   - Lines whose non-whitespace content starts with `//`
+          #   - Lines starting with `*` (block-comment continuation)
+          #   - Lines that are entirely inside `/* ... */` on one line
+          HITS=$(grep -rEn '\bas\s+any\b' \
+              --include='*.ts' --include='*.tsx' \
+              --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=target \
+              --exclude-dir=.harness --exclude-dir=.hermes \
+              app/ components/ lib/ hooks/ types/ 2>/dev/null \
+            | grep -Ev '^[^:]+:[0-9]+:\s*//' \
+            | grep -Ev '^[^:]+:[0-9]+:\s*\*' \
+            | grep -Ev '^[^:]+:[0-9]+:.*/\*.*\bas\s+any\b.*\*/' \
+            || true)
+
+          if [ -n "$HITS" ]; then
+            echo "❌ Found 'as any' casts in src/. CONTRIBUTING.md says no any — use 'unknown' and narrow."
+            echo "$HITS"
+            echo ""
+            echo "If a cast is genuinely necessary, add an ESLint disable comment with a justification."
+            exit 1
+          fi
+          echo "✅ No 'as any' casts in src/"
+

@@ -1,0 +1,62 @@
+#!/bin/bash
+# V107-CI: pre-commit secret scan. Runs BEFORE the user can commit
+# anything. Wraps gitleaks (if available) for a fast local check.
+#
+# Installed by simple-git-hooks — see package.json `"simple-git-hooks"`
+# section. The hook path is `.githooks/pre-commit` because simple-git-hooks
+# resolves to `<repo>/.githooks/<name>` by default.
+#
+# Skip conditions (always allow the commit through):
+#   - SKIP_GITLEAKS=1 in env (emergency bypass)
+#   - gitleaks not installed (degrades to a grep for the
+#     most common PAT prefixes so the user still gets a soft warning)
+#
+# On detection: prints the offending file:line, exits 1, the commit is
+# aborted. The fix is `git rm --cached <file>` then commit a sanitized
+# version. After fixing, `git commit --amend --no-edit` to retry.
+
+set -euo pipefail
+
+if [ "${SKIP_GITLEAKS:-0}" = "1" ]; then
+  exit 0
+fi
+
+# Run gitleaks if installed (locally via `bun add -D gitleaks` or
+# globally via `brew install gitleaks`).
+if command -v gitleaks >/dev/null 2>&1; then
+  echo "🔍 gitleaks pre-commit scan..."
+  # `protect --staged` scans only the staged diff (fast), with the
+  # built-in ruleset. exit 0 = clean, exit 1 = leaked secret.
+  if ! gitleaks protect --staged --redact --no-banner 2>&1; then
+    echo ""
+    echo "❌ gitleaks found a potential secret in your staged changes."
+    echo "   The commit was blocked. To bypass in an emergency, run:"
+    echo "     SKIP_GITLEAKS=1 git commit ..."
+    echo "   But consider rotating the leaked credential first."
+    exit 1
+  fi
+  echo "✅ gitleaks: staged diff is clean"
+  exit 0
+fi
+
+# Soft fallback when gitleaks isn't installed: grep for the most
+# common PAT prefixes. Not exhaustive, but catches the patterns
+# we actually care about (GitHub PATs, AWS, OpenAI).
+echo "⚠️  gitleaks not installed — falling back to prefix grep."
+echo "   For full coverage: bun add -D gitleaks"
+SOFT_HITS=$(git diff --cached --unified=0 \
+  | grep -E '^\+' \
+  | grep -E 'ghp_[A-Za-z0-9]{36,}|gho_[A-Za-z0-9]{36,}|ghs_[A-Za-z0-9]{36,}|ghr_[A-Za-z0-9]{36,}|ghu_[A-Za-z0-9]{36,}|AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9]{32,}' \
+  || true)
+
+if [ -n "$SOFT_HITS" ]; then
+  echo ""
+  echo "❌ Soft scan: found a high-confidence secret prefix in the staged diff."
+  echo "   The lines below contain what looks like a GitHub PAT / AWS key / OpenAI key:"
+  echo "$SOFT_HITS"
+  echo ""
+  echo "   The commit was blocked. Rotate the credential, then re-stage."
+  exit 1
+fi
+
+echo "✅ Soft scan: no obvious secrets in staged diff"

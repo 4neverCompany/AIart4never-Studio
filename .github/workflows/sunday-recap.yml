@@ -1,0 +1,75 @@
+name: sunday-recap
+
+# Weekly creator recap: every Sunday at 10:00 UTC, this workflow hits
+# /api/cron/sunday-recap on the deployed app. The route plans the recap
+# (video / music / voiceover prompts) and, when mmx is available on the
+# server, runs the three generations in parallel.
+#
+# Required GitHub Actions secrets (re-used from cron-fire-scheduled-posts):
+#   APP_URL              — base URL of the deployed app, no trailing slash.
+#   CRON_SHARED_SECRET   — must match the same env var on the server.
+#
+# Optional: if posts data lives only client-side (localStorage), this
+# workflow currently sends an empty posts array — the route will plan
+# a generic recap. Wire a future "export posts" endpoint to populate
+# the body if you want week-specific topic extraction.
+
+on:
+  schedule:
+    # Sunday 10:00 UTC. GitHub Actions cron is best-effort; under heavy
+    # load the run may slip ~15 minutes. Acceptable for a weekly recap.
+    - cron: '0 10 * * 0'
+  workflow_dispatch:
+    inputs:
+      posts_json:
+        description: 'JSON array of RecapPost — leave empty for a generic recap'
+        required: false
+        default: '[]'
+
+concurrency:
+  # No piling: only one recap may run at a time.
+  group: sunday-recap
+  cancel-in-progress: false
+
+jobs:
+  recap:
+    name: POST /api/cron/sunday-recap
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Sanity-check required secrets
+        run: |
+          if [ -z "${{ secrets.APP_URL }}" ]; then
+            echo "::error::APP_URL secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.CRON_SHARED_SECRET }}" ]; then
+            echo "::error::CRON_SHARED_SECRET secret is not set"
+            exit 1
+          fi
+      - name: Build request body
+        id: body
+        env:
+          POSTS_JSON: ${{ github.event.inputs.posts_json || '[]' }}
+        run: |
+          set -euo pipefail
+          # The route accepts an empty posts array — it will plan a generic
+          # recap. workflow_dispatch can supply a real array via input.
+          # `now` is omitted; the route uses Date.now().
+          jq -n --argjson posts "$POSTS_JSON" '{posts: $posts}' > /tmp/recap-body.json
+          echo "wrote $(wc -c </tmp/recap-body.json) bytes"
+      - name: Trigger sunday-recap
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SHARED_SECRET: ${{ secrets.CRON_SHARED_SECRET }}
+        run: |
+          set -euo pipefail
+          curl --fail-with-body \
+               --silent \
+               --show-error \
+               --max-time 600 \
+               -X POST \
+               -H "Authorization: Bearer ${CRON_SHARED_SECRET}" \
+               -H "Content-Type: application/json" \
+               --data @/tmp/recap-body.json \
+               "${APP_URL}/api/cron/sunday-recap"

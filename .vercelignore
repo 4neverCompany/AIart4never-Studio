@@ -1,0 +1,35 @@
+# Vercel-specific upload exclusions. Vercel CLI defaults to .gitignore
+# but doesn't always catch nested build dirs (Tauri's `src-tauri/target`
+# can be 20+ GB). This file is the explicit "don't upload" list — kept
+# in sync with .gitignore for the build-output sections plus the Tauri
+# desktop bits that the Vercel build never needs.
+
+# Tauri desktop shell — not part of the web deploy
+src-tauri/
+
+# Local dev / Next.js build artefacts
+.next/
+node_modules/
+dist/
+.cache/
+
+# Local secrets and tooling state
+.env*
+!.env.example
+.vercel/
+.claude/
+.hermes/
+.nca/
+.agents/
+.gemini/
+hermes-agent/
+
+# Tests + dev tooling — not part of the production build
+tests/
+coverage/
+*.log
+
+# Backups + skill-eval cruft
+*.bak.*
+*.backup
+skills-lock.json

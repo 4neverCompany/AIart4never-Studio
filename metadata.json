@@ -1,0 +1,5 @@
+{
+  "name": "MashupForge",
+  "description": "Generate crossover images across multiple AI providers (Leonardo.ai, MiniMax, GPT Image, Nano Banana) and post to Instagram / Twitter via an autonomous pipeline.",
+  "requestFramePermissions": []
+}

@@ -1,0 +1,131 @@
+{
+  "modelId": "nano-banana-2",
+  "apiName": "nano-banana-2",
+  "type": "image",
+  "provider": "leonardo",
+  "endpoint": "POST /api/rest/v2/generations",
+
+  "parameters": {
+    "prompt": {
+      "type": "string",
+      "required": true,
+      "description": "Text prompt describing what image to generate."
+    },
+    "model": {
+      "type": "string",
+      "required": true,
+      "value": "nano-banana-2",
+      "description": "Model identifier, always nano-banana-2."
+    },
+    "width": {
+      "type": "integer",
+      "required": false,
+      "default": 1024,
+      "description": "Image width. Must pair with a height from the supported dimension list. Set to 0 for img2img reference matching."
+    },
+    "height": {
+      "type": "integer",
+      "required": false,
+      "default": 1024,
+      "description": "Image height. Must pair with a width from the supported dimension list. Set to 0 for img2img reference matching."
+    },
+    "style_ids": {
+      "type": "array",
+      "required": false,
+      "description": "Array of style UUIDs. Pick 1 style based on prompt mood/scene. Use None to disable styling."
+    },
+    "prompt_enhance": {
+      "type": "string",
+      "required": false,
+      "allowedValues": ["ON", "OFF"],
+      "default": "ON",
+      "description": "Auto-enhance the prompt before generation."
+    },
+    "quantity": {
+      "type": "integer",
+      "required": false,
+      "range": [1, 8],
+      "default": 1,
+      "description": "Number of images per request."
+    },
+    "seed": {
+      "type": "integer",
+      "required": false,
+      "description": "Fixed seed for reproducible generations."
+    },
+    "public": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Whether the generation is publicly visible."
+    },
+    "guidances.image_reference": {
+      "type": "array",
+      "required": false,
+      "maxItems": 6,
+      "description": "Reference images to guide generation.",
+      "itemSchema": {
+        "image.id": "string — Leonardo image ID",
+        "image.type": "GENERATED | UPLOADED",
+        "strength": "LOW | MID | HIGH"
+      }
+    }
+  },
+
+  "styles": {
+    "3D Render": "debdf72a-91a4-467b-bf61-cc02bdeb69c6",
+    "Acrylic": "3cbb655a-7ca4-463f-b697-8a03ad67327c",
+    "Creative": "6fedbf1f-4a17-45ec-84fb-92fe524a29ef",
+    "Dynamic": "111dc692-d470-4eec-b791-3475abac4c46",
+    "Fashion": "594c4a08-a522-4e0e-b7ff-e4dac4b6b622",
+    "Game Concept": "09d2b5b5-d7c5-4c02-905d-9f84051640f4",
+    "Graphic Design 2D": "703d6fe5-7f1c-4a9e-8da0-5331f214d5cf",
+    "Graphic Design 3D": "7d7c2bc5-4b12-4ac3-81a9-630057e9e89f",
+    "Illustration": "645e4195-f63d-4715-a3f2-3fb1e6eb8c70",
+    "None": "556c1ee5-ec38-42e8-955a-1e82dad0ffa1",
+    "Portrait": "8e2bc543-6ee2-45f9-bcd9-594b6ce84dcd",
+    "Portrait Cinematic": "4edb03c9-8a26-4041-9d01-f85b5d4abd71",
+    "Portrait Fashion": "0d34f8e1-46d4-428f-8ddd-4b11811fa7c9",
+    "Pro B&W Photography": "22a9a7d2-2166-4d86-80ff-22e2643adbcf",
+    "Pro Color Photography": "7c3f932b-a572-47cb-9b9b-f20211e63b5b",
+    "Pro Film Photography": "581ba6d6-5aac-4492-bebe-54c424a0d46e",
+    "Ray Traced": "b504f83c-3326-4947-82e1-7fe9e839ec0f",
+    "Stock Photo": "5bdc3f2a-1be6-4d1c-8e77-992a30824a2c",
+    "Watercolor": "1db308ce-c7ad-4d10-96fd-592fa6b75cc4"
+  },
+
+  "aspectRatios": {
+    "1:1":  { "1K": [1024,1024], "2K": [2048,2048], "4K": [4096,4096] },
+    "2:3":  { "1K": [848,1264],  "2K": [1696,2528], "4K": [3392,5056] },
+    "3:2":  { "1K": [1264,848],  "2K": [2528,1696], "4K": [5056,3392] },
+    "3:4":  { "1K": [896,1200],  "2K": [1792,2400], "4K": [3584,4800] },
+    "4:3":  { "1K": [1200,896],  "2K": [2400,1792], "4K": [4800,3584] },
+    "4:5":  { "1K": [928,1152],  "2K": [1856,2304], "4K": [3712,4608] },
+    "5:4":  { "1K": [1152,928],  "2K": [2304,1856], "4K": [4608,3712] },
+    "9:16": { "1K": [768,1376],  "2K": [1536,2752], "4K": [3072,5504] },
+    "16:9": { "1K": [1376,768],  "2K": [2752,1536], "4K": [5504,3072] },
+    "21:9": { "1K": [1584,672],  "2K": [3168,1344], "4K": [6336,2688] }
+  },
+
+  "capabilities": {
+    "styles": true,
+    "negativePrompt": false,
+    "imageSize": false,
+    "alchemy": false,
+    "presetStyles": true,
+    "tiling": false
+  },
+
+  "rules": [
+    "DO NOT set negativePrompt — not available for this model.",
+    "DO NOT set quality or mode — not available for this model.",
+    "CRITICAL: width and height are validated INDEPENDENTLY. If both are valid values but do not form a supported pair, the API silently defaults to 1:1. Always use exact width+height from the aspectRatios table.",
+    "10 aspect ratios × 3 sizes (1K, 2K, 4K) = 30 valid dimension combos.",
+    "Default width/height is 1024x1024 (1:1 1K).",
+    "Setting width=0 and height=0 = match input image reference (for img2img).",
+    "style_ids: pick 1 style UUID that matches the prompt's mood/scene. Use None if no style fits.",
+    "Must resolve style name to UUID — style_ids takes an array of UUIDs, not names.",
+    "prompt_enhance defaults ON. Only set OFF if prompt is already highly detailed.",
+    "quantity defaults 1. Use higher only if user explicitly requests multiple variants."
+  ]
+}

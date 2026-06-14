@@ -1,0 +1,55 @@
+# CODEOWNERS — auto-route PRs to the right reviewer(s).
+# GitHub's CODEOWNERS file — when a PR touches matching paths, the listed
+# owners are auto-requested as reviewers. Combined with branch-protection
+# rules requiring 1+ approval, this is the auto-merge path.
+#
+# V107-CI: this file is the routing layer for the agent team. Each
+# `mavis/*` owner is a Mavis global agent (see ~/.mavis/agents/<name>/agent.md).
+# The agents can also be invoked manually via `mavis team plan run`.
+#
+# Each path also lists the matching `@4neverCompany/<team>` handle as
+# a HUMAN fallback. GitHub's reviewer UI can use these when the
+# orchestrator is offline or when a human wants to step in for a
+# given PR. The team membership is currently Maurice as the sole
+# maintainer on every team; new agents/people get added by inviting
+# them to the appropriate team on github.com/orgs/4neverCompany/teams.
+#
+# Both layers run in parallel:
+#   - Agent handles → Mavis orchestrator routes the review
+#   - Team handles  → GitHub UI shows a human reviewer (Maurice today)
+#
+# ─── Default reviewer ───────────────────────────────────────────────
+# Every PR gets at least the verifier (adversarial) and code-reviewer
+# (line-by-line) look. The orchestrator auto-approves if both pass.
+*  @mavis/verifier @mavis/code-reviewer @4neverCompany/maintainers
+
+# ─── Domain routing ──────────────────────────────────────────────────
+# Tests + CI workflow changes → qa + devops-automator pair
+/.github/  @mavis/qa @mavis/devops-automator @4neverCompany/infra-reviewer
+/tests/  @mavis/qa @4neverCompany/infra-reviewer
+/vitest.config.ts  @mavis/qa @4neverCompany/infra-reviewer
+
+# Tauri shell, Cargo.toml, tauri.conf.json → tauri desktop specialist
+/src-tauri/  @mavis/tauri-desktop-expert @4neverCompany/desktop-reviewer
+/scripts/release.sh  @mavis/devops-automator @4neverCompany/infra-reviewer
+
+# Post-lifecycle state machine (the v0.9.41 fix lives here) → specialist
+/lib/post-lifecycle/  @mavis/post-lifecycle-expert @mavis/verifier @4neverCompany/backend-reviewer
+/lib/persistence/  @mavis/post-lifecycle-expert @4neverCompany/backend-reviewer
+/hooks/useReconciler.ts  @mavis/post-lifecycle-expert @4neverCompany/backend-reviewer
+
+# Higgsfield MCP + prompt engineering (SLCT / MCSLA / camera angles)
+/lib/higgsfield/  @mavis/ai-providers-expert @4neverCompany/backend-reviewer
+/lib/image-prompt-builder.ts  @mavis/ai-providers-expert @4neverCompany/backend-reviewer
+/lib/text-model-catalog.ts  @mavis/ai-providers-expert @4neverCompany/backend-reviewer
+/docs/research/higgsfield-skills/  @mavis/ai-providers-expert @4neverCompany/backend-reviewer
+
+# Security tooling
+/scripts/security/  @mavis/devops-automator @4neverCompany/infra-reviewer
+/.githooks/  @mavis/devops-automator @4neverCompany/infra-reviewer
+
+# Team definition
+/.harness/  @mavis/architect @mavis/code-reviewer @4neverCompany/maintainers
+
+# Brand/legal docs
+/LICENSE /SECURITY.md /NOTICE /BRAND.md /CONTRIBUTING.md  @4neverCompany/brand-reviewer

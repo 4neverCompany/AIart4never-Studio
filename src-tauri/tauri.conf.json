@@ -1,0 +1,85 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "MashupForge",
+  "version": "1.9.2",
+  "identifier": "com.4nevercompany.mashupforge",
+  "build": {
+    "frontendDist": "../src-tauri/frontend-stub",
+    "devUrl": "http://localhost:3000/studio",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "MashupForge",
+        "url": "index.html",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 800,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "center": true,
+        "visible": true,
+        "dragDropEnabled": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost https://asset.localhost https://cdn.leonardo.ai https://picsum.photos data:; media-src 'self' asset: http://asset.localhost https://asset.localhost data:; connect-src 'self' ipc: https://ipc.localhost http://asset.localhost https://asset.localhost https://cdn.leonardo.ai https://api.minimaxi.chat https://generativelanguage.googleapis.com http://127.0.0.1:9377 http://127.0.0.1:9378 http://127.0.0.1:9379 http://127.0.0.1:9380 http://127.0.0.1:9889; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self' 'unsafe-inline'",
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
+    "createUpdaterArtifacts": true,
+    "publisher": "4neverCompany",
+    "copyright": "Copyright \u00a9 2026 4neverCompany. Licensed under AGPL-3.0-or-later.",
+    "shortDescription": "AI-driven multiverse crossover content studio",
+    "longDescription": "MashupForge is 4neverCompany's content generation pipeline for AI-driven crossover art and social posts. Combines Leonardo.ai image generation, GLM-powered captioning, and a smart Instagram scheduler in a single desktop app.",
+    "homepage": "https://github.com/4neverCompany/MashupForge",
+    "category": "Productivity",
+    "license": "AGPL-3.0-or-later",
+    "resources": [
+      "resources/**/*"
+    ],
+    "windows": {
+      "allowDowngrades": false,
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false
+      }
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/4neverCompany/MashupForge/releases/latest/download/latest.json"
+      ],
+      "dialog": false,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENCRTFDMUNGRjA1NEJERUQKUldUdHZWVHd6OEhoeTJmVmtmem5tcFprNlpaMTdtMTkxZ0pZSU12bkFNUUR0bWs5ZkxyUVVvRkE="
+    },
+    "deep-link": {
+      "desktop": {
+        "schemes": ["mashupforge"]
+      }
+    }
+  }
+}
+
+

@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 600" role="img" aria-label="MashupForge — AI-Powered Creative Crossover Studio" font-family="'Space Grotesk','Inter',system-ui,sans-serif">
+  <defs>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#C5A062"/>
+      <stop offset="50%" stop-color="#E8D0A0"/>
+      <stop offset="100%" stop-color="#C5A062"/>
+    </linearGradient>
+    <radialGradient id="cyanGlow" cx="50%" cy="55%" r="50%">
+      <stop offset="0%" stop-color="#00E6FF" stop-opacity="0.22"/>
+      <stop offset="70%" stop-color="#00E6FF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="goldGlow" cx="85%" cy="20%" r="35%">
+      <stop offset="0%" stop-color="#C5A062" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#C5A062" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" x="0" y="0" width="64" height="64" patternUnits="userSpaceOnUse">
+      <path d="M 64 0 L 0 0 0 64" fill="none" stroke="#C5A062" stroke-opacity="0.08" stroke-width="1"/>
+    </pattern>
+    <mask id="gridFade">
+      <radialGradient id="fadeRadial" cx="50%" cy="50%" r="55%">
+        <stop offset="0%" stop-color="#fff"/>
+        <stop offset="100%" stop-color="#000"/>
+      </radialGradient>
+      <rect width="1600" height="600" fill="url(#fadeRadial)"/>
+    </mask>
+  </defs>
+
+  <rect width="1600" height="600" fill="#050505"/>
+  <rect width="1600" height="600" fill="url(#grid)" mask="url(#gridFade)"/>
+  <rect width="1600" height="600" fill="url(#cyanGlow)"/>
+  <rect width="1600" height="600" fill="url(#goldGlow)"/>
+
+  <g transform="translate(800 260)" text-anchor="middle">
+    <g font-family="'JetBrains Mono','Menlo',monospace" font-size="16" fill="#C5A062" letter-spacing="4">
+      <rect x="-170" y="-50" width="340" height="32" rx="16" fill="#C5A062" fill-opacity="0.06" stroke="#C5A062" stroke-opacity="0.35"/>
+      <text y="-28">4NEVERCOMPANY · MASHUPFORGE</text>
+    </g>
+    <text font-size="120" font-weight="700" fill="#FFFFFF" y="60">MashupForge</text>
+    <text font-size="56" font-weight="600" fill="url(#gold)" y="130">AI-Powered Creative Crossover Studio</text>
+    <text font-size="20" fill="#A1A1AA" y="180">Generate · Caption · Schedule — one pipeline, zero busywork</text>
+  </g>
+
+  <g transform="translate(800 470)" text-anchor="middle">
+    <g>
+      <rect x="-140" y="-28" width="170" height="56" rx="14" fill="#00E6FF"/>
+      <text x="-55" y="8" font-size="18" font-weight="700" fill="#050505" letter-spacing="1">LAUNCH STUDIO →</text>
+    </g>
+    <g transform="translate(60 0)">
+      <rect x="-10" y="-28" width="180" height="56" rx="14" fill="none" stroke="#C5A062" stroke-opacity="0.6"/>
+      <text x="80" y="8" font-size="16" font-weight="600" fill="#C5A062" letter-spacing="1">SEE WHAT IT DOES</text>
+    </g>
+  </g>
+
+  <text x="800" y="562" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="12" fill="#52525B" letter-spacing="4">LEONARDO.AI · PI.DEV (GLM) · NEXT.JS 16 · TAURI 2</text>
+</svg>

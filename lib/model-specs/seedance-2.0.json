@@ -1,0 +1,177 @@
+{
+  "modelId": "seedance-2.0",
+  "apiName": "seedance-2.0",
+  "type": "video",
+  "provider": "leonardo",
+  "endpoint": "POST /api/rest/v2/generations",
+
+  "parameters": {
+    "prompt": {
+      "type": "string",
+      "required": true,
+      "maxLength": 1500,
+      "description": "Text description of the video content to generate."
+    },
+    "model": {
+      "type": "string",
+      "required": true,
+      "value": "seedance-2.0",
+      "description": "Model identifier. Use seedance-2.0 for standard or seedance-2.0-fast for fast generation."
+    },
+    "duration": {
+      "type": "integer",
+      "required": false,
+      "allowedValues": [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "default": 8,
+      "description": "Video length in seconds. 4 to 15, any integer."
+    },
+    "mode": {
+      "type": "string",
+      "required": false,
+      "allowedValues": ["RESOLUTION_480", "RESOLUTION_720"],
+      "default": "RESOLUTION_720",
+      "description": "Resolution tier. RESOLUTION_480 for 480p, RESOLUTION_720 for 720p."
+    },
+    "width": {
+      "type": "integer",
+      "required": false,
+      "description": "Video width in pixels. Set to 0 for auto-match source image aspect ratio (image-to-video)."
+    },
+    "height": {
+      "type": "integer",
+      "required": false,
+      "description": "Video height in pixels. Set to 0 for auto-match source image aspect ratio (image-to-video)."
+    },
+    "prompt_enhance": {
+      "type": "string",
+      "required": false,
+      "allowedValues": ["ON", "OFF"],
+      "default": "ON",
+      "description": "Prompt enhancement. Automatically disabled when start_frame is set."
+    },
+    "motion_has_audio": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Generate native audio including dialogue, narration, sound effects, and ambient sounds."
+    },
+    "quantity": {
+      "type": "integer",
+      "required": false,
+      "range": [1, 1],
+      "default": 1,
+      "description": "Number of videos. Max 1 — always 1."
+    },
+    "seed": {
+      "type": "integer",
+      "required": false,
+      "range": [0, 4294967295],
+      "default": -1,
+      "description": "Random seed for reproducibility. -1 = random."
+    },
+    "public": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Whether the generated video is public."
+    },
+    "guidances.start_frame": {
+      "type": "array",
+      "required": false,
+      "maxItems": 1,
+      "description": "Start frame image. Cannot coexist with image_reference or video_reference_base.",
+      "itemSchema": {
+        "image.id": "string — Leonardo image ID",
+        "image.type": "GENERATED | UPLOADED"
+      }
+    },
+    "guidances.end_frame": {
+      "type": "array",
+      "required": false,
+      "maxItems": 1,
+      "description": "End frame image. REQUIRES start_frame. Cannot coexist with image_reference or video_reference_base.",
+      "itemSchema": {
+        "image.id": "string — Leonardo image ID",
+        "image.type": "GENERATED | UPLOADED"
+      }
+    },
+    "guidances.image_reference": {
+      "type": "array",
+      "required": false,
+      "maxItems": 4,
+      "description": "Reference images for style/composition. Cannot coexist with start_frame or end_frame.",
+      "itemSchema": {
+        "image.id": "string — Leonardo image ID",
+        "image.type": "GENERATED | UPLOADED"
+      }
+    },
+    "guidances.video_reference_base": {
+      "type": "array",
+      "required": false,
+      "maxItems": 3,
+      "description": "Reference videos for motion guidance. Cannot coexist with start_frame or end_frame.",
+      "itemSchema": {
+        "video.id": "string — Leonardo video ID",
+        "video.type": "GENERATED"
+      }
+    }
+  },
+
+  "aspectRatios": {
+    "480p": {
+      "21:9": { "width": 992,  "height": 432 },
+      "16:9": { "width": 864,  "height": 496 },
+      "4:3":  { "width": 752,  "height": 560 },
+      "1:1":  { "width": 640,  "height": 640 },
+      "3:4":  { "width": 560,  "height": 752 },
+      "9:16": { "width": 496,  "height": 864 },
+      "9:21": { "width": 432,  "height": 992 }
+    },
+    "720p": {
+      "21:9": { "width": 1470, "height": 630 },
+      "16:9": { "width": 1280, "height": 720 },
+      "4:3":  { "width": 1112, "height": 834 },
+      "1:1":  { "width": 960,  "height": 960 },
+      "3:4":  { "width": 834,  "height": 1112 },
+      "9:16": { "width": 720,  "height": 1280 },
+      "9:21": { "width": 630,  "height": 1470 }
+    }
+  },
+
+  "capabilities": {
+    "styles": false,
+    "negativePrompt": false,
+    "imageSize": false,
+    "alchemy": false,
+    "audio": true,
+    "promptEnhance": true,
+    "startFrame": true,
+    "endFrame": true,
+    "imageReference": true,
+    "videoReference": true,
+    "seed": true
+  },
+
+  "rules": [
+    "VIDEO model — duration 4-15 seconds (any integer). Default 8.",
+    "DO NOT set style — not available for video models.",
+    "DO NOT set negativePrompt — not available for this model.",
+    "Prompt max 1500 characters.",
+    "mode: only RESOLUTION_480 or RESOLUTION_720. NO 1080p option.",
+    "7 aspect ratios × 2 resolutions = 14 valid dimension combos (most of any model).",
+    "Also supports ultra-wide: 21:9 and 9:21.",
+    "prompt_enhance: available for video — ON by default, auto-OFF when start_frame is set.",
+    "motion_has_audio: generates dialogue, narration, sound effects, ambient sounds.",
+    "seed: range 0–4294967295. -1 = random. Use for reproducibility.",
+    "quantity: always 1 (hard max).",
+    "MUTUAL EXCLUSION — pick ONE guidance mode:",
+    "  Mode A: start_frame ± end_frame (image-to-video)",
+    "  Mode B: image_reference alone (style/composition guidance, max 4)",
+    "  Mode C: video_reference_base alone (motion guidance, max 3)",
+    "  Modes B and C can coexist (image + video references together).",
+    "  start_frame/end_frame CANNOT combine with image_reference or video_reference_base.",
+    "  end_frame REQUIRES start_frame.",
+    "Setting width=0, height=0 = auto-match source image aspect ratio (image-to-video only).",
+    "Fast variant: seedance-2.0-fast uses same params, same spec, faster generation."
+  ]
+}

@@ -1,0 +1,189 @@
+# MashupForge — Third-Party Attributions
+
+MashupForge is built on the shoulders of giants. This file lists the
+open-source components and third-party services that power the
+product, along with their licenses and copyright notices.
+
+The full text of the AGPL-3.0 license under which MashupForge is
+distributed can be found in the [`LICENSE`](./LICENSE) file at the
+root of this repository.
+
+---
+
+## 1. Application Stack (open-source runtime)
+
+### Next.js 16 — MIT
+Copyright (c) 2024 Vercel, Inc.
+https://github.com/vercel/next.js
+Used as the application framework for both the web deployment and the
+desktop shell. The MIT license is included in `node_modules/next/`.
+
+### React 19 — MIT
+Copyright (c) Meta Platforms, Inc. and affiliates.
+https://github.com/facebook/react
+Used as the UI library. The MIT license is included in
+`node_modules/react/`.
+
+### TypeScript 6 — Apache License 2.0
+Copyright (c) Microsoft Corporation.
+https://github.com/microsoft/TypeScript
+Used as the type system and compiler. The Apache 2.0 license is
+included in `node_modules/typescript/`.
+
+### Tailwind CSS 4.3 — MIT
+Copyright (c) Tailwind Labs, Inc.
+https://github.com/tailwindlabs/tailwindcss
+Used as the utility-first CSS framework.
+
+### Motion (formerly Framer Motion) — MIT
+Copyright (c) 2018 Matt Perry.
+https://github.com/motiondivision/motion
+Used for declarative animations and gestures across the studio UI.
+
+### Tauri 2 — MIT OR Apache-2.0 (dual)
+Copyright (c) 2019-2026 Tauri Programme within The Commons Conservancy.
+https://github.com/tauri-apps/tauri
+Used as the desktop runtime that wraps the Next.js studio into a
+native Windows / macOS / Linux application. Distributed under a
+dual MIT / Apache 2.0 license; see the upstream LICENSE file in
+`src-tauri/target/...` for the canonical copy.
+
+### Vercel AI SDK (`ai`, `@ai-sdk/anthropic`, `@ai-sdk/openai`) — Apache 2.0
+Copyright (c) Vercel, Inc.
+https://github.com/vercel/ai
+Used for the LLM provider abstraction (Anthropic, OpenAI) in the
+`/api/ai/prompt` route.
+
+### pi.dev (`@mariozechner/pi-ai`, `@mariozechner/pi-coding-agent`) — MIT
+Copyright (c) Mario Zechner.
+https://github.com/badlogic/pi-mono
+Used as the LLM subprocess that runs locally and orchestrates
+multi-provider agent flows. The `pi` binary is shipped as a
+sidecar to the Tauri desktop build.
+
+---
+
+## 2. Image Generation Providers (third-party SaaS)
+
+MashupForge does not host its own image models. Generated images
+are produced by calling the following third-party APIs, each under
+their own terms of service:
+
+- **Leonardo.ai** — https://leonardo.ai/terms
+- **MiniMax** — https://api.minimaxi.chat/
+- **OpenAI GPT Image** — https://openai.com/policies/row-terms-of-use/
+- **Google Gemini ("Nano Banana")** — https://ai.google.dev/terms
+
+Users of MashupForge must hold valid API keys (or, for the
+MiniMax provider, an appropriate MiniMax account) and are bound by
+those providers' respective terms. MashupForge passes user prompts
+to the chosen provider verbatim; the providers themselves are
+responsible for content moderation, billing, and IP policy.
+
+---
+
+## 3. Test Infrastructure
+
+### Vitest — MIT
+Copyright (c) 2021-Present Vitest Team.
+https://github.com/vitest-dev/vitest
+The test runner that drives the project's `npm test` script.
+
+### Testing Library (`@testing-library/react`, `@testing-library/dom`,
+`@testing-library/user-event`, `@testing-library/jest-dom`) — MIT
+Copyright (c) 2018-Present Testing Library collaborators.
+https://github.com/testing-library
+DOM-centric testing utilities for React components.
+
+### jsdom — MIT
+Copyright (c) 2010-present, Sebastian McKenzie and contributors.
+https://github.com/jsdom/jsdom
+A pure-JavaScript implementation of the DOM used as Vitest's
+default test environment.
+
+---
+
+## 4. Persistence
+
+### idb-keyval — Apache License 2.0
+Copyright (c) 2016, Jake Archibald.
+https://github.com/jakearchibald/idb-keyval
+A tiny promise-based key-value store backed by IndexedDB. Used as
+the browser-side persistence layer for the post lifecycle state
+machine, the user's niches/genres configuration, and the
+SettingsModal draft state.
+
+The Tauri desktop build additionally uses `tauri-plugin-store`
+(linked below) for OS-level persistence; the choice between
+backends is made at runtime by the post-lifecycle state machine.
+
+---
+
+## 5. Tauri Plugins (all MIT OR Apache-2.0 dual, © Tauri Programme)
+
+| Plugin | Source | Use in MashupForge |
+| --- | --- | --- |
+| `@tauri-apps/plugin-autostart` | https://github.com/tauri-apps/plugins-workspace | Launch the desktop app on Windows login |
+| `@tauri-apps/plugin-dialog` | https://github.com/tauri-apps/plugins-workspace | Native file / folder pickers |
+| `@tauri-apps/plugin-opener` | https://github.com/tauri-apps/plugins-workspace | Open external URLs in the system browser |
+| `@tauri-apps/plugin-process` | https://github.com/tauri-apps/plugins-workspace | Process-level utilities (exit, restart) |
+| `@tauri-apps/plugin-store` | https://github.com/tauri-apps/plugins-workspace | Desktop persistence (key-value, JSON-file backed) |
+| `@tauri-apps/plugin-updater` | https://github.com/tauri-apps/plugins-workspace | Auto-update channel for signed releases |
+| `tauri-plugin-log` (Rust) | https://github.com/tauri-apps/plugins-workspace | Structured logging from the Rust side |
+
+All seven plugins are dual-licensed MIT OR Apache-2.0 by the Tauri
+Programme. See the upstream LICENSE file in each plugin's
+`src-tauri/target/.../build/.../out/` directory for the canonical
+license text.
+
+---
+
+## 6. Fonts
+
+The MashupForge brand typography ("AETHER SANS" and "NEXUS MONO")
+is implemented in code via Google Fonts:
+
+- **Space Grotesk** (mapped to "AETHER SANS") — SIL Open Font License 1.1
+  https://fonts.google.com/specimen/Space+Grotesk
+- **JetBrains Mono** (mapped to "NEXUS MONO") — SIL Open Font License 1.1
+  https://fonts.google.com/specimen/JetBrains+Mono
+
+Both fonts are loaded via `next/font/google`, which downloads them
+at build time and self-hosts the WOFF2 files alongside the bundle.
+No runtime call to fonts.googleapis.com is made.
+
+---
+
+## 7. Other Notable Dependencies
+
+| Package | License | Notes |
+| --- | --- | --- |
+| `lucide-react` | ISC | Icon set used across the studio UI |
+| `react-markdown` | MIT | Renders the AI's markdown responses in chat panels |
+| `sharp` | Apache 2.0 | Image resizing / re-encoding in the post pipeline |
+| `twitter-api-v2` | MIT | Twitter / X posting from the social scheduler |
+| `@dnd-kit/core` / `sortable` / `utilities` | MIT | Drag-and-drop reordering in the schedule board |
+| `eslint` + `eslint-config-next` | MIT | Lint the TypeScript and JSX source |
+| `simple-git-hooks` | MIT | Local pre-commit / pre-push gates |
+
+Full license texts for each dependency are available in their
+respective `node_modules/<package>/LICENSE` files at install time.
+A `license-checker`-style report can be generated with
+`npx license-checker --production --json > licenses.json` if
+needed for a redistribution audit.
+
+---
+
+## 8. Trademarks
+
+"MashupForge" and the 4neverCompany wordmark are trademarks of
+4neverCompany. All other trademarks referenced in this NOTICE file
+(Leonardo.ai, MiniMax, OpenAI, GPT Image, Nano Banana / Google
+Gemini, Vercel, Next.js, React, Tauri, Tailwind, Motion, pi.dev,
+Vitest, Testing Library, jsdom, idb-keyval) are the property of
+their respective owners. Their inclusion in this file does not
+imply endorsement by or affiliation with 4neverCompany.
+
+---
+
+*Last updated: 2026-06-01, in preparation for the v1.0 public release.*

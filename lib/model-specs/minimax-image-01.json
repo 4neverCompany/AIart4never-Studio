@@ -1,0 +1,103 @@
+{
+  "modelId": "minimax-image-01",
+  "apiName": "image-01",
+  "type": "image",
+  "provider": "minimax",
+  "endpoint": "POST {MINIMAX_API_BASE_URL}/image_generation",
+
+  "parameters": {
+    "prompt": {
+      "type": "string",
+      "required": true,
+      "maxLength": 1500,
+      "description": "Text prompt. Capped at 1500 chars by the API; the /api/minimax-image route truncates anything longer."
+    },
+    "model": {
+      "type": "string",
+      "required": true,
+      "value": "image-01",
+      "description": "MiniMax model identifier, always image-01."
+    },
+    "aspect_ratio": {
+      "type": "string",
+      "required": false,
+      "allowedValues": ["1:1", "16:9", "4:3", "3:2", "2:3", "3:4", "9:16", "21:9"],
+      "default": "1:1",
+      "description": "Pre-set aspect ratio. Use this OR width+height, not both. The route picks one based on what arrived."
+    },
+    "width": {
+      "type": "integer",
+      "required": false,
+      "minimum": 512,
+      "maximum": 2048,
+      "multipleOf": 8,
+      "description": "Image width in pixels. 512-2048, must be a multiple of 8. Route rounds DOWN to the nearest 8 to stay within range."
+    },
+    "height": {
+      "type": "integer",
+      "required": false,
+      "minimum": 512,
+      "maximum": 2048,
+      "multipleOf": 8,
+      "description": "Image height in pixels. Same range as width."
+    },
+    "response_format": {
+      "type": "string",
+      "required": false,
+      "allowedValues": ["url", "base64"],
+      "default": "url",
+      "description": "url returns a signed Aliyun OSS URL valid for 24h; base64 returns the image bytes inline. The route always requests url and proxies through /api/proxy-image so the browser can load over https."
+    },
+    "n": {
+      "type": "integer",
+      "required": false,
+      "minimum": 1,
+      "maximum": 9,
+      "default": 1,
+      "description": "Number of images per request. Caps at 9 (more than every Leonardo model)."
+    },
+    "prompt_optimizer": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "When true, MiniMax rewrites the prompt server-side before generation. Best for short prompts (route enables it when prompt < 180 chars)."
+    },
+    "seed": {
+      "type": "integer",
+      "required": false,
+      "description": "Deterministic seed. Optional; route forwards when the caller supplies it."
+    }
+  },
+
+  "aspectRatios": {
+    "1:1":  { "width": 1024, "height": 1024 },
+    "16:9": { "width": 1280, "height": 720 },
+    "4:3":  { "width": 1152, "height": 864 },
+    "3:2":  { "width": 1248, "height": 832 },
+    "2:3":  { "width": 832,  "height": 1248 },
+    "3:4":  { "width": 864,  "height": 1152 },
+    "9:16": { "width": 720,  "height": 1280 },
+    "21:9": { "width": 1344, "height": 576 }
+  },
+
+  "capabilities": {
+    "styles": false,
+    "negativePrompt": false,
+    "imageSize": true,
+    "alchemy": false,
+    "presetStyles": false,
+    "tiling": false,
+    "promptEnhance": true,
+    "imageReference": false,
+    "seed": true
+  },
+
+  "rules": [
+    "Auth: same MINIMAX_API_KEY as the vercel-ai chat provider.",
+    "No style_ids, no quality enum, no guidance — image-01 is a single-config endpoint with prompt_optimizer as its only quality lever.",
+    "Returned URLs are plain http:// (Aliyun OSS signature is scheme-locked); /api/minimax-image must wrap them through /api/proxy-image so the browser can load them on the https origin (mixed-content otherwise blocks silently — see MXIMG-001).",
+    "Returned URLs expire 24h after generation. /api/proxy-image's 1h-fresh / 7d-stale cache extends effective lifetime past expiry.",
+    "base_resp.status_code != 0 means the API rejected the request even though HTTP returned 200; map 1026/1027 to content-filter / policy-violation user errors, all other non-zero codes to a generic upstream-failure 502.",
+    "No moderation-retry path on the route — MiniMax surfaces filter rejections via status_code 1026/1027 and the client just shows the error (vs Leonardo's content-filter path which retries once with a rewritten prompt)."
+  ]
+}

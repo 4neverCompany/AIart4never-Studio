@@ -1,0 +1,75 @@
+{
+  "modelId": "higgsfield-gpt-image-2",
+  "apiName": "gpt_image_2",
+  "type": "image",
+  "provider": "higgsfield",
+  "endpoint": "POST /api/higgsfield/image (MCP tool: higgsfield_generate)",
+
+  "parameters": {
+    "prompt": {
+      "type": "string",
+      "required": true,
+      "description": "Text prompt. GPT Image 2 has the strongest prompt adherence of the Higgsfield image models."
+    },
+    "model": {
+      "type": "string",
+      "required": true,
+      "value": "gpt_image_2",
+      "description": "Always gpt_image_2."
+    },
+    "aspect_ratio": {
+      "type": "string",
+      "required": false,
+      "default": "1:1",
+      "allowedValues": ["1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3"],
+      "description": "Aspect ratio."
+    },
+    "resolution": {
+      "type": "string",
+      "required": false,
+      "default": "2k",
+      "allowedValues": ["1k", "2k", "4k"],
+      "description": "Output resolution. 4k supported."
+    },
+    "quality": {
+      "type": "string",
+      "required": false,
+      "default": "low",
+      "allowedValues": ["low", "medium", "high"],
+      "description": "Render quality vs speed. 'low' is fast and cheap. 'high' is the recommended final-asset setting."
+    }
+  },
+
+  "aspectRatios": {
+    "1:1":  { "1K": [1024, 1024], "2K": [2048, 2048], "4K": [4096, 4096] },
+    "4:3":  { "1K": [1536, 1152], "2K": [3072, 2304], "4K": [6144, 4608] },
+    "3:4":  { "1K": [1152, 1536], "2K": [2304, 3072], "4K": [4608, 6144] },
+    "16:9": { "1K": [1376, 768],  "2K": [2752, 1536], "4K": [5504, 3072] },
+    "9:16": { "1K": [768, 1376],  "2K": [1536, 2752], "4K": [3072, 5504] },
+    "3:2":  { "1K": [1536, 1024], "2K": [3072, 2048], "4K": [6144, 4096] },
+    "2:3":  { "1K": [1024, 1536], "2K": [2048, 3072], "4K": [4096, 6144] }
+  },
+
+  "capabilities": {
+    "styles": false,
+    "negativePrompt": false,
+    "imageSize": false,
+    "alchemy": false,
+    "presetStyles": false,
+    "tiling": false,
+    "audio": false,
+    "promptEnhance": false,
+    "startFrame": true,
+    "endFrame": false,
+    "imageReference": true,
+    "videoReference": false,
+    "seed": false
+  },
+
+  "rules": [
+    "DO NOT pass negativePrompt — not in gpt_image_2 schema.",
+    "DO NOT pass styleIds.",
+    "quality='low' is the default and is fast + cheap. Use 'high' for hero shots.",
+    "Higgsfield credit cost: ~2 at 1k/low, ~4 at 2k/medium, ~6 at 2k/high, ~12 at 4k/high."
+  ]
+}

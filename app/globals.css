@@ -1,0 +1,453 @@
+@import "tailwindcss";
+
+/*
+ * Brand typefaces — self-hosted Google Fonts (woff2, latin subset)
+ *
+ * AETHER SANS  → Space Grotesk (300–700)
+ *   Geometric sans-serif with distinctive tech character. Futuristic
+ *   letterforms, excellent at display and UI label sizes.
+ *   Files: public/fonts/space-grotesk/
+ *
+ * NEXUS MONO   → JetBrains Mono (400–600)
+ *   Designed for developer interfaces. High readability at small sizes,
+ *   clean monospaced rhythm for stats, timestamps, and code.
+ *   Files: public/fonts/jetbrains-mono/
+ */
+
+/* ── AETHER SANS (Space Grotesk) ───────────────────────────────────── */
+@font-face {
+  font-family: 'AETHER SANS';
+  src: url('/fonts/space-grotesk/space-grotesk-300.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'AETHER SANS';
+  src: url('/fonts/space-grotesk/space-grotesk-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'AETHER SANS';
+  src: url('/fonts/space-grotesk/space-grotesk-500.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'AETHER SANS';
+  src: url('/fonts/space-grotesk/space-grotesk-600.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'AETHER SANS';
+  src: url('/fonts/space-grotesk/space-grotesk-700.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── NEXUS MONO (JetBrains Mono) ────────────────────────────────────── */
+@font-face {
+  font-family: 'NEXUS MONO';
+  src: url('/fonts/jetbrains-mono/jetbrains-mono-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'NEXUS MONO';
+  src: url('/fonts/jetbrains-mono/jetbrains-mono-500.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'NEXUS MONO';
+  src: url('/fonts/jetbrains-mono/jetbrains-mono-600.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+/*
+ * 4neverCompany brand palette — Tailwind v4 @theme overrides.
+ *
+ *   Agency Black    #050505  — page / deepest backgrounds
+ *   Metallic Gold   #C5A062  — borders, accents, card edges
+ *   Electric Blue   #00E6FF  — buttons, active states, links
+ *
+ * emerald + indigo → Electric Blue family
+ * amber            → Metallic Gold family
+ * zinc-950         → Agency Black
+ *
+ * Full 300–950 scale ensures no shade falls through to Tailwind defaults.
+ */
+@theme {
+  --color-brand-black:    #050505;
+  --color-brand-gold:     #c5a062;
+  --color-brand-gold-soft:#d4b478;
+  --color-brand-blue:     #00e6ff;
+  --color-brand-blue-deep:#00b8cc;
+
+  /* ── Agency Black ──────────────────────────────────────────────── */
+  --color-zinc-950: #050505;
+
+  /* ── Electric Blue family (emerald) — full 300-950 ─────────────── */
+  --color-emerald-300: #99f3ff;
+  --color-emerald-400: #55ecff;
+  --color-emerald-500: #00e6ff;
+  --color-emerald-600: #00b8cc;
+  --color-emerald-700: #008a99;
+  --color-emerald-800: #005f6b;
+  --color-emerald-900: #003840;
+  --color-emerald-950: #001e22;
+
+  /* ── Electric Blue family (indigo) — full 300-950 ──────────────── */
+  --color-indigo-300: #99f3ff;
+  --color-indigo-400: #55ecff;
+  --color-indigo-500: #00e6ff;
+  --color-indigo-600: #00b8cc;
+  --color-indigo-700: #008a99;
+  --color-indigo-800: #005f6b;
+  --color-indigo-900: #003840;
+  --color-indigo-950: #001e22;
+
+  /* ── Metallic Gold family (amber) — full 300-950 ────────────────── */
+  --color-amber-300: #e8d0a0;
+  --color-amber-400: #d4b478;
+  --color-amber-500: #c5a062;
+  --color-amber-600: #a68748;
+  --color-amber-700: #7a6434;
+  --color-amber-800: #524227;
+  --color-amber-900: #30271a;
+  --color-amber-950: #18130d;
+
+  /* ── Typeface stack ─────────────────────────────────────────────── */
+  /* next/font (layout.tsx) overrides --font-sans and --font-mono at    */
+  /* runtime with Space Grotesk and JetBrains Mono. These are fallback  */
+  /* values used during SSR / when next/font hasn't loaded yet.         */
+  --font-sans: "AETHER SANS", "Space Grotesk", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "NEXUS MONO", "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+
+/* ── Dark-mode native form controls (V1.6 — M1.3) ───────────────────
+ * The app is dark-only. Without `color-scheme: dark`, Windows/WebView2
+ * (and Chromium) render native <select> dropdown popups with a
+ * light-theme option list — white-ish text on a white background, so
+ * the options are unreadable. That's the "Generate dropdown is
+ * visually buggy" Studio bug: the closed control is styled by Tailwind
+ * classes, but the OPEN popup list is drawn by the OS and ignores
+ * them. `color-scheme: dark` opts every native control (selects,
+ * scrollbars, date/number pickers) into the dark rendering path. We
+ * also pin <option> colors so the popup list stays legible on engines
+ * that under-honour color-scheme. */
+:root {
+  color-scheme: dark;
+}
+select option,
+select optgroup {
+  background-color: #0a0a0a;
+  color: #ffffff;
+}
+
+@layer utilities {
+  @reference "tailwindcss";
+
+  /* ── Scrollbar ──────────────────────────────────────────────────── */
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* ── Depth layers (Agency Black → slightly lighter surfaces) ────── */
+  .bg-layer-0  { background-color: #050505; }   /* body */
+  .bg-layer-1  { background-color: #0a0a0a; }   /* card base */
+  .bg-layer-2  { background-color: #111111; }   /* elevated panel */
+  .bg-layer-3  { background-color: #1a1a1a; }   /* hover/active */
+
+  /* Surface depth — card vs. elevated vs. overlay */
+  .surface-base {
+    @apply bg-[#080808] border border-[#c5a062]/18 rounded-2xl;
+  }
+
+  .surface-elevated {
+    @apply bg-[#0f0f0f] border border-[#c5a062]/22 rounded-2xl
+           shadow-[0_4px_24px_rgba(0,0,0,0.6),0_1px_0_rgba(255,255,255,0.04)];
+  }
+
+  .surface-overlay {
+    @apply bg-[#0d0d0d]/98 border border-[#c5a062]/28 rounded-2xl
+           shadow-[0_8px_48px_rgba(0,0,0,0.8),0_0_0_1px_rgba(197,160,98,0.08)];
+  }
+
+  /* ── Glass surfaces ─────────────────────────────────────────────── */
+  .glass {
+    @apply backdrop-blur-xl bg-white/[0.03] border border-[#c5a062]/20;
+  }
+
+  .glass-card {
+    @apply backdrop-blur-sm bg-zinc-900/80 border border-[#c5a062]/25 rounded-2xl shadow-xl;
+  }
+
+  /* Sidebar / fixed panels — deep Agency Black with gold right border */
+  .glass-panel {
+    @apply backdrop-blur-xl bg-[#050505]/95 border-r border-[#c5a062]/25 shadow-xl;
+  }
+
+  /* Standard content card — gold edge, frosted background, ambient depth */
+  .card {
+    @apply bg-zinc-900/80 backdrop-blur-sm border border-[#c5a062]/20 rounded-2xl
+           shadow-[0_2px_16px_rgba(0,0,0,0.4),0_1px_0_rgba(255,255,255,0.03)];
+  }
+
+  /* ── Brand-selected state (comparison / gallery active) ─────────── */
+  .brand-selected {
+    @apply border-[#c5a062] ring-1 ring-[#c5a062]/40;
+  }
+
+  /* ── Button hierarchy ───────────────────────────────────────────── */
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-4 py-2
+           bg-[#00e6ff] hover:bg-[#33eaff] active:bg-[#00b8cc]
+           text-[#050505] font-semibold text-sm rounded-xl
+           transition-all duration-200
+           shadow-[0_0_20px_rgba(0,230,255,0.20)]
+           hover:shadow-[0_0_28px_rgba(0,230,255,0.35)]
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 px-4 py-2
+           bg-transparent border border-[#c5a062]/50
+           hover:border-[#c5a062] hover:bg-[#c5a062]/10
+           text-[#c5a062] font-semibold text-sm rounded-xl
+           transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 px-4 py-2
+           bg-transparent hover:bg-white/5
+           text-zinc-400 hover:text-white font-medium text-sm rounded-xl
+           transition-all duration-200;
+  }
+
+  /* Full-width primary CTA (generate, compare, etc.) */
+  .btn-cta {
+    @apply w-full py-3.5 flex items-center justify-center gap-2
+           bg-[#00e6ff] hover:bg-[#33eaff] active:bg-[#00b8cc]
+           text-[#050505] font-bold text-sm rounded-xl
+           transition-all duration-200
+           shadow-[0_0_24px_rgba(0,230,255,0.25)]
+           hover:shadow-[0_0_36px_rgba(0,230,255,0.40)]
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none;
+  }
+
+  /* Compact Electric Blue — inline action buttons (xs/[11px]/[10px] size) */
+  .btn-blue-sm {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl
+           bg-[#00e6ff] hover:bg-[#33eaff] active:bg-[#00b8cc]
+           text-[#050505] transition-all duration-200
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  /* Compact Gold — secondary action buttons (schedule, archive, etc.) */
+  .btn-gold-sm {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl
+           bg-[#c5a062] hover:bg-[#d4b478] active:bg-[#a68748]
+           text-[#050505] transition-all duration-200
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  /* ── A11y: shared keyboard-focus ring for all .btn-* utilities ──── */
+  .btn-primary:focus-visible,
+  .btn-secondary:focus-visible,
+  .btn-ghost:focus-visible,
+  .btn-cta:focus-visible,
+  .btn-blue-sm:focus-visible,
+  .btn-gold-sm:focus-visible {
+    outline: 2px solid #00e6ff;
+    outline-offset: 2px;
+  }
+
+  /* ── Input fields ───────────────────────────────────────────────── */
+  .input-brand {
+    @apply bg-zinc-950 border border-zinc-700/60 rounded-xl
+           px-4 py-2.5 text-sm text-white placeholder:text-zinc-500
+           focus:outline-none focus:ring-2 focus:ring-[#00e6ff]/25
+           focus:border-[#00e6ff]/40 transition-all duration-200;
+  }
+
+  /* ── Text gradients ─────────────────────────────────────────────── */
+  .text-gradient-gold {
+    background: linear-gradient(135deg, #c5a062 0%, #e8d0a0 50%, #c5a062 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-blue {
+    background: linear-gradient(135deg, #00b8cc 0%, #00e6ff 50%, #55ecff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── Glow effects ───────────────────────────────────────────────── */
+  .glow-blue {
+    box-shadow: 0 0 24px rgba(0, 230, 255, 0.18), 0 0 48px rgba(0, 230, 255, 0.06);
+  }
+
+  .glow-gold {
+    box-shadow: 0 0 24px rgba(197, 160, 98, 0.18), 0 0 48px rgba(197, 160, 98, 0.06);
+  }
+
+  /* ── Typography helpers ─────────────────────────────────────────── */
+  /* Section overline label */
+  .label-overline {
+    @apply text-[10px] font-bold text-zinc-500 uppercase tracking-[0.15em];
+  }
+
+  /* Section heading with gold underline accent */
+  .section-heading {
+    @apply text-lg font-semibold text-white relative pb-2
+           after:content-[''] after:absolute after:bottom-0 after:left-0
+           after:w-8 after:h-px after:bg-[#c5a062]/60;
+  }
+
+  /* ── Dividers ───────────────────────────────────────────────────── */
+  .divider-gold {
+    @apply border-[#c5a062]/15;
+  }
+
+  /* ── Toggle switch (Electric Blue when on) ──────────────────────── */
+  .toggle-track {
+    @apply relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200;
+  }
+
+  .toggle-thumb {
+    @apply inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200;
+  }
+
+  /* ── Icon container helpers ─────────────────────────────────────── */
+  .icon-box-blue {
+    @apply w-10 h-10 rounded-xl bg-[#00e6ff]/10 border border-[#00e6ff]/20
+           flex items-center justify-center;
+  }
+
+  .icon-box-gold {
+    @apply w-10 h-10 rounded-xl bg-[#c5a062]/10 border border-[#c5a062]/25
+           flex items-center justify-center;
+  }
+
+  /* ── Progress bar ───────────────────────────────────────────────── */
+  .progress-track {
+    @apply w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden;
+  }
+
+  .progress-fill {
+    @apply h-full rounded-full shadow-[0_0_10px_rgba(0,230,255,0.45)];
+    background: linear-gradient(90deg, #009bb0 0%, #00e6ff 40%, #7ffeff 55%, #00e6ff 70%, #009bb0 100%);
+    background-size: 200% 100%;
+    transition: width 700ms ease-out;
+    animation: progress-shimmer 2s linear infinite;
+  }
+
+  /* ── Semantic type scale ───────────────────────────────────────── */
+  /* Display — hero/page titles */
+  .type-display {
+    @apply text-2xl font-bold text-white tracking-tight leading-tight;
+  }
+  /* Title — section headings, panel titles */
+  .type-title {
+    @apply text-lg font-semibold text-white tracking-tight;
+  }
+  /* Subtitle — tab headings, card titles */
+  .type-subtitle {
+    @apply text-base font-semibold text-white;
+  }
+  /* Body — primary readable content */
+  .type-body {
+    @apply text-sm text-zinc-300 leading-relaxed;
+  }
+  /* Body muted — secondary/supporting content */
+  .type-muted {
+    @apply text-sm text-zinc-500;
+  }
+  /* Caption — timestamps, metadata */
+  .type-caption {
+    @apply text-xs text-zinc-500 leading-snug;
+  }
+  /* Micro — stat labels, badge counts */
+  .type-micro {
+    @apply text-[10px] font-medium text-zinc-500 leading-none;
+  }
+  /* Mono — code, IDs, timestamps, stats */
+  .type-mono {
+    @apply font-mono text-sm text-zinc-300 tabular-nums;
+  }
+  /* Stat value — large numeric displays */
+  .type-stat {
+    @apply text-2xl font-bold text-white tabular-nums tracking-tight;
+  }
+
+  /* ── Progress bar keyframe (defined outside layer to be global) ─── */
+  /* see @keyframes progress-shimmer below the layer block             */
+
+  /* ── Gold header gradient line ──────────────────────────────────── */
+  .header-line {
+    @apply after:content-[''] after:absolute after:bottom-0
+           after:left-0 after:right-0 after:h-px
+           after:bg-gradient-to-r after:from-transparent
+           after:via-[#c5a062]/30 after:to-transparent;
+  }
+}
+
+@keyframes progress-shimmer {
+  0%   { background-position: 100% center; }
+  100% { background-position: -100% center; }
+}
+
+/* STORY-011 — honour reduced-motion: kill the shimmer + width tween. */
+@media (prefers-reduced-motion: reduce) {
+  .progress-fill {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ── Toast animations ──────────────────────────────────────────────── */
+@keyframes toast-enter {
+  from { opacity: 0; transform: translateX(110%) scale(0.96); }
+  to   { opacity: 1; transform: translateX(0)   scale(1); }
+}
+@keyframes toast-exit {
+  from { opacity: 1; transform: translateX(0)    scale(1); }
+  to   { opacity: 0; transform: translateX(110%) scale(0.96); }
+}
+@keyframes toast-bar {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
+
+/* ── V040-001: Engagement heatmap animations ───────────────────────── */
+@keyframes heatmap-tooltip-in {
+  from { opacity: 0; transform: translateY(2px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+@keyframes heatmap-star-pulse {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .heatmap-tooltip-anim { animation: none !important; }
+  .heatmap-star-pulse   { animation: none !important; opacity: 1 !important; }
+}

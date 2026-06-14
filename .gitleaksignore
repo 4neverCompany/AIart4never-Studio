@@ -1,0 +1,16 @@
+# V107-CI: gitleaks false-positive allowlist.
+# Format: `<fingerprint>:<file>:<line>` OR just `<file>:<line>`.
+# Comments start with `#`.
+#
+# gitleaks-action reads this file automatically (no extra config
+# needed). The pre-commit hook (.githooks/pre-commit) also respects
+# `.gitleaksignore` if the gitleaks binary is installed; the
+# prefix-grep fallback does not.
+#
+# Keep this file short — every entry is a known noise source. New
+# entries require a justification comment.
+
+# Storage key string in lib/trademark-outcomes.ts:44. gitleaks' generic-api-key
+# rule's high-entropy heuristic flags the `mashup_trademark_outcomes_v2`
+# literal as a possible key. The string is an IDB store name, not a secret.
+lib/trademark-outcomes.ts:44:generic-api-key
