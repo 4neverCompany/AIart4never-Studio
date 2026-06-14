@@ -11,6 +11,8 @@ import { SetupUnfinishedPill } from './onboarding/SetupUnfinishedPill';
 import { ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { CreditBudgetBanner } from './CreditBudgetBanner';
+import { MinimaxQuotaBanner } from './MinimaxQuotaBanner';
+import { resolveAllowance } from '@/lib/minimax-quota';
 import { useSettings } from '@/hooks/useSettings';
 
 const Sidebar = dynamic(
@@ -219,10 +221,15 @@ function StudioCreditStrip() {
   // Bumping the tick after every successful generation is the
   // hook's responsibility (out of scope here). The banner re-reads
   // the persistence on mount + when refreshTick changes.
+  // 4NE-21 / Story 1.5: resolve the monthly MiniMax token allowance from
+  // the tier (+ optional custom cap). The banner self-gates below the warn
+  // threshold, so an unconditional mount is safe.
+  const minimaxAllowance = resolveAllowance(settings.minimaxTier, settings.minimaxCustomTokenCap);
   return (
     <div className="absolute top-0 left-0 right-0 z-30 p-3 pointer-events-none">
-      <div className="pointer-events-auto max-w-3xl mx-auto">
+      <div className="pointer-events-auto max-w-3xl mx-auto space-y-2">
         <CreditBudgetBanner cap={settings.higgsfieldMonthlyCreditCap} />
+        <MinimaxQuotaBanner allowance={minimaxAllowance} />
       </div>
     </div>
   );

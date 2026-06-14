@@ -39,6 +39,13 @@
  *             recommended for new code.
  */
 
+// 4NE-21 / Story 1.5: every streaming caller funnels through `streamAI`,
+// so recording the MiniMax `usage` SSE event here centralises quota
+// tracking for the stream path (tag/caption/enhance/negative-prompt/idea
+// calls). Fire-and-forget — a persistence failure must never break the
+// stream (see the try/catch around the call below).
+import { recordTokens } from '@/lib/minimax-quota';
+
 export type PiMode =
   | 'chat'
   | 'generate'
@@ -206,6 +213,21 @@ export async function* streamAI(
         try {
           const parsed = JSON.parse(data) as Record<string, unknown>;
           if (parsed.error) throw new Error(String(parsed.error));
+          // 4NE-21 / Story 1.5: the route emits one terminal `usage` event
+          // (from MiniMax's include_usage chunk) just before [DONE]. Record
+          // those tokens against the monthly quota. Fire-and-forget and
+          // fully isolated — we never yield it as text and a record failure
+          // must not break the stream for the caller.
+          if (parsed.usage && typeof parsed.usage === 'object') {
+            try {
+              const u = parsed.usage as { input?: unknown; output?: unknown };
+              const inTok = typeof u.input === 'number' ? u.input : 0;
+              const outTok = typeof u.output === 'number' ? u.output : 0;
+              void recordTokens(inTok, outTok).catch(() => {});
+            } catch {
+              // recording is best-effort; swallow everything
+            }
+          }
           if (Array.isArray(parsed.sources) && options?.onSources) {
             // Best-effort cast: server-side shape matches AiSource by
             // construction (see /api/ai/prompt's sources emission).

@@ -149,6 +149,14 @@ export interface RunDirectorLoopResult {
   modelId: string;
   /** The model provider that was used. */
   provider: 'minimax' | 'mock' | 'unknown';
+  /**
+   * 4NE-21 / Story 1.5: total MiniMax tokens consumed by this run, summed
+   * from every step's `LanguageModelUsage`. The route forwards this into
+   * the 200 envelope as `tokensUsed` so the client can record it against
+   * the monthly quota (`lib/minimax-quota.ts`). Zero when the provider
+   * never reported usage (mock runs, errored-before-first-step runs).
+   */
+  tokensUsed: { input: number; output: number };
 }
 
 // ---------------------------------------------------------------------------
@@ -454,6 +462,7 @@ export async function runDirectorLoop(
       truncatedBy: 'error',
       modelId: '',
       provider: 'unknown',
+      tokensUsed: { input: 0, output: 0 },
     };
   }
 
@@ -624,6 +633,7 @@ export async function runDirectorLoop(
       logger,
       budget,
       finalPrompt,
+      tokensUsed: sumTokens(stepResults),
       truncatedBy: detectTruncation(result.finishReason, maxSteps, budget),
       modelId: resolved.modelId,
       provider: resolved.provider,
@@ -668,6 +678,7 @@ export async function runDirectorLoop(
       logger,
       budget,
       finalPrompt,
+      tokensUsed: sumTokens(stepResults),
       truncatedBy,
       modelId: resolved.modelId,
       provider: resolved.provider,
@@ -735,11 +746,33 @@ function makeRunId(clock: () => number): string {
  * Centralises the persistence side-effect so the happy
  * path and the catch block produce the same shape.
  */
+/**
+ * 4NE-21 / Story 1.5: sum the per-step `LanguageModelUsage` into a single
+ * `{ input, output }` token total. Reads the same `onStepFinish` snapshots
+ * the budget tracker uses, so the total covers every model call the loop
+ * actually made (including on the error path, where steps recorded before
+ * the throw still count). Missing / non-finite values are treated as 0.
+ */
+function sumTokens(
+  steps: ReadonlyArray<{ usage: { inputTokens?: number; outputTokens?: number } | undefined }>,
+): { input: number; output: number } {
+  let input = 0;
+  let output = 0;
+  for (const s of steps) {
+    const i = s.usage?.inputTokens;
+    const o = s.usage?.outputTokens;
+    if (typeof i === 'number' && Number.isFinite(i) && i > 0) input += i;
+    if (typeof o === 'number' && Number.isFinite(o) && o > 0) output += o;
+  }
+  return { input, output };
+}
+
 async function finalizeResult(args: {
   runId: string;
   logger: StepLogger;
   budget: BudgetTracker;
   finalPrompt: string;
+  tokensUsed: { input: number; output: number };
   truncatedBy: TruncatedBy;
   modelId: string;
   provider: RunDirectorLoopResult['provider'];
@@ -759,6 +792,7 @@ async function finalizeResult(args: {
     truncatedBy: args.truncatedBy,
     modelId: args.modelId,
     provider: args.provider,
+    tokensUsed: args.tokensUsed,
   };
   // Best-effort persistence. On the server, `saveRun`
   // no-ops, so this is a fast no-op. On the client, the

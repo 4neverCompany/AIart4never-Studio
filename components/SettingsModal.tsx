@@ -23,6 +23,7 @@ import {
   Bot,
   Sparkles,
   Coins,
+  Gauge,
   Image as ImageIcon,
 } from 'lucide-react';
 import { showToast } from '@/components/Toast';
@@ -40,6 +41,7 @@ import { DesktopSettingsPanel } from './DesktopSettingsPanel';
 import { VercelAiModelPicker, defaultVercelAiModel } from './Settings/VercelAiModelPicker';
 import { CameraAnglePicker } from './Settings/CameraAnglePicker';
 import { CreditBudgetSettings } from './Settings/CreditBudgetSettings';
+import { MinimaxQuotaSettings } from './Settings/MinimaxQuotaSettings';
 import { SettingsSection } from './Settings/SettingsSection';
 import { Switch } from './Settings/Switch';
 // M3.4-P4-B2: Watermark JSX moved into the WatermarkSettings
@@ -954,6 +956,23 @@ export function SettingsModal({
             <CreditBudgetSettings
               cap={settings.higgsfieldMonthlyCreditCap}
               onChange={(next) => updateSettings({ higgsfieldMonthlyCreditCap: next })}
+            />
+          </SettingsSection>
+
+          {/* 4NE-21 / Story 1.5: monthly MiniMax token-plan quota. The
+              autonomy loop checks the tier's allowance before each cycle
+              and pauses when the month's tokens are exhausted. */}
+          <SettingsSection
+            icon={Gauge}
+            title="Token Quota"
+            subtitle="Monthly MiniMax token-plan tier. The autonomy loop pauses generation when the month's allowance is used up."
+            tone="cyan"
+          >
+            <MinimaxQuotaSettings
+              tier={settings.minimaxTier}
+              customCap={settings.minimaxCustomTokenCap}
+              onTierChange={(next) => updateSettings({ minimaxTier: next })}
+              onCustomCapChange={(next) => updateSettings({ minimaxCustomTokenCap: next })}
             />
           </SettingsSection>
           </>

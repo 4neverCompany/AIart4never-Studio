@@ -207,6 +207,15 @@ async function streamMinimaxChat(
     model: modelId,
     messages,
     stream: true,
+    // 4NE-21 / Story 1.5: opt into a terminal usage chunk. MiniMax is
+    // OpenAI-compatible: with this flag the stream ends with one extra
+    // chunk carrying `usage: { prompt_tokens, completion_tokens, ... }`
+    // and an empty `choices` array, right before `[DONE]`. We capture it
+    // and re-emit a single `usage` SSE event so the client can record the
+    // tokens against the monthly quota. Best-effort: if MiniMax ignores
+    // the flag (no usage chunk), we emit nothing and recording is skipped
+    // for the stream path (the director path is the primary consumer).
+    stream_options: { include_usage: true },
   };
   if (params?.temperature !== undefined) requestBody.temperature = params.temperature;
   if (params?.maxTokens !== undefined) requestBody.max_tokens = params.maxTokens;
@@ -233,6 +242,22 @@ async function streamMinimaxChat(
   const decoder = new TextDecoder();
   let buf = '';
 
+  // 4NE-21 / Story 1.5: token usage from MiniMax's terminal usage chunk.
+  // Captured during parsing, emitted once when the stream ends. The flag
+  // makes emission idempotent — the [DONE] path and the natural-end path
+  // both call emitUsage, but only the first does anything.
+  let pendingUsage: { input: number; output: number } | null = null;
+  let usageEmitted = false;
+  const emitUsage = (): void => {
+    if (usageEmitted || !pendingUsage) return;
+    usageEmitted = true;
+    controller.enqueue(
+      encoder.encode(
+        `data: ${JSON.stringify({ usage: { input: pendingUsage.input, output: pendingUsage.output } })}\n\n`,
+      ),
+    );
+  };
+
   while (true) {
     const { value, done } = await reader.read();
     if (done) break;
@@ -248,10 +273,22 @@ async function streamMinimaxChat(
       const line = rawLine.trim();
       if (!line || !line.startsWith('data:')) continue;
       const payload = line.slice(5).trim();
-      if (payload === '[DONE]') return;
+      if (payload === '[DONE]') {
+        // 4NE-21: belt-and-braces — if a usage chunk arrived in the same
+        // buffer as [DONE] but we haven't emitted yet, do it now before
+        // returning. (MiniMax normally sends usage in its own chunk before
+        // [DONE], handled below; this covers a buffer-boundary coalesce.)
+        emitUsage();
+        return;
+      }
       try {
         const chunk = JSON.parse(payload) as {
           choices?: Array<{ delta?: { content?: string } }>;
+          usage?: {
+            prompt_tokens?: number;
+            completion_tokens?: number;
+            total_tokens?: number;
+          };
         };
         const delta = chunk.choices?.[0]?.delta?.content;
         if (typeof delta === 'string' && delta.length > 0) {
@@ -259,12 +296,38 @@ async function streamMinimaxChat(
             encoder.encode(`data: ${JSON.stringify({ text: delta })}\n\n`),
           );
         }
+        // 4NE-21 / Story 1.5: the terminal usage chunk carries token
+        // counts and an empty `choices`. Capture it; emit the `usage` SSE
+        // event when the stream finishes (on [DONE] or natural end). We
+        // stash rather than emit inline because some providers send the
+        // usage chunk a beat before the very last empty delta.
+        if (
+          chunk.usage &&
+          (typeof chunk.usage.prompt_tokens === 'number' ||
+            typeof chunk.usage.completion_tokens === 'number')
+        ) {
+          pendingUsage = {
+            input:
+              typeof chunk.usage.prompt_tokens === 'number'
+                ? chunk.usage.prompt_tokens
+                : 0,
+            output:
+              typeof chunk.usage.completion_tokens === 'number'
+                ? chunk.usage.completion_tokens
+                : 0,
+          };
+        }
       } catch {
         // Malformed chunk — skip. SSE keepalive comments and partial
         // chunks at buffer boundaries can land here.
       }
     }
   }
+
+  // 4NE-21 / Story 1.5: stream ended without an explicit [DONE] (the
+  // provider closed the connection). Flush any captured usage now, before
+  // the outer ReadableStream writes its own terminal [DONE].
+  emitUsage();
 }
 
 function resolveProvider(modelOverride?: string): ResolvedProvider | null {
@@ -685,6 +748,11 @@ async function handleDirectorMode(
         prompt: result.finalPrompt,
         steps: result.steps,
         cost: result.totalCost,
+        // 4NE-21 / Story 1.5: total MiniMax tokens this run consumed,
+        // summed server-side from every step's usage. The client records
+        // this against the monthly quota (lib/minimax-quota.ts). Older
+        // clients that don't read it simply ignore the extra field.
+        tokensUsed: { input: result.tokensUsed.input, output: result.tokensUsed.output },
         runId: result.runId,
         modelId: result.modelId,
         provider: result.provider,

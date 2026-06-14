@@ -1,4 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// 4NE-21 / Story 1.5: mock the token-quota engine so the autonomy-gate
+// tests are deterministic and don't touch persistence. `checkQuota`,
+// `resolveAllowance`, `formatQuota` keep their real (pure) behaviour;
+// only `loadQuotaUsage` is stubbed to return a controllable usage record.
+const { quotaState } = vi.hoisted(() => ({
+  quotaState: { tokensUsed: 0, period: '2026-06', cycleStartMs: 0, override: false },
+}));
+vi.mock('@/lib/minimax-quota', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/minimax-quota')>();
+  return {
+    ...actual,
+    loadQuotaUsage: vi.fn(async () => ({ ...quotaState })),
+  };
+});
+
 import { processIdea, SkipIdeaSignal, type ProcessIdeaDeps } from '@/lib/pipeline-processor';
 import { withPipelineRunning } from '@/lib/pipeline-runner';
 import type { Idea, GeneratedImage, UserSettings, ScheduledPost, PipelineProgress } from '@/types/mashup';
@@ -80,6 +96,82 @@ function makeDeps(overrides?: Partial<ProcessIdeaDeps>): ProcessIdeaDeps {
     ...overrides,
   };
 }
+
+// ─── 4NE-21 / Story 1.5: monthly MiniMax token-quota gate ────────────────────
+
+describe('4NE-21: autonomy-loop token-quota gate', () => {
+  beforeEach(() => {
+    // Default: well under any cap so the other suites are unaffected.
+    quotaState.tokensUsed = 0;
+    quotaState.override = false;
+    quotaState.period = '2026-06';
+    quotaState.cycleStartMs = 0;
+  });
+
+  it('SKIPS the cycle (throws, no spend) when the month is over the cap', async () => {
+    // ultra tier allowance is 12.5B; record 13B so we're exceeded.
+    quotaState.tokensUsed = 13_000_000_000;
+    const expand = vi.fn().mockResolvedValue('prompt');
+    const trigger = vi.fn().mockResolvedValue(undefined);
+    const addLog = vi.fn();
+    const deps = makeDeps({ expandIdeaToPrompt: expand, triggerImageGeneration: trigger, addLog });
+
+    await expect(
+      processIdea(makeIdea(), 0, 1, makeEngagement(), [], makeSettings({ minimaxTier: 'ultra' }), deps),
+    ).rejects.toThrow(/monthly minimax quota reached/i);
+
+    // No tokens or image credits spent: the expensive steps never ran.
+    expect(expand).not.toHaveBeenCalled();
+    expect(trigger).not.toHaveBeenCalled();
+    // The block is surfaced via the same addLog channel a credit/blocker uses.
+    expect(addLog).toHaveBeenCalledWith('quota-gate', expect.any(String), 'error', expect.stringMatching(/quota/i));
+  });
+
+  it('PROCEEDS when usage is under the cap', async () => {
+    quotaState.tokensUsed = 1_000_000; // 1M ≪ 12.5B
+    const expand = vi.fn().mockResolvedValue('Epic prompt');
+    const trigger = vi.fn().mockResolvedValue(undefined);
+    const deps = makeDeps({ expandIdeaToPrompt: expand, triggerImageGeneration: trigger });
+
+    await processIdea(makeIdea(), 0, 1, makeEngagement(), [], makeSettings({ minimaxTier: 'ultra' }), deps);
+
+    expect(expand).toHaveBeenCalledOnce();
+    expect(trigger).toHaveBeenCalledOnce();
+  });
+
+  it('PROCEEDS when the per-month override is on, even over the cap', async () => {
+    quotaState.tokensUsed = 13_000_000_000;
+    quotaState.override = true;
+    const expand = vi.fn().mockResolvedValue('Epic prompt');
+    const trigger = vi.fn().mockResolvedValue(undefined);
+    const deps = makeDeps({ expandIdeaToPrompt: expand, triggerImageGeneration: trigger });
+
+    await processIdea(makeIdea(), 0, 1, makeEngagement(), [], makeSettings({ minimaxTier: 'ultra' }), deps);
+
+    expect(expand).toHaveBeenCalledOnce();
+    expect(trigger).toHaveBeenCalledOnce();
+  });
+
+  it('does NOT gate when there is no cap (custom tier, no custom cap)', async () => {
+    quotaState.tokensUsed = 999_999_999_999; // huge, but no cap configured
+    const expand = vi.fn().mockResolvedValue('Epic prompt');
+    const trigger = vi.fn().mockResolvedValue(undefined);
+    const deps = makeDeps({ expandIdeaToPrompt: expand, triggerImageGeneration: trigger });
+
+    await processIdea(
+      makeIdea(),
+      0,
+      1,
+      makeEngagement(),
+      [],
+      makeSettings({ minimaxTier: 'custom', minimaxCustomTokenCap: undefined }),
+      deps,
+    );
+
+    expect(expand).toHaveBeenCalledOnce();
+    expect(trigger).toHaveBeenCalledOnce();
+  });
+});
 
 // ─── processIdea ─────────────────────────────────────────────────────────────
 

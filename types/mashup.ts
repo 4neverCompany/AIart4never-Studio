@@ -1,4 +1,8 @@
 import React from 'react';
+// 4NE-21 / Story 1.5: MiniMax monthly token-plan tier. Type-only re-use of
+// the quota engine's tier union so Settings and the autonomy gate agree on
+// the allowed values without redefining them here.
+import type { MinimaxTier } from './../lib/minimax-quota';
 
 // ── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -428,6 +432,16 @@ export interface UserSettings {
    * cycle usage hits this number. Undefined = gate disabled.
    * The cycle is reset manually via Settings → Credit Budget. */
   higgsfieldMonthlyCreditCap?: number;
+  /** 4NE-21 / Story 1.5: MiniMax Token-Plan tier. Drives the monthly
+   * token allowance the autonomy-loop quota gate enforces
+   * (`resolveAllowance(minimaxTier, minimaxCustomTokenCap)`). Default
+   * 'plus'. Set to 'custom' to use `minimaxCustomTokenCap` as an explicit
+   * cap; a 'custom' tier with no/zero cap means "track only, never block".
+   * The token counter + auto-rollover live in `lib/minimax-quota.ts`. */
+  minimaxTier?: MinimaxTier;
+  /** 4NE-21 / Story 1.5: explicit monthly token cap, used only when
+   * `minimaxTier` is 'custom'. Undefined / 0 = no cap (tracking only). */
+  minimaxCustomTokenCap?: number;
   watermark?: WatermarkSettings;
   agentPrompt?: string;
   agentNiches?: string[];
@@ -1105,6 +1119,11 @@ export const defaultSettings: UserSettings = {
   useDirectorPipeline: true,
   cameraAngle: undefined,
   higgsfieldMonthlyCreditCap: undefined,
+  // 4NE-21 / Story 1.5: default to the 'plus' tier so the monthly token
+  // quota is tracked + enforced out of the box. The user can switch tier
+  // (or set a custom cap) in Settings → Token Quota.
+  minimaxTier: 'plus',
+  minimaxCustomTokenCap: undefined,
   watermark: {
     enabled: false,
     image: null,

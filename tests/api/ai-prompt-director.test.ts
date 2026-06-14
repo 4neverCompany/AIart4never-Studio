@@ -185,6 +185,53 @@ describe('POST /api/ai/prompt — director mode', () => {
     expect(body.truncatedBy).toBe('natural');
   });
 
+  it('4NE-21: includes a summed tokensUsed { input, output } in the envelope', async () => {
+    // Two steps: usage (50/10) + (100/40) → input 150, output 50.
+    generateTextMock.mockImplementation(async (opts: { onStepFinish?: (s: unknown) => Promise<void> | void }) => {
+      const s0 = makeMockStepResult({
+        stepNumber: 0,
+        toolName: 'trending_search',
+        toolOutput: { results: [], nichesWithHits: ['Marvel'], servedBy: 'camofox' },
+        usage: { inputTokens: 50, outputTokens: 10 },
+      });
+      await opts.onStepFinish?.(s0);
+      const s1 = makeMockStepResult({
+        stepNumber: 1,
+        text: 'Iron Vader in neon rain…',
+        toolName: 'generate_prompt',
+        toolOutput: { draft: 'Iron Vader in neon rain…', usedSkills: [], modelId: 'MiniMax-M3' },
+        usage: { inputTokens: 100, outputTokens: 40 },
+      });
+      await opts.onStepFinish?.(s1);
+      return { text: 'Iron Vader in neon rain…', steps: [s0, s1], finishReason: 'stop' };
+    });
+
+    const res = await promptPost(
+      makePost({
+        mode: 'director',
+        ideaConcept: 'Darth Vader in Iron Man suit',
+        niches: ['Marvel'],
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { tokensUsed?: { input?: number; output?: number } };
+    expect(body.tokensUsed).toBeDefined();
+    expect(body.tokensUsed?.input).toBe(150);
+    expect(body.tokensUsed?.output).toBe(50);
+  });
+
+  it('4NE-21: tokensUsed defaults to zeros when the provider reports no usage', async () => {
+    generateTextMock.mockImplementation(async () => {
+      return { text: 'final', steps: [], finishReason: 'stop' };
+    });
+    const res = await promptPost(
+      makePost({ mode: 'director', ideaConcept: 'x concept', niches: ['Marvel'] }),
+    );
+    const body = (await res.json()) as { tokensUsed?: { input?: number; output?: number } };
+    expect(body.tokensUsed).toEqual({ input: 0, output: 0 });
+  });
+
   it('exposes X-Director-Run-Id, X-AI-Provider, X-AI-Model headers', async () => {
     generateTextMock.mockImplementation(async () => {
       return { text: 'final', steps: [], finishReason: 'stop' };

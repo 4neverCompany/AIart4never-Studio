@@ -21,6 +21,12 @@ import {
 import type { CachedEngagement } from '@/lib/smartScheduler';
 import { resolvePipelinePostStatus } from '@/lib/pipeline-daemon-utils';
 import {
+  checkQuota,
+  loadQuotaUsage,
+  resolveAllowance,
+  formatQuota,
+} from '@/lib/minimax-quota';
+import {
   configuredPlatforms,
   type DesktopCredentialFlags,
   type PipelinePlatform,
@@ -198,6 +204,30 @@ export async function processIdea(
     isSkipRequested,
     getScheduledPosts,
   } = deps;
+
+  // 4NE-21 / Story 1.5: monthly MiniMax token-quota gate. Mirrors the
+  // Higgsfield credit-budget gate in useImageGeneration.ts — BEFORE this
+  // cycle spends any tokens (the Director expand) or image credits, check
+  // the running monthly token total against the configured allowance. When
+  // the cap is exceeded (and the user hasn't flipped the per-month
+  // override), skip this cycle without spending: throw a clear Error that
+  // the daemon surfaces as a `pipeline-error` log and re-queues the idea
+  // (status → 'idea'), exactly how a credit-cap or other blocker is
+  // reported today. We block only on `exceeded`, never on `warn` — a
+  // warning surfaces in the banner but generation continues. A resume run
+  // reuses already-paid images and is NOT gated (it spends nothing).
+  if (!resumeFrom || resumeFrom.images.length === 0) {
+    const allowance = resolveAllowance(settings.minimaxTier, settings.minimaxCustomTokenCap);
+    if (allowance > 0) {
+      const quotaUsage = await loadQuotaUsage();
+      const quota = checkQuota(allowance, quotaUsage);
+      if (!quota.allowed) {
+        const reason = `Monthly MiniMax quota reached — ${formatQuota(quotaUsage, allowance)}. Open Settings → Token Quota to override for this month, or wait for the cycle to roll over.`;
+        addLog('quota-gate', idea.id, 'error', reason);
+        throw new Error(reason);
+      }
+    }
+  }
 
   const resuming = !!(resumeFrom && resumeFrom.images.length > 0);
 

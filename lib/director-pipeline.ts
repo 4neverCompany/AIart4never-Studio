@@ -13,6 +13,8 @@
  * concept.
  */
 
+import { recordTokens } from '@/lib/minimax-quota';
+
 export interface DirectorPromptRequest {
   /** The idea concept (the "angle"). Trimmed + capped to 400 chars here. */
   ideaConcept: string;
@@ -133,7 +135,20 @@ export async function requestDirectorPrompt(
       return { ok: false, reason };
     }
 
-    const data = (await res.json()) as { prompt?: string; cost?: number; truncatedBy?: string };
+    const data = (await res.json()) as {
+      prompt?: string;
+      cost?: number;
+      truncatedBy?: string;
+      // 4NE-21 / Story 1.5: server-summed MiniMax token usage for this run.
+      tokensUsed?: { input?: number; output?: number };
+    };
+    // 4NE-21 / Story 1.5: record this run's MiniMax token spend against the
+    // monthly quota. The director path is the primary token consumer, so
+    // this is the main recording site. Fire-and-forget + guarded: a
+    // persistence hiccup must never break the pipeline, and an older server
+    // shape (no `tokensUsed`) records 0 rather than throwing. We record even
+    // when the prompt is later judged implausible — the tokens were spent.
+    void recordTokens(data.tokensUsed?.input ?? 0, data.tokensUsed?.output ?? 0).catch(() => {});
     const prompt = (data.prompt ?? '').trim();
     if (prompt.length === 0) {
       return { ok: false, reason: 'empty prompt' };
