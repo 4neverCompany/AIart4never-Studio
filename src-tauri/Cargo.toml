@@ -1,11 +1,11 @@
 [package]
 name = "app"
-version = "1.9.2"
-description = "MashupForge — AI-driven multiverse crossover content studio (Tauri desktop shell)"
+version = "0.1.0"
+description = "AIart4never Studio — autonomous AI influencer-agent studio for on-canon multiverse art (Tauri desktop shell)"
 authors = ["Maurice (4neverCompany)"]
 license = "AGPL-3.0-or-later"
-repository = "https://github.com/4neverCompany/MashupForge"
-homepage = "https://github.com/4neverCompany/MashupForge"
+repository = "https://github.com/4neverCompany/AIart4never-Studio"
+homepage = "https://github.com/4neverCompany/AIart4never-Studio"
 edition = "2021"
 rust-version = "1.77.2"
 

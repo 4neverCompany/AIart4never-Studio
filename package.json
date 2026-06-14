@@ -1,6 +1,6 @@
 {
-  "name": "mashupforge",
-  "version": "1.9.2",
+  "name": "aiart4never-studio",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",

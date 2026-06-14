@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "MashupForge",
-  "version": "1.9.2",
-  "identifier": "com.4nevercompany.mashupforge",
+  "productName": "AIart4never Studio",
+  "version": "0.1.0",
+  "identifier": "com.4nevercompany.aiart4never",
   "build": {
     "frontendDist": "../src-tauri/frontend-stub",
     "devUrl": "http://localhost:3000/studio",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "MashupForge",
+        "title": "AIart4never Studio",
         "url": "index.html",
         "width": 1400,
         "height": 900,
@@ -43,9 +43,9 @@
     "createUpdaterArtifacts": true,
     "publisher": "4neverCompany",
     "copyright": "Copyright \u00a9 2026 4neverCompany. Licensed under AGPL-3.0-or-later.",
-    "shortDescription": "AI-driven multiverse crossover content studio",
-    "longDescription": "MashupForge is 4neverCompany's content generation pipeline for AI-driven crossover art and social posts. Combines Leonardo.ai image generation, GLM-powered captioning, and a smart Instagram scheduler in a single desktop app.",
-    "homepage": "https://github.com/4neverCompany/MashupForge",
+    "shortDescription": "Autonomous AI influencer-agent studio for on-canon multiverse art",
+    "longDescription": "AIart4never Studio is 4neverCompany's autonomous AI content agent for the AIart4never channel. It embodies the original character Master4never (Kael), generates on-canon multiverse art with MiniMax, and publishes to Instagram and Pinterest behind a human approval gate.",
+    "homepage": "https://github.com/4neverCompany/AIart4never-Studio",
     "category": "Productivity",
     "license": "AGPL-3.0-or-later",
     "resources": [
@@ -69,14 +69,14 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://github.com/4neverCompany/MashupForge/releases/latest/download/latest.json"
+        "https://github.com/4neverCompany/AIart4never-Studio/releases/latest/download/latest.json"
       ],
       "dialog": false,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENCRTFDMUNGRjA1NEJERUQKUldUdHZWVHd6OEhoeTJmVmtmem5tcFprNlpaMTdtMTkxZ0pZSU12bkFNUUR0bWs5ZkxyUVVvRkE="
     },
     "deep-link": {
       "desktop": {
-        "schemes": ["mashupforge"]
+        "schemes": ["aiart4never"]
       }
     }
   }
