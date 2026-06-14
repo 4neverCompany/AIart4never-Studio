@@ -1,9 +1,13 @@
 # Brand / version / lockfile guard checks
-# Runs on every PR to enforce the §2 batch rules:
-#   1. Brand name consistency (no "ai-studio-applet" or "Multiverse Mashup Studio")
+# Runs on every PR to enforce the batch rules:
+#   1. Brand name consistency (no stale "MashupForge" leaking into app code —
+#      the product is now "AIart4never Studio" / "Master4never")
 #   2. Version sync (package.json, Cargo.toml, tauri.conf.json)
 #   3. bun.lock is newer than package-lock.json
 #   4. No `as any` in src/
+#
+# TODO(4NE-7): re-add an IP-franchise guard (block Star Wars/Marvel/Warhammer/etc.
+# leaking into prompts) once canon lands in M1.
 name: Brand & Version Guards
 
 on:
@@ -22,55 +26,42 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Check for forbidden legacy brand names
+      - name: Fail if the old "MashupForge" brand leaks into app code
         run: |
-          # Forbidden patterns from §1.2 of the analysis
-          FORBIDDEN=(
-            "ai-studio-applet"
-            "Multiverse Mashup Studio"
-            "Multiverse Mashup"
-            "Remix: Remix"
-          )
-
-          # Allow these files to mention the legacy names (changelog history, etc.)
-          # .github/workflows/brand-guards.yml is allowed because this file MUST list
-          # the forbidden patterns as data; the brand-guards job would otherwise
-          # self-match. BRAND.md is allowed because it documents the forbidden names
-          # for contributors without using them in any runtime surface.
-          # HANDOFF.md is allowed because it is a historical/contextual handoff
-          # doc that explains the workflow itself (including the legacy name in
-          # the workflow-design context). User-facing surfaces (landing pages,
-          # components/landing/, the renderer) are NOT allowlisted.
+          # The product was forked from MashupForge into "AIart4never Studio"
+          # (codename "Master4never"). No app-facing source should still carry
+          # the literal old brand name. We scan only the source surfaces a user
+          # could see — app/, lib/, components/, hooks/, types/ — and skip
+          # CHANGELOG / NOTICE / docs, which legitimately record the fork
+          # history. This file itself is not scanned (it lives under .github).
           #
-          # The leading `(\./)?` accounts for the `./` prefix that `grep -r .` adds
-          # to relative paths — without it, none of these paths would actually
-          # match and the guard would always fail.
-          ALLOWLIST_REGEX='^(\./)?(CHANGELOG\.md|README\.md|HANDOFF\.md|docs/|app/landing/|app/components/landing/|\.github/workflows/brand-guards\.yml|BRAND\.md)'
-
-          # V105.6-BRAND-HARNES: .hermes/ is the previous orchestrator's working
-          # dir (Hermes sub-agent memory files), .harness/ is THIS orchestrator's
-          # working dir (Mavis team memory, reins, docs). Both legitimately
-          # reference the legacy project name in their own context — they
-          # document the brand history, they're not user-facing paths. Exclude
-          # both directories from the brand-name scan.
-          FAILED=0
-          for PATTERN in "${FORBIDDEN[@]}"; do
-            HITS=$(grep -rEn --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=target --exclude-dir=.git --exclude-dir=\.hermes --exclude-dir=\.harness "$PATTERN" . 2>/dev/null \
-              | grep -Ev "$ALLOWLIST_REGEX" || true)
-            if [ -n "$HITS" ]; then
-              echo "❌ Found forbidden legacy brand name: $PATTERN"
-              echo "$HITS"
-              FAILED=1
-            fi
+          # TODO(4NE-7): re-add an IP-franchise guard (block Star Wars/Marvel/
+          # Warhammer/etc. leaking into prompts) once canon lands in M1.
+          SCAN_DIRS=()
+          for d in app lib components hooks types; do
+            [ -d "$d" ] && SCAN_DIRS+=("$d")
           done
 
-          if [ "$FAILED" -eq 1 ]; then
+          if [ ${#SCAN_DIRS[@]} -eq 0 ]; then
+            echo "✅ No app/lib/components/hooks/types directories to scan — OK"
+            exit 0
+          fi
+
+          # --exclude CHANGELOG/NOTICE so the fork-history record doesn't self-trip.
+          HITS=$(grep -rn --binary-files=without-match \
+              --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=target \
+              --exclude='CHANGELOG*' --exclude='NOTICE*' \
+              "MashupForge" "${SCAN_DIRS[@]}" 2>/dev/null || true)
+
+          if [ -n "$HITS" ]; then
+            echo "❌ Found stale 'MashupForge' brand in app code:"
+            echo "$HITS"
             echo ""
-            echo "These files still reference the old product names."
-            echo "Use 'MashupForge' consistently. See §1.2 of the project analysis."
+            echo "This project is 'AIart4never Studio' (codename 'Master4never')."
+            echo "Replace the old brand name in the files above."
             exit 1
           fi
-          echo "✅ Brand name consistency OK"
+          echo "✅ Brand name consistency OK (no stale MashupForge in app code)"
 
   version-sync:
     name: Version sync (package.json / Cargo.toml / tauri.conf.json)
@@ -138,7 +129,7 @@ jobs:
       - uses: actions/checkout@v6
       - name: Verify no pnpm-workspace.yaml / pnpm-lock.yaml is committed
         run: |
-          # M3.4-Q6: MashupForge is bun-primary. A stray `pnpm install`
+          # M3.4-Q6: AIart4never Studio is bun-primary. A stray `pnpm install`
           # (e.g. from a CI runner with stale corepack, or a contributor
           # pasting a recipe from another repo) regenerates these files
           # AND creates a node_modules/.pnpm store that the bun install
@@ -152,7 +143,7 @@ jobs:
           FAILED=0
           for FILE in pnpm-workspace.yaml pnpm-lock.yaml; do
             if git ls-files --error-unmatch "$FILE" >/dev/null 2>&1; then
-              echo "❌ $FILE is tracked. MashupForge is bun-primary; remove it with:"
+              echo "❌ $FILE is tracked. AIart4never Studio is bun-primary; remove it with:"
               echo "     git rm --cached $FILE"
               echo "   (.gitignore already lists it, so the working-tree copy will be ignored.)"
               FAILED=1

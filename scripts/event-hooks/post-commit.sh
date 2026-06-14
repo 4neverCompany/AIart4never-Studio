@@ -24,7 +24,7 @@ TASK=$(printf '%s' "$SUBJECT" | grep -oE '[A-Z][A-Z0-9-]{3,}[A-Z0-9]' | head -1)
 "$LOG_SCRIPT" \
     --agent dev \
     --event commit \
-    --project MashupForge \
+    --project Master4never \
     --task "${TASK:-}" \
     --summary "$SUBJECT" \
     --detail "$SHA" \

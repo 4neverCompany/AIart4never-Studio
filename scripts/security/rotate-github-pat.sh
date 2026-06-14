@@ -93,7 +93,7 @@ in order:
      start failing on its next API call.
 
   4. Click "Generate new token" → "Generate new token (classic)":
-       - Note:    "MashupForge local dev — YYYY-MM-DD"
+       - Note:    "AIart4never Studio local dev — YYYY-MM-DD"
        - Expiration: 90 days (set a calendar reminder for rotation)
        - Scopes:   ONLY what local dev needs:
                      ✓ repo    (full control of private repositories)

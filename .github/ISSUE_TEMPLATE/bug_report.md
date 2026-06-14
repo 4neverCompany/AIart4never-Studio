@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Something is broken in MashupForge
+about: Something is broken in AIart4never Studio
 title: "[bug] "
 labels: bug
 assignees: ''
@@ -24,7 +24,7 @@ What actually happened? Include error messages, stack traces, or console output.
 If it's a UI bug, add a screenshot or short screen recording.
 
 ## Environment
-- **MashupForge version:** <!-- e.g. 0.8.5 (see package.json) -->
+- **AIart4never Studio version:** <!-- e.g. 0.8.5 (see package.json) -->
 - **OS:** <!-- macOS 14.x / Ubuntu 22.04 / Windows 11 -->
 - **Node:** <!-- output of `node -v` -->
 - **Browser (if web):** <!-- Chrome 126, Firefox 127, … -->

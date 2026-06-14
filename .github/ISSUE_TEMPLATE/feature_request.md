@@ -10,7 +10,7 @@ assignees: ''
 What's the user pain or gap today? Describe the situation that made you want this feature.
 
 ## Proposed solution
-What should MashupForge do? Be concrete — describe the behavior, not just the idea.
+What should AIart4never Studio do? Be concrete — describe the behavior, not just the idea.
 
 ## Alternatives considered
 Any workarounds you've tried, or other approaches you rejected and why.

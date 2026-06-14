@@ -17,7 +17,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
             "$LOG_SCRIPT" \
                 --agent dev \
                 --event release \
-                --project MashupForge \
+                --project Master4never \
                 --task "$TAG" \
                 --summary "Release $TAG pushed to origin" \
                 --detail "$local_sha" \

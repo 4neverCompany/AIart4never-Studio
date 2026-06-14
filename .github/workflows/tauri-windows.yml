@@ -123,34 +123,6 @@ jobs:
         shell: pwsh
         run: scripts/fetch-windows-node.ps1
 
-      - name: Cache camofox-browser sidecar
-        # CAMOFOX-CAMOUFOX-1.1.0 (2026-06-06): cache the npm tarball so
-        # repeat builds skip the @askjo/camofox-browser@1.11.2 download.
-        # Cache key is version + script hash, so a script change OR
-        # version bump invalidates cleanly.
-        uses: actions/cache@v5
-        with:
-          path: .cache/camofox
-          key: camofox-v1.11.2-${{ hashFiles('scripts/fetch-camofox-browser.ps1') }}
-          restore-keys: |
-            camofox-v1.11.2-
-
-      - name: Fetch camofox-browser sidecar
-        # CAMOFOX-CAMOUFOX-1.1.0: bundled resource, NOT externalBin.
-        # Same lifecycle pattern as the Node sidecar (idempotent, cached,
-        # pattern-consistent with fetch-windows-node.ps1).
-        shell: pwsh
-        run: scripts/fetch-camofox-browser.ps1
-
-      - name: Stage Higgsfield CLI into Tauri resources
-        # V1.6: bundle @higgsfield/cli so every installer user gets the
-        # agentic Higgsfield path with zero setup. -NoEnv = install only (no
-        # user env var on the CI runner); lib.rs points the sidecar's
-        # HIGGSFIELD_BIN at the bundled shim at runtime (unless the user set
-        # their own). Bundled via resources/**/* (tauri.conf.json).
-        shell: pwsh
-        run: scripts/install-higgsfield-cli.ps1 -Dest src-tauri/resources/higgsfield-cli -NoEnv
-
       - name: Copy standalone into Tauri resources
         shell: pwsh
         run: scripts/copy-standalone-to-resources.ps1
@@ -184,80 +156,6 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-
-      # NCA-BUNDLE: try to ship nca.exe inside the Tauri installer.
-      #
-      # Status as of 2026-05-02 (v0.9.26 build failure): nca v0.3.0 (and
-      # v0.2.0) does NOT compile on Windows — `crates/runtime/src/ipc.rs`
-      # imports `tokio::net::{UnixListener, UnixStream}` without a
-      # `#[cfg(unix)]` gate. That's why upstream only ships macOS +
-      # Linux release artifacts. We can't fix it from here without
-      # forking the project.
-      #
-      # The build step is left in place but marked `continue-on-error`
-      # so it does NOT block the Tauri build. If upstream eventually
-      # adds a Windows IPC backend (named pipes / interprocess crate /
-      # cfg-gated unix-only sockets), the build will start succeeding
-      # and the bundle will populate automatically. Until then:
-      #   - the Tauri Windows build ships WITHOUT bundled nca,
-      #   - the sidecar wrapper's existsSync guard sees no nca.exe,
-      #     leaves NCA_BIN unset, and falls back to PATH lookup,
-      #   - Settings → AI Agent renders the "Not Installed" branch
-      #     (no winget package, no platform binary, no PATH entry on
-      #     a clean Windows machine), so the user sees the install
-      #     instructions and can wait for upstream Windows support.
-      #
-      # See `docs/bmad/discoveries/NCA-WINDOWS-BUNDLE-2026-05-02.md`
-      # for the full upstream survey.
-      - name: Cache nca binary
-        id: cache-nca
-        uses: actions/cache@v5
-        with:
-          path: src-tauri/resources/nca/nca.exe
-          key: nca-windows-x86_64-v0.3.0
-
-      - name: Build nca for Windows
-        id: nca_build
-        if: steps.cache-nca.outputs.cache-hit != 'true'
-        continue-on-error: true
-        shell: pwsh
-        env:
-          NCA_TAG: v0.3.0
-        run: |
-          $src = Join-Path $env:RUNNER_TEMP "nca-src"
-          if (Test-Path $src) { Remove-Item -Recurse -Force $src }
-          git clone --depth 1 --branch $env:NCA_TAG https://github.com/madebyaris/native-cli-ai.git $src
-          Push-Location $src
-          cargo build --release --locked -p nca-cli --target x86_64-pc-windows-msvc
-          $cargoExit = $LASTEXITCODE
-          Pop-Location
-          $exe = Join-Path $src "target\x86_64-pc-windows-msvc\release\nca.exe"
-          if ($cargoExit -eq 0 -and -not (Test-Path $exe)) {
-            throw "nca.exe not produced at $exe"
-          }
-          if (Test-Path $exe) {
-            $dest = Join-Path $env:GITHUB_WORKSPACE "src-tauri\resources\nca"
-            New-Item -ItemType Directory -Force -Path $dest | Out-Null
-            Copy-Item $exe (Join-Path $dest "nca.exe") -Force
-            $size = (Get-Item (Join-Path $dest "nca.exe")).Length
-            Write-Host "nca.exe built: $($size / 1MB) MB"
-          }
-
-      - name: Verify bundled nca
-        if: steps.nca_build.outcome == 'success' || steps.cache-nca.outputs.cache-hit == 'true'
-        continue-on-error: true
-        shell: pwsh
-        run: |
-          $nca = Join-Path $env:GITHUB_WORKSPACE "src-tauri\resources\nca\nca.exe"
-          if (-not (Test-Path $nca)) { throw "nca.exe missing at $nca — bundling step failed" }
-          & $nca --help | Out-Null
-          Write-Host "nca bundled and runnable at $nca"
-
-      - name: Note nca bundle absence
-        if: steps.nca_build.outcome == 'failure' && steps.cache-nca.outputs.cache-hit != 'true'
-        shell: bash
-        run: |
-          echo "::warning::nca build failed (upstream is currently Unix-only — see docs/bmad/discoveries/NCA-WINDOWS-BUNDLE-2026-05-02.md). Continuing without bundled nca; users will see the 'Not Installed' UI in Settings → AI Agent."
 
       # MUSTFIX-001: v0.2.2 CI run (24604871387) failed here with
       # "npm error could not determine executable to run". Root cause:
@@ -336,7 +234,7 @@ jobs:
       # resources tree in the layout that src-tauri/src/lib.rs expects
       # at runtime (resource_dir() returns the executable's parent on
       # Windows release builds), then zip it. Users extract anywhere and
-      # double-click MashupForge.exe — no NSIS uninstall prompt.
+      # double-click "AIart4never Studio.exe" — no NSIS uninstall prompt.
       - name: Stage and zip portable build
         shell: pwsh
         run: |
@@ -344,12 +242,13 @@ jobs:
           $version = $tag.TrimStart('v')
           $stage = "src-tauri/target/release/portable-stage"
           $bundleDir = "src-tauri/target/release/bundle/nsis"
-          $zipPath = "$bundleDir/MashupForge_${version}_x64-portable.zip"
+          $zipPath = "$bundleDir/AIart4never-Studio_${version}_x64-portable.zip"
 
           # Cargo binary is named after [package].name = "app" → app.exe.
-          # NSIS bundler renames it to MashupForge.exe during packaging,
-          # but the raw build output keeps the cargo name. We rename here
-          # so the portable zip uses the user-facing name.
+          # NSIS bundler renames it to the tauri.conf productName
+          # ("AIart4never Studio.exe") during packaging, but the raw build
+          # output keeps the cargo name. We rename here so the portable zip
+          # uses the user-facing name.
           $exeSrc = "src-tauri/target/release/app.exe"
           if (-not (Test-Path $exeSrc)) {
             Write-Error "Cargo binary not found at $exeSrc — Tauri build did not complete?"
@@ -357,7 +256,7 @@ jobs:
           }
 
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
-          Copy-Item $exeSrc "$stage/MashupForge.exe"
+          Copy-Item $exeSrc "$stage/AIart4never Studio.exe"
           Copy-Item -Recurse "src-tauri/resources" "$stage/resources"
 
           # WebView2Loader.dll is placed next to the binary by tauri-build
@@ -430,7 +329,7 @@ jobs:
           fi
 
           echo "Uploading $EXE, $SIG, and $LATEST to release $TAG"
-          gh release create "$TAG" --title "MashupForge $TAG" --notes "Tauri desktop build for Windows." 2>/dev/null || true
+          gh release create "$TAG" --title "AIart4never Studio $TAG" --notes "Tauri desktop build for Windows." 2>/dev/null || true
           gh release upload "$TAG" "$EXE" --clobber
           gh release upload "$TAG" "$SIG" --clobber
           gh release upload "$TAG" "$LATEST" --clobber

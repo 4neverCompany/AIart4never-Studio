@@ -14,7 +14,7 @@ SUBJECT=$(git log -1 --format=%s HEAD 2>/dev/null) || exit 0
 "$LOG_SCRIPT" \
     --agent dev \
     --event note \
-    --project MashupForge \
+    --project Master4never \
     --task "merge" \
     --summary "Merged upstream into ${BRANCH}: ${SUBJECT}" \
     --detail "$HEAD_SHA" \

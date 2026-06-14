@@ -10,7 +10,7 @@ name: Tauri Smoke Test (Pre-release)
 # Windows runners when run with /S — the install never completes and the
 # process must be killed by the job timeout. The portable build is a
 # self-contained .zip that just needs to be extracted and run; no
-# installer invocation, no UAC, no NSIS quirks. Same MashupForge.exe,
+# installer invocation, no UAC, no NSIS quirks. Same AIart4never Studio.exe,
 # same WebView2 runtime, same behavior.
 #
 # NSIS install hang is being investigated separately for v1.0.7.x.
@@ -64,9 +64,9 @@ jobs:
             --name tauri-nsis-bundle \
             --dir ./bundle
           ls -la ./bundle
-          ZIP=$(ls ./bundle/MashupForge_*_x64-portable.zip | head -1)
+          ZIP=$(ls ./bundle/AIart4never-Studio_*_x64-portable.zip | head -1)
           if [ -z "$ZIP" ]; then
-            echo "::error::No MashupForge_*_x64-portable.zip in artifact"
+            echo "::error::No AIart4never-Studio_*_x64-portable.zip in artifact"
             ls -la ./bundle
             exit 1
           fi
@@ -75,7 +75,7 @@ jobs:
       - name: Extract portable zip
         shell: bash
         run: |
-          ZIP=$(ls ./bundle/MashupForge_*_x64-portable.zip | head -1)
+          ZIP=$(ls ./bundle/AIart4never-Studio_*_x64-portable.zip | head -1)
           # Use a workspace-relative path — Git Bash path translation is
           # unreliable when mixing bash and Windows-native tools.
           STAGE="$(pwd)/stage"
@@ -88,9 +88,9 @@ jobs:
           unzip -q -o "$ZIP" -d "$STAGE"
           echo "--- Extracted contents ---"
           ls -la "$STAGE"
-          EXE="$STAGE/MashupForge.exe"
+          EXE="$STAGE/AIart4never Studio.exe"
           if [ ! -f "$EXE" ]; then
-            echo "::error::MashupForge.exe not found at $EXE after extraction"
+            echo "::error::AIart4never Studio.exe not found at $EXE after extraction"
             find "$STAGE" -name "*.exe" 2>/dev/null
             exit 1
           fi
@@ -102,7 +102,7 @@ jobs:
       - name: Launch + verify process alive
         shell: bash
         run: |
-          taskkill /F /IM MashupForge.exe 2>/dev/null || true
+          taskkill /F /IM "AIart4never Studio.exe" 2>/dev/null || true
 
           INSTALL_DIR=$(dirname "$FOUND_PATH")
           echo "Launching: $FOUND_PATH"
@@ -110,7 +110,7 @@ jobs:
           # Capture stdout + stderr to a log file so we can see crash reasons
           # when the process exits within seconds. Tauri prints fatal
           # WebView2 / DLL / config errors to stderr before exiting.
-          ./MashupForge.exe > "$INSTALL_DIR/launch.out" 2> "$INSTALL_DIR/launch.err" &
+          "./AIart4never Studio.exe" > "$INSTALL_DIR/launch.out" 2> "$INSTALL_DIR/launch.err" &
           LAUNCH_PID=$!
           echo "Launched PID $LAUNCH_PID"
 
@@ -119,21 +119,21 @@ jobs:
           ALIVE=false
           for i in {1..15}; do
             sleep 1
-            if tasklist /FI "IMAGENAME eq MashupForge.exe" 2>/dev/null | grep -qi "MashupForge"; then
-              echo "✅ MashupForge.exe is running (after ${i}s)"
+            if tasklist /FI "IMAGENAME eq AIart4never Studio.exe" 2>/dev/null | grep -qi "AIart4never Studio"; then
+              echo "✅ AIart4never Studio.exe is running (after ${i}s)"
               ALIVE=true
               break
             fi
           done
 
           if [ "$ALIVE" = false ]; then
-            echo "::error::MashupForge.exe exited within 15s of launch (PID $LAUNCH_PID gone)"
+            echo "::error::AIart4never Studio.exe exited within 15s of launch (PID $LAUNCH_PID gone)"
             echo "--- launch.out ---"
             cat "$INSTALL_DIR/launch.out" 2>/dev/null || echo "(empty)"
             echo "--- launch.err ---"
             cat "$INSTALL_DIR/launch.err" 2>/dev/null || echo "(empty)"
             echo "--- process info ---"
-            tasklist /FI "IMAGENAME eq MashupForge.exe" 2>&1 || true
+            tasklist /FI "IMAGENAME eq AIart4never Studio.exe" 2>&1 || true
             echo "--- last 20 lines of Windows Application event log ---"
             powershell -Command "Get-WinEvent -LogName Application -MaxEvents 20 -ErrorAction SilentlyContinue | Where-Object { $_.ProviderName -match 'Application Error|.NET Runtime|Windows Error Reporting' } | Select-Object -First 5 | ForEach-Object { Write-Output (\"[{0}] {1}\" -f $_.TimeCreated, $_.Message) }" 2>&1 || echo "(event log unavailable)"
             exit 1
@@ -141,16 +141,16 @@ jobs:
 
           # Confirm survives another 5s
           sleep 5
-          if tasklist /FI "IMAGENAME eq MashupForge.exe" 2>/dev/null | grep -qi "MashupForge"; then
+          if tasklist /FI "IMAGENAME eq AIart4never Studio.exe" 2>/dev/null | grep -qi "AIart4never Studio"; then
             echo "✅ Process survived 20s total — webview loaded, app stable"
           else
-            echo "::error::MashupForge.exe exited between 15s and 20s — webview crash after initial load"
+            echo "::error::AIart4never Studio.exe exited between 15s and 20s — webview crash after initial load"
             cat "$INSTALL_DIR/launch.err" 2>/dev/null || echo "(no stderr captured)"
             exit 1
           fi
 
           # Cleanup
-          taskkill /F /IM MashupForge.exe 2>/dev/null || true
+          taskkill /F /IM "AIart4never Studio.exe" 2>/dev/null || true
           rm -rf "$(pwd)/stage"
           echo "✅ Pre-release smoke test PASSED (portable variant)"
 
@@ -189,18 +189,20 @@ jobs:
       - name: Run NSIS installer with hard 60s timeout
         shell: bash
         run: |
-          INSTALLER=$(ls ./installer/MashupForge_*_x64-setup.exe | head -1)
+          INSTALLER=$(ls ./installer/"AIart4never Studio"_*_x64-setup.exe | head -1)
           echo "Installing: $INSTALLER (with 60s hard timeout)"
-          # Use Windows timeout to kill installer if it hangs past 60s
-          cmd //c "timeout /T 60 /NOBREAK >NUL & taskkill /F /IM MashupForge_1.0.7_x64-setup.exe 2>NUL & taskkill /F /IM MashupForge.exe 2>NUL & exit /B 0" &
+          # Use Windows timeout to kill installer if it hangs past 60s.
+          # Match the setup exe by its productName prefix so a version bump
+          # doesn't strand a hardcoded filename.
+          cmd //c 'timeout /T 60 /NOBREAK >NUL & taskkill /F /IM "AIart4never Studio_*_x64-setup.exe" 2>NUL & taskkill /F /IM "AIart4never Studio.exe" 2>NUL & exit /B 0' &
           KILLER_PID=$!
           "$INSTALLER" /S
           INSTALL_EXIT=$?
           echo "Installer exited with code $INSTALL_EXIT after $(($SECONDS))s"
 
           # Search for installed binary
-          PER_USER="C:/Users/$USERNAME/AppData/Local/Programs/MashupForge/MashupForge.exe"
-          PER_MACHINE="C:/Program Files/MashupForge/MashupForge.exe"
+          PER_USER="C:/Users/$USERNAME/AppData/Local/Programs/AIart4never Studio/AIart4never Studio.exe"
+          PER_MACHINE="C:/Program Files/AIart4never Studio/AIart4never Studio.exe"
           for path in "$PER_USER" "$PER_MACHINE"; do
             if [ -f "$path" ]; then
               echo "✅ Binary found at $path"
@@ -209,28 +211,28 @@ jobs:
             fi
           done
           echo "::error::NSIS install did not produce a binary at $PER_USER or $PER_MACHINE within 60s"
-          echo "This is a known issue — see https://github.com/4neverCompany/MashupForge/issues for status"
+          echo "This is a known issue — see https://github.com/${{ github.repository }}/issues for status"
           exit 1
 
       - name: Launch + verify
         shell: bash
         run: |
-          taskkill /F /IM MashupForge.exe 2>/dev/null || true
+          taskkill /F /IM "AIart4never Studio.exe" 2>/dev/null || true
           INSTALL_DIR=$(dirname "$FOUND_PATH")
           cd "$INSTALL_DIR"
-          ./MashupForge.exe &
+          "./AIart4never Studio.exe" &
           for i in {1..15}; do
             sleep 1
-            if tasklist /FI "IMAGENAME eq MashupForge.exe" 2>/dev/null | grep -qi "MashupForge"; then
-              echo "✅ MashupForge.exe running (after ${i}s)"
+            if tasklist /FI "IMAGENAME eq AIart4never Studio.exe" 2>/dev/null | grep -qi "AIart4never Studio"; then
+              echo "✅ AIart4never Studio.exe running (after ${i}s)"
               break
             fi
           done
           sleep 5
-          if tasklist /FI "IMAGENAME eq MashupForge.exe" 2>/dev/null | grep -qi "MashupForge"; then
+          if tasklist /FI "IMAGENAME eq AIart4never Studio.exe" 2>/dev/null | grep -qi "AIart4never Studio"; then
             echo "✅ NSIS install + launch smoke test PASSED"
           else
             echo "::error::App crashed after install"
             exit 1
           fi
-          taskkill /F /IM MashupForge.exe 2>/dev/null || true
+          taskkill /F /IM "AIart4never Studio.exe" 2>/dev/null || true
