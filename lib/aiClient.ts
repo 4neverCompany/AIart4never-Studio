@@ -287,8 +287,8 @@ export async function* streamAI(
 // Where `streamAI` POSTs `mode:'chat'|'idea'|…` and yields plain text deltas
 // (the legacy tool-less MiniMax stream), `streamAgent` POSTs
 // `mode:'director', stream:true` and yields TYPED events so the console can
-// render the agent's reasoning, its tool-calls (generate_image → Higgsfield,
-// trending_search, …) as chips, and the produced beat thumbnails.
+// render the agent's reasoning, its tool-calls (generate_prompt, critique_prompt,
+// generate_image → Higgsfield, …) as chips, and the produced beat thumbnails.
 //
 // The MCP connector registry + skills + active character all live CLIENT-side
 // (browser storage), so the caller resolves them (useConnectors / useSkills /

@@ -38,16 +38,19 @@ export function buildFocusBlock(niches: string[], genres: string[]): string {
     .join(' ');
 }
 
-const DEFAULT_NICHES = ['Star Wars', 'Marvel', 'Warhammer 40k'];
+// M1 CANON-NATIVE: the fallback "pillars" for the research query are the
+// Master4never canon pillars / realities — NOT franchise names. The old
+// ['Star Wars','Marvel','Warhammer 40k'] crossover list is gone.
+const DEFAULT_NICHES = ['Story-Beat', 'Variant Reveal', 'Cyberpunk PRIME'];
 
 /**
- * Build the trending-context query from the user's active niches/genres.
+ * Build the optional research-context query from the user's active
+ * pillars/styles.
  *
- * Picks 2 niches to diversify results — a single fixed query was returning
- * the same cyberpunk thumbnails on every idea run. Two niches joined with
- * "x" rhymes with the crossover framing the LLM already uses ("Darth
- * Vader x Warhammer") and gives DDG/Brave a specific enough signal to
- * surface fresh fan-art coverage.
+ * M1 CANON-NATIVE: this is reference research for the operator's ORIGINAL
+ * Master4never multiverse, NOT crossover/fan-art trend-trawling. Picks 2
+ * pillars to diversify, joins them with a comma, and biases toward canon
+ * reference (concept art / cinematic) rather than "crossover fan art".
  *
  * `rng` is injectable so tests can pin a deterministic shuffle.
  */
@@ -55,7 +58,7 @@ export function buildTrendingQuery(
   niches?: string[],
   genres?: string[],
   rng: () => number = Math.random,
-  freshness: string = 'trending 2026',
+  freshness: string = 'reference 2026',
   genreIndex: number = 0,
 ): string {
   const cleanedNiches = sanitizeStringArray(niches);
@@ -69,16 +72,16 @@ export function buildTrendingQuery(
   const pick = shuffled.slice(0, Math.min(2, shuffled.length));
 
   const cleanedGenres = sanitizeStringArray(genres);
-  // Rotate which genre drives the query across calls. With a single
-  // genre this degenerates to index 0 (original behavior); with several
-  // configured, consecutive runs touch different ones so the search
+  // Rotate which style drives the query across calls. With a single
+  // style this degenerates to index 0 (original behavior); with several
+  // configured, consecutive runs touch different ones so the research
   // intent shifts instead of always anchoring on cleanedGenres[0].
   const genreHint =
     cleanedGenres.length > 0
       ? cleanedGenres[Math.abs(genreIndex) % cleanedGenres.length]
       : '';
 
-  return [pick.join(' x '), 'crossover fan art', genreHint, freshness]
+  return [pick.join(', '), 'character concept art reference', genreHint, freshness]
     .filter((s) => s.length > 0)
     .join(' ')
     .replace(/\s+/g, ' ')

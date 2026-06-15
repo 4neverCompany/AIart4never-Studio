@@ -55,13 +55,21 @@ describe('buildDefaultAgentPrompt — V080-DES-003', () => {
 
   it('does NOT mention the franchise names that the old hardcoded prompt named', () => {
     const out = buildDefaultAgentPrompt({
-      niches: ['Mythic Legends'],
-      genres: ['Cinematic Crossovers'],
+      niches: ['Variant Reveal'],
+      genres: ['Cinematic'],
     });
     // The old prompt forced these into every reset; the new template
     // must let the user's actual focus tags speak for themselves.
     expect(out).not.toMatch(/Marvel,\s*DC,\s*Star Wars/i);
     expect(out).not.toMatch(/Warhammer 40k/i);
+  });
+
+  // M1 CANON-NATIVE: the orientation is on-canon Master4never beats, never
+  // third-party crossovers / cosplay / merch.
+  it('frames the orientation as on-canon Master4never, not crossovers', () => {
+    const out = buildDefaultAgentPrompt({ niches: ['Variant Reveal'], genres: ['Cinematic'] });
+    expect(out).toMatch(/Master4never/);
+    expect(out).not.toMatch(/crossover composition/i);
   });
 
   it('AI-ROLE-REDESIGN: opens with the AIart4never Studio AI persona, drops "prompt generator" framing', () => {
@@ -79,10 +87,18 @@ describe('buildDefaultAgentPrompt — V080-DES-003', () => {
     expect(out).not.toMatch(/Active Niches and Active Genres/);
   });
 
-  it('exports the curated default tag lists for the SettingsModal reset', () => {
-    expect(DEFAULT_NICHES.length).toBeGreaterThanOrEqual(10);
-    expect(DEFAULT_GENRES.length).toBeGreaterThanOrEqual(10);
-    expect(DEFAULT_NICHES).toContain('Multiverse Crossovers');
-    expect(DEFAULT_GENRES).toContain('Cinematic Crossovers');
+  it('exports the curated CANON default tag lists for the SettingsModal reset', () => {
+    // M1 CANON-NATIVE: the defaults are the Master4never canon pillars /
+    // realities + canon styles — NOT crossover/cosplay/franchise tags.
+    expect(DEFAULT_NICHES.length).toBeGreaterThanOrEqual(6);
+    expect(DEFAULT_GENRES.length).toBeGreaterThanOrEqual(8);
+    expect(DEFAULT_NICHES).toContain('Variant Reveal');
+    expect(DEFAULT_NICHES).toContain('Cyberpunk PRIME');
+    expect(DEFAULT_GENRES).toContain('Cinematic');
+    expect(DEFAULT_GENRES).toContain('Grimdark');
+    // No franchise / crossover values survive.
+    expect(DEFAULT_NICHES).not.toContain('Multiverse Crossovers');
+    expect(DEFAULT_NICHES).not.toContain('Cosplay & Fan Art');
+    expect(DEFAULT_GENRES).not.toContain('Cinematic Crossovers');
   });
 });

@@ -174,9 +174,10 @@ function makeStepResult(args: {
 // ---------------------------------------------------------------------------
 
 const baseInput: RunDirectorLoopInput = {
-  niches: ['Multiverse Crossovers', 'Mythic Legends'],
-  genres: ['Noir & Gritty'],
-  ideaConcept: 'Darth Vader in Iron Man suit',
+  // M1 CANON-NATIVE: canon content pillars + style + an on-canon beat.
+  niches: ['Variant Reveal', 'Cyberpunk PRIME'],
+  genres: ['Cinematic'],
+  ideaConcept: 'Kael steps into the W40K reality and meets Kaelus Vorne',
   userId: 'user_test_1',
   _modelOverride: { model: { modelId: 'MiniMax-M3' } as never, modelId: 'MiniMax-M3' },
   _runIdOverride: 'run_test_001',
@@ -203,27 +204,25 @@ afterEach(() => {
 
 describe('runDirectorLoop — happy path', () => {
   it('returns a RunDirectorLoopResult with the expected shape', async () => {
-    // Simulate: step0 = tool_call (trending_search) + tool_result
-    //           step1 = tool_call (generate_prompt) + tool_result + final text
-    const trendingResult = {
-      results: [
-        { title: 'A', url: 'https://a', snippet: '…', niche: 'Marvel', source: '@google_search' },
-      ],
-      nichesWithHits: ['Multiverse Crossovers'],
-      servedBy: 'camofox',
-    };
+    // M1 CANON-NATIVE: the canon beat flow has NO trending_search.
+    // Simulate: step0 = tool_call (generate_prompt) + tool_result
+    //           step1 = tool_call (generate_image) + tool_result + final text
     const promptResult = {
-      draft: 'A noir Iron Vader standing in neon rain, crimson cape catching the light…',
+      draft: 'Kael, ashen netrunner, faces Kaelus Vorne in a candle-lit nave, cyan circuitry meeting the Iron Halo…',
       usedSkills: [],
       modelId: 'MiniMax-M3',
+    };
+    const imageResult = {
+      assetRef: { provider: 'higgsfield', id: 'img-1', url: 'https://h/img-1.png' },
+      creditsCharged: 60,
     };
 
     generateTextMock.mockImplementation(async (opts: { onStepFinish?: (s: unknown) => Promise<void> | void }) => {
       const step0 = makeStepResult({
         stepNumber: 0,
         text: '',
-        toolCalls: [{ toolName: 'trending_search', input: { niches: ['Marvel'] } }],
-        toolResults: [{ toolName: 'trending_search', input: { niches: ['Marvel'] }, output: trendingResult }],
+        toolCalls: [{ toolName: 'generate_prompt', input: { angle: 'Kael meets Kaelus Vorne' } }],
+        toolResults: [{ toolName: 'generate_prompt', input: { angle: 'Kael meets Kaelus Vorne' }, output: promptResult }],
         usage: { inputTokens: 100, outputTokens: 50 },
         finishReason: 'tool-calls',
       });
@@ -231,16 +230,16 @@ describe('runDirectorLoop — happy path', () => {
 
       const step1 = makeStepResult({
         stepNumber: 1,
-        text: 'A noir Iron Vader standing in neon rain, crimson cape catching the light…',
-        toolCalls: [{ toolName: 'generate_prompt', input: { angle: 'Darth Vader in Iron Man suit' } }],
-        toolResults: [{ toolName: 'generate_prompt', input: { angle: 'Darth Vader in Iron Man suit' }, output: promptResult }],
+        text: 'Kael, ashen netrunner, faces Kaelus Vorne in a candle-lit nave, cyan circuitry meeting the Iron Halo…',
+        toolCalls: [{ toolName: 'generate_image', input: { model: 'nano_banana_2' } }],
+        toolResults: [{ toolName: 'generate_image', input: { model: 'nano_banana_2' }, output: imageResult }],
         usage: { inputTokens: 200, outputTokens: 80 },
         finishReason: 'stop',
       });
       await opts.onStepFinish?.(step1);
 
       return {
-        text: 'A noir Iron Vader standing in neon rain, crimson cape catching the light…',
+        text: 'Kael, ashen netrunner, faces Kaelus Vorne in a candle-lit nave, cyan circuitry meeting the Iron Halo…',
         steps: [step0, step1],
         finishReason: 'stop',
       };
@@ -249,7 +248,7 @@ describe('runDirectorLoop — happy path', () => {
     const result = await runDirectorLoop(baseInput);
 
     expect(result.runId).toBe('run_test_001');
-    expect(result.finalPrompt).toContain('Iron Vader');
+    expect(result.finalPrompt).toContain('Kaelus Vorne');
     expect(result.modelId).toBe('MiniMax-M3');
     expect(result.truncatedBy).toBe('natural');
     expect(result.steps.length).toBeGreaterThan(0);
@@ -259,8 +258,8 @@ describe('runDirectorLoop — happy path', () => {
     generateTextMock.mockImplementation(async (opts: { onStepFinish?: (s: unknown) => Promise<void> | void }) => {
       const step0 = makeStepResult({
         stepNumber: 0,
-        toolCalls: [{ toolName: 'trending_search', input: { niches: ['Marvel'] } }],
-        toolResults: [{ toolName: 'trending_search', input: { niches: ['Marvel'] }, output: { results: [], nichesWithHits: [], servedBy: 'camofox' } }],
+        toolCalls: [{ toolName: 'generate_prompt', input: { niches: ['Variant Reveal'] } }],
+        toolResults: [{ toolName: 'generate_prompt', input: { niches: ['Variant Reveal'] }, output: { draft: 'a long enough canon scene draft for the variant reveal beat', usedSkills: [], modelId: 'MiniMax-M3' } }],
         usage: { inputTokens: 10, outputTokens: 5 },
       });
       await opts.onStepFinish?.(step0);

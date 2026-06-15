@@ -405,8 +405,8 @@ export interface UserSettings {
    * existing users' output doesn't change. */
   antiAiLook?: boolean;
   /** V1.6: agentic "Director" pipeline. When true, the pipeline's
-   * idea→prompt step routes through the multi-step tool-use loop
-   * (trending_search → generate_prompt → critique → refine) via
+   * idea→prompt step routes through the multi-step canon beat loop
+   * (plan-beat → generate_prompt → critique → refine → generate_image) via
    * `/api/ai/prompt` mode:director instead of sending the idea concept
    * to the image model verbatim. Shipped opt-in in v1.5.0; the DEFAULT
    * path since v1.6.0 (`applyV160DirectorDefaultMigration` flips
@@ -587,44 +587,37 @@ export interface PipelineProgress {
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
+// M1 CANON-NATIVE: the recommended Content Pillars are the Master4never
+// canon pillars (see lib/canon CONTENT_PILLARS) plus the canon realities the
+// beats are set in — NOT franchise/crossover/cosplay niches. The settings KEY
+// stays `agentNiches` for back-compat; only the VALUES are canon.
 export const RECOMMENDED_NICHES = [
-  'Multiverse Crossovers',
-  'Fan Fiction & Lore',
-  'Merchandise & Collectibles',
-  'Cosplay & Fan Art',
-  'Pop Culture Crossovers',
-  'Alternate Realities',
-  'Sci-Fi & Fantasy',
-  'Retro & Nostalgia',
-  'Cyberpunk & Futurism',
-  'Grimdark & Gothic',
-  'Street-Level Heroes',
-  'Galactic Empires',
-  'Eldritch Horrors',
-  'Mythic Legends'
+  // The four canon content pillars (CONTENT_PILLARS names).
+  'Story-Beat',
+  'Variant Reveal',
+  'Same Soul, Different Reality',
+  'Lore / Poll',
+  // The canon realities the beats live in (orient the beat without naming
+  // any third-party franchise).
+  'Cyberpunk PRIME',
+  'Grimdark W40K',
+  'Modern-Hightech W40K'
 ];
 
+// M1 CANON-NATIVE: the recommended Style Tags are a tasteful canon set that
+// suits the Master4never multiverse (cinematic netrunner + grimdark gothic
+// sci-fi), NOT crossover/meme-mashup styles. KEY stays `agentGenres`.
 export const RECOMMENDED_GENRES = [
-  'Visual Storytelling',
-  'High Contrast',
-  'Emotional Resonance',
-  'Cinematic Crossovers',
-  'What If Scenarios',
-  'Alternative Timelines',
-  'Epic Battles',
-  'Character Dialogues',
-  'Behind-the-Scenes Concepts',
-  'Meme-worthy Mashups',
-  'Deep Lore Explorations',
-  'Hyper-Realistic',
+  'Cinematic',
+  'Grimdark',
+  'Character Study',
+  'Neo-Noir',
+  'Netrunner Cyberpunk',
+  'Gothic Sci-Fi',
   'Dramatic Lighting',
-  'Epic Action',
-  'Concept Art',
-  'Digital Illustration',
-  'Noir & Gritty',
-  'Vibrant & Neon',
-  'Surreal & Abstract',
-  'Minimalist Design'
+  'Hyper-Detailed',
+  'Volumetric Atmosphere',
+  'Painterly Concept Art'
 ];
 
 // ── Leonardo Models (API-documented) ──────────────────────────────────────
@@ -1148,43 +1141,30 @@ export const defaultSettings: UserSettings = {
     opacity: 0.8,
     scale: 0.15
   },
+  // M1 CANON-NATIVE: fresh installs default to the Master4never canon pillars
+  // + realities (NOT crossover/cosplay niches). Settings KEYS unchanged for
+  // back-compat; mirrors RECOMMENDED_NICHES.
   agentNiches: [
-    'Multiverse Crossovers',
-    'Fan Fiction & Lore',
-    'Merchandise & Collectibles',
-    'Cosplay & Fan Art',
-    'Pop Culture Crossovers',
-    'Alternate Realities',
-    'Sci-Fi & Fantasy',
-    'Retro & Nostalgia',
-    'Cyberpunk & Futurism',
-    'Grimdark & Gothic',
-    'Street-Level Heroes',
-    'Galactic Empires',
-    'Eldritch Horrors',
-    'Mythic Legends'
+    'Story-Beat',
+    'Variant Reveal',
+    'Same Soul, Different Reality',
+    'Lore / Poll',
+    'Cyberpunk PRIME',
+    'Grimdark W40K',
+    'Modern-Hightech W40K'
   ],
+  // M1 CANON-NATIVE: canon-appropriate styles (mirrors RECOMMENDED_GENRES).
   agentGenres: [
-    'Visual Storytelling',
-    'High Contrast',
-    'Emotional Resonance',
-    'Cinematic Crossovers',
-    'What If Scenarios',
-    'Alternative Timelines',
-    'Epic Battles',
-    'Character Dialogues',
-    'Behind-the-Scenes Concepts',
-    'Meme-worthy Mashups',
-    'Deep Lore Explorations',
-    'Hyper-Realistic',
+    'Cinematic',
+    'Grimdark',
+    'Character Study',
+    'Neo-Noir',
+    'Netrunner Cyberpunk',
+    'Gothic Sci-Fi',
     'Dramatic Lighting',
-    'Epic Action',
-    'Concept Art',
-    'Digital Illustration',
-    'Noir & Gritty',
-    'Vibrant & Neon',
-    'Surreal & Abstract',
-    'Minimalist Design'
+    'Hyper-Detailed',
+    'Volumetric Atmosphere',
+    'Painterly Concept Art'
   ],
   // AI-ROLE-REDESIGN (2026-05-22): default persona dropped the
   // "precision prompt engineer" framing in favour of AIart4never Studio AI

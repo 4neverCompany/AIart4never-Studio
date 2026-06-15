@@ -14,8 +14,8 @@
  * never hit a real LLM. v1.2.6: we now mock
  * `ToolLoopAgent.prototype.generate` (replaces the bare
  * `generateText` mock from v1.2.0-v1.2.5). The mock
- * simulates two `onStepFinish` events (trending_search,
- * generate_prompt) and returns a `text` value that becomes
+ * simulates two `onStepFinish` events (generate_prompt,
+ * generate_image) and returns a `text` value that becomes
  * the `finalPrompt`.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -146,35 +146,36 @@ describe('POST /api/ai/prompt — director mode', () => {
     generateTextMock.mockImplementation(async (opts: { onStepFinish?: (s: unknown) => Promise<void> | void }) => {
       const s0 = makeMockStepResult({
         stepNumber: 0,
-        toolName: 'trending_search',
-        toolOutput: { results: [], nichesWithHits: ['Marvel'], servedBy: 'camofox' },
+        text: 'Kael faces Kaelus Vorne in a candle-lit nave…',
+        toolName: 'generate_prompt',
+        toolOutput: { draft: 'Kael faces Kaelus Vorne in a candle-lit nave…', usedSkills: [], modelId: 'MiniMax-M3' },
         usage: { inputTokens: 50, outputTokens: 10 },
       });
       await opts.onStepFinish?.(s0);
       const s1 = makeMockStepResult({
         stepNumber: 1,
-        text: 'Iron Vader in neon rain…',
-        toolName: 'generate_prompt',
-        toolOutput: { draft: 'Iron Vader in neon rain…', usedSkills: [], modelId: 'MiniMax-M3' },
+        text: 'Kael faces Kaelus Vorne in a candle-lit nave…',
+        toolName: 'generate_image',
+        toolOutput: { assetRef: { provider: 'higgsfield', id: 'img-1', url: 'https://h/img-1.png' }, creditsCharged: 60 },
         usage: { inputTokens: 100, outputTokens: 40 },
       });
       await opts.onStepFinish?.(s1);
-      return { text: 'Iron Vader in neon rain…', steps: [s0, s1], finishReason: 'stop' };
+      return { text: 'Kael faces Kaelus Vorne in a candle-lit nave…', steps: [s0, s1], finishReason: 'stop' };
     });
 
     const res = await promptPost(
       makePost({
         mode: 'director',
-        ideaConcept: 'Darth Vader in Iron Man suit',
-        niches: ['Multiverse Crossovers'],
-        genres: ['Noir & Gritty'],
+        ideaConcept: 'Kael steps into the W40K reality and meets Kaelus Vorne',
+        niches: ['Variant Reveal'],
+        genres: ['Cinematic'],
         userId: 'studio_test_user',
       }),
     );
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, unknown>;
-    expect(body.prompt).toBe('Iron Vader in neon rain…');
+    expect(body.prompt).toBe('Kael faces Kaelus Vorne in a candle-lit nave…');
     expect(Array.isArray(body.steps)).toBe(true);
     expect((body.steps as unknown[]).length).toBeGreaterThan(0);
     expect(typeof body.cost).toBe('number');
@@ -190,27 +191,28 @@ describe('POST /api/ai/prompt — director mode', () => {
     generateTextMock.mockImplementation(async (opts: { onStepFinish?: (s: unknown) => Promise<void> | void }) => {
       const s0 = makeMockStepResult({
         stepNumber: 0,
-        toolName: 'trending_search',
-        toolOutput: { results: [], nichesWithHits: ['Marvel'], servedBy: 'camofox' },
+        text: 'Kael faces Kaelus Vorne in a candle-lit nave…',
+        toolName: 'generate_prompt',
+        toolOutput: { draft: 'Kael faces Kaelus Vorne in a candle-lit nave…', usedSkills: [], modelId: 'MiniMax-M3' },
         usage: { inputTokens: 50, outputTokens: 10 },
       });
       await opts.onStepFinish?.(s0);
       const s1 = makeMockStepResult({
         stepNumber: 1,
-        text: 'Iron Vader in neon rain…',
-        toolName: 'generate_prompt',
-        toolOutput: { draft: 'Iron Vader in neon rain…', usedSkills: [], modelId: 'MiniMax-M3' },
+        text: 'Kael faces Kaelus Vorne in a candle-lit nave…',
+        toolName: 'generate_image',
+        toolOutput: { assetRef: { provider: 'higgsfield', id: 'img-1', url: 'https://h/img-1.png' }, creditsCharged: 60 },
         usage: { inputTokens: 100, outputTokens: 40 },
       });
       await opts.onStepFinish?.(s1);
-      return { text: 'Iron Vader in neon rain…', steps: [s0, s1], finishReason: 'stop' };
+      return { text: 'Kael faces Kaelus Vorne in a candle-lit nave…', steps: [s0, s1], finishReason: 'stop' };
     });
 
     const res = await promptPost(
       makePost({
         mode: 'director',
-        ideaConcept: 'Darth Vader in Iron Man suit',
-        niches: ['Marvel'],
+        ideaConcept: 'Kael steps into the W40K reality and meets Kaelus Vorne',
+        niches: ['Variant Reveal'],
       }),
     );
 
@@ -226,7 +228,7 @@ describe('POST /api/ai/prompt — director mode', () => {
       return { text: 'final', steps: [], finishReason: 'stop' };
     });
     const res = await promptPost(
-      makePost({ mode: 'director', ideaConcept: 'x concept', niches: ['Marvel'] }),
+      makePost({ mode: 'director', ideaConcept: 'x concept', niches: ['Variant Reveal'] }),
     );
     const body = (await res.json()) as { tokensUsed?: { input?: number; output?: number } };
     expect(body.tokensUsed).toEqual({ input: 0, output: 0 });
@@ -239,8 +241,8 @@ describe('POST /api/ai/prompt — director mode', () => {
     const res = await promptPost(
       makePost({
         mode: 'director',
-        ideaConcept: 'Darth Vader in Iron Man suit',
-        niches: ['Marvel'],
+        ideaConcept: 'Kael steps into the W40K reality and meets Kaelus Vorne',
+        niches: ['Variant Reveal'],
       }),
     );
     expect(res.headers.get('X-Director-Run-Id')).toMatch(/^run_/);
@@ -255,8 +257,8 @@ describe('POST /api/ai/prompt — director mode', () => {
     const res = await promptPost(
       makePost({
         mode: 'director',
-        ideaConcept: 'Darth Vader in Iron Man suit',
-        niches: ['Marvel'],
+        ideaConcept: 'Kael steps into the W40K reality and meets Kaelus Vorne',
+        niches: ['Variant Reveal'],
       }),
     );
     const body = (await res.json()) as { steps: Array<{ idx: number; type: string }> };
@@ -272,7 +274,7 @@ describe('POST /api/ai/prompt — director mode', () => {
 describe('POST /api/ai/prompt — director mode validation', () => {
   it('returns 400 when ideaConcept is missing', async () => {
     const res = await promptPost(
-      makePost({ mode: 'director', niches: ['Marvel'] }),
+      makePost({ mode: 'director', niches: ['Variant Reveal'] }),
     );
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: string };
@@ -314,8 +316,8 @@ describe('POST /api/ai/prompt — director mode no provider', () => {
     const res = await promptPost(
       makePost({
         mode: 'director',
-        ideaConcept: 'Darth Vader in Iron Man suit',
-        niches: ['Marvel'],
+        ideaConcept: 'Kael steps into the W40K reality and meets Kaelus Vorne',
+        niches: ['Variant Reveal'],
       }),
     );
     expect(res.status).toBe(503);
@@ -338,7 +340,7 @@ describe('POST /api/ai/prompt — director mode provider error', () => {
     // still refuse to hand it to the client as a usable prompt.
     generateTextMock.mockImplementation(async () => {
       return {
-        text: 'DIRECTOR_FAILED: trending_search unavailable after two attempts.',
+        text: 'DIRECTOR_FAILED: generate_image unavailable after two attempts.',
         steps: [],
         finishReason: 'stop',
       };
@@ -347,15 +349,15 @@ describe('POST /api/ai/prompt — director mode provider error', () => {
     const res = await promptPost(
       makePost({
         mode: 'director',
-        ideaConcept: 'Darth Vader in Iron Man suit',
-        niches: ['Marvel'],
+        ideaConcept: 'Kael steps into the W40K reality and meets Kaelus Vorne',
+        niches: ['Variant Reveal'],
       }),
     );
 
     expect(res.status).toBe(502);
     const body = (await res.json()) as { error: string };
     expect(body.error).toMatch(/Director failed/);
-    expect(body.error).toMatch(/trending_search unavailable/);
+    expect(body.error).toMatch(/generate_image unavailable/);
   });
 
   it('returns 502 with the real error when the provider throws and no prompt is produced', async () => {
@@ -369,8 +371,8 @@ describe('POST /api/ai/prompt — director mode provider error', () => {
     const res = await promptPost(
       makePost({
         mode: 'director',
-        ideaConcept: 'Darth Vader in Iron Man suit',
-        niches: ['Marvel'],
+        ideaConcept: 'Kael steps into the W40K reality and meets Kaelus Vorne',
+        niches: ['Variant Reveal'],
       }),
     );
 

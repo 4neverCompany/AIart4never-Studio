@@ -17,7 +17,7 @@
  *     model: minimaxM3,
  *     tools: AGENT_TOOLS,
  *     stopWhen: stepCountIs(8),
- *     prompt: 'Plan → search → draft → critique → finalize',
+ *     prompt: 'Plan beat → draft scene → critique → generate → persist',
  *   });
  */
 import type { Tool } from 'ai';
@@ -54,8 +54,6 @@ import { jobLookupTool, executeJobLookup } from './job-lookup';
 // Keep the `z` prefix on these so call sites are unambiguous about
 // whether they're calling a parser or referencing a type.
 export {
-  zTrendingSearchInput,
-  zTrendingSearchOutput,
   zGeneratePromptInput,
   zGeneratePromptOutput,
   zCritiquePromptInput,
@@ -104,8 +102,6 @@ export type {
   SkillNameString,
   ImageSettings,
   VideoSettings,
-  TrendingSearchInput,
-  TrendingSearchOutput,
   GeneratePromptInput,
   GeneratePromptOutput,
   CritiquePromptInput,
@@ -183,7 +179,7 @@ export { heuristicJudge, toGeneratedImage, upsertImage, makeAssetId };
 /**
  * The full agent-toolkit, in the order the Director loop calls
  * them. The Vercel AI SDK accepts either an object map
- * (`{ trending_search: tool, ... }`) or an array
+ * (`{ generate_prompt: tool, ... }`) or an array
  * (`AGENT_TOOLS`); the array form keeps the call-site a single
  * line and makes tool-additions a one-file diff.
  *
@@ -199,8 +195,8 @@ export const AGENT_TOOLS = [
   generateVideoTool,
   persistAssetTool,
   // V1.2.6: M3 vision — added at the end so the Director loop
-  // still favours the existing 6-step plan→draft→critique→
-  // image/video→persist flow. The model opts in to vision
+  // still favours the canon beat flow plan-beat→draft-scene→
+  // critique→generate→persist. The model opts in to vision
   // feedback by calling m3_vision_describe explicitly.
   m3VisionDescribeTool,
   // V1.3: virality — scores a post when it enters the approval

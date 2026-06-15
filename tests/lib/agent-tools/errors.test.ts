@@ -44,7 +44,7 @@ describe('Error classes', () => {
     const z = new ZodError([
       { code: 'too_small', minimum: 1, origin: 'string', path: ['x'], message: 'too small', input: '' },
     ] as never);
-    const e = ValidationError.fromZod(z, 'trending_search');
+    const e = ValidationError.fromZod(z, 'generate_prompt');
     expect(e.issues.length).toBe(1);
     expect(e.cause).toBe(z);
   });

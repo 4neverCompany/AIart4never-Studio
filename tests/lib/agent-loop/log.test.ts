@@ -26,7 +26,7 @@ describe('StepLogger — append / getAll', () => {
     });
     const b = log.append({
       type: 'tool_call',
-      tool: 'trending_search',
+      tool: 'generate_prompt',
       cost: 0.001,
       timestamp: 2,
     });
@@ -51,7 +51,7 @@ describe('StepLogger — append / getAll', () => {
     const a = log.append({
       type: 'tool_call',
       tool: 'generate_prompt',
-      input: { niches: ['Marvel'] },
+      input: { niches: ['Variant Reveal'] },
       reasoning: 'drafting…',
       cost: 0.0123,
       timestamp: 42,
@@ -61,7 +61,7 @@ describe('StepLogger — append / getAll', () => {
       idx: 0,
       type: 'tool_call',
       tool: 'generate_prompt',
-      input: { niches: ['Marvel'] },
+      input: { niches: ['Variant Reveal'] },
       reasoning: 'drafting…',
       cost: 0.0123,
       timestamp: 42,

@@ -1,27 +1,35 @@
 /**
- * v1.2 — Director Route 2.0 plan step.
+ * v1.2 — Director Route 2.0 plan step (M1 CANON-NATIVE rewrite).
  *
  * The very first entry in the run log. Captures the model's
- * (or our pre-baked) plan for the loop — "I will search
- * trends, draft a prompt, critique, refine, finalize" — so
- * the Replay UI can show *why* the agent took the actions it
- * did, not just *what* it did.
+ * (or our pre-baked) plan for the loop — "I will pick the
+ * beat, write the scene, critique for canon compliance,
+ * refine, generate, persist" — so the Replay UI can show
+ * *why* the agent took the actions it did, not just *what*.
+ *
+ * IMPORTANT (M1): the Director is the AIart4never Studio Director
+ * for the ORIGINAL Master4never multiverse — it produces ON-CANON
+ * beats featuring the operator's locked characters (Kael PRIME and
+ * his variants like Kaelus Vorne) across canon realities. It does
+ * NOT trawl franchise/crossover trends, cosplay, or fan-art niches.
+ * There is NO trending-search step: the agent's "context" is the
+ * canon system block + the locked character Element, not the web.
  *
  * Two exports:
  *   - `buildDirectorPlan(context)` returns the plan text.
  *   - `buildDirectorSystemPrompt(context)` returns the full
- *     system prompt the model sees; it embeds the plan and the
- *     niche/genre/angle orientation. The same context is also
- *     passed to the user prompt (`buildUserPrompt`).
+ *     system prompt the model sees; it embeds the plan, the
+ *     canon block, and the beat orientation. The same context
+ *     is also passed to the user prompt (`buildUserPrompt`).
  *
- * The system prompt deliberately calls out the 6-step loop
- * shape (`plan → search → draft → critique → refine →
- * finalize`) so a model that's not familiar with the
+ * The system prompt deliberately calls out the canon beat loop
+ * shape (`plan-beat → draft-scene → critique → refine →
+ * generate → persist`) so a model that's not familiar with the
  * director pattern still produces a predictable tool-call
- * sequence. The model is free to skip steps (e.g. if the
- * angle is already obvious, it can go straight to
- * `generate_prompt`), but the upper bound is enforced by
- * Vercel AI SDK's `stopWhen: stepCountIs(8)`.
+ * sequence. The model is free to skip steps (e.g. if the beat
+ * is already obvious, it can go straight to `generate_prompt`),
+ * but the upper bound is enforced by Vercel AI SDK's
+ * `stopWhen: stepCountIs(8)`.
  *
  * The plan is pure (no IO, no time) so the unit test can
  * snapshot the output and catch regressions when the
@@ -39,7 +47,18 @@ import {
 } from '@/lib/canon';
 
 export interface PlanContext {
+  /**
+   * M1 CANON-NATIVE: the active CONTENT PILLARS for this beat (e.g.
+   * Story-Beat, Variant Reveal, Same Soul, Lore / Poll). Carried under the
+   * legacy `niches` key for settings back-compat, but they are canon pillars
+   * — NOT franchise/crossover niches.
+   */
   niches: string[];
+  /**
+   * M1 CANON-NATIVE: the canon STYLES for this beat (e.g. cinematic,
+   * grimdark, character-study, neo-noir). Carried under the legacy `genres`
+   * key for back-compat.
+   */
   genres: string[];
   ideaConcept: string;
   skillContext?: SkillRef[];
@@ -52,33 +71,43 @@ export interface PlanContext {
 }
 
 /**
- * The 6-step plan the model is told to follow. Returned as a
- * single string so it can be embedded in the system prompt
- * and also stored as the first step's `reasoning` field.
+ * The canon beat plan the model is told to follow. Returned as a
+ * single string so it can be embedded in the system prompt and also
+ * stored as the first step's `reasoning` field.
+ *
+ * M1 CANON-NATIVE: there is NO trending-search step. The agent produces
+ * an ON-CANON Master4never beat — it picks the featured character + reality
+ * + content pillar, writes a canon-anchored SCENE prompt (the canon system
+ * block keeps it on-model; the locked Element placeholder `<<<…>>>` carries
+ * the character identity — the agent writes the WHAT/WHERE, the Element
+ * carries the WHO), critiques it for CANON COMPLIANCE + quality, generates
+ * via the Element-anchored generate_image tool, and persists to the approval
+ * queue (the locked watermark → crop → host pipeline runs downstream).
  */
 export function buildDirectorPlan(context: PlanContext): string {
-  const nichesLine =
+  const pillarsLine =
     context.niches.length > 0
-      ? `I will search for trends in: ${context.niches.join(', ')}.`
-      : 'No niches supplied — I will skip the trending-search step and draft from the angle alone.';
+      ? `Content pillars in play for this beat: ${context.niches.join(', ')}.`
+      : 'No pillars supplied — I will infer the beat (character + reality + pillar) from the request alone.';
 
   const skillsLine =
     context.skillContext && context.skillContext.length > 0
       ? `Active skills to fold into the draft: ${context.skillContext.map((s) => s.name).join(', ')}.`
-      : 'No skills active — the draft will use the base persona only.';
+      : 'No skills active — the draft will use the base canon persona only.';
 
   return [
     'Director plan (executed in this order, stop early if budget is exhausted):',
-    `1. (Optional) trending_search({niches, ideaConcept}) — pull a few trending hits for context.`,
-    `2. generate_prompt({niches, genres, angle, skillContext, trendingContext?}) — produce the first draft.`,
-    `3. critique_prompt({prompt, requirements}) — score 0..1. If score < 0.7, refine.`,
+    `1. Determine the beat — the featured character + reality + content pillar (from the request / weekly template). Stay on-canon; never reach for franchises, crossovers, cosplay, or merch.`,
+    `2. generate_prompt({niches, genres, angle, skillContext}) — write a canon-anchored SCENE prompt: the WHAT (action/pose/wardrobe) and WHERE (the reality's hallmark setting). The canon system block keeps it on-model; the locked character Element carries the WHO — embed the Anchor element token verbatim.`,
+    `3. critique_prompt({prompt, requirements}) — score 0..1 for CANON COMPLIANCE (right reality, no off-canon traits — e.g. no cyberdeck on a W40K variant) AND quality. If score < 0.7, refine.`,
     `4. (Optional, max 2 refine passes) generate_prompt again with the critique's issues as extra context.`,
-    `5. Finalize: output the final prompt as the assistant text (no tool call).`,
-    `6. Stop. The route layer captures the result.`,
+    `5. generate_image({model, prompt, settings}) — render the beat via Higgsfield, Element-anchored (NOT a crossover prompt). Persist to the approval queue; the locked watermark → crop → host pipeline runs downstream.`,
+    `6. Finalize: output the final prompt as the assistant text (no tool call). Stop — the route layer captures the result.`,
     '',
-    nichesLine,
+    pillarsLine,
     skillsLine,
-    `Angle (the on-canon Master4never concept to realise): "${context.ideaConcept}".`,
+    `Beat (the on-canon Master4never concept to realise): "${context.ideaConcept}".`,
+    '(Optional SENSE: if — and only if — a research connector is configured, the agent may pull canon-relevant reference via lib/research; this is NOT a default step and is never crossover trend-trawling.)',
   ].join('\n');
 }
 
@@ -129,12 +158,14 @@ export function buildDirectorSystemPrompt(context: PlanContext): string {
  */
 export function buildUserPrompt(context: PlanContext): string {
   return [
-    `Angle: ${context.ideaConcept}`,
+    // M1 CANON-NATIVE: "Beat" (not "Angle") is the canon framing; pillars and
+    // styles ride the legacy niches/genres keys for settings back-compat.
+    `Beat: ${context.ideaConcept}`,
     '',
-    `Niches: ${context.niches.join(', ') || '(none)'}`,
-    `Genres: ${context.genres.join(', ') || '(none)'}`,
+    `Content pillars: ${context.niches.join(', ') || '(none)'}`,
+    `Styles: ${context.genres.join(', ') || '(none)'}`,
     '',
-    'Execute the director plan and return the final prompt as your terminal assistant text.',
+    'Execute the director plan and return the final on-canon prompt as your terminal assistant text.',
   ].join('\n');
 }
 

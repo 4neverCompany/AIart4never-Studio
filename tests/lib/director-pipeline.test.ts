@@ -19,16 +19,17 @@ function jsonResponse(body: unknown, ok = true, status = 200): Response {
 }
 
 const base = {
-  ideaConcept: 'Darth Vader in an Iron Man suit',
-  niches: ['Multiverse Crossovers'],
-  genres: ['Noir & Gritty'],
+  // M1 CANON-NATIVE: canon content pillar + style + an on-canon beat.
+  ideaConcept: 'Kael steps into the W40K reality and meets Kaelus Vorne',
+  niches: ['Variant Reveal'],
+  genres: ['Cinematic'],
 };
 
 // A realistic Director output (≥15 words) — the V1.6 plausibility gate
 // rejects implausibly short "prompts", so test fixtures must look real.
 const GOOD_PROMPT =
-  'A long, cinematic crossover prompt: Darth Vader stands in a rain-slicked neon Tokyo alley wearing '
-  + 'a battle-scarred Iron Man suit, volumetric red rim lighting, low-angle 35mm shot, hyperdetailed, dramatic atmosphere.';
+  'A long, cinematic canon scene: Kael, the ashen netrunner, stands in a candle-lit gothic nave wearing '
+  + 'cyan circuit-lines, facing Kaelus Vorne in crimson ceramite, volumetric rim lighting, low-angle 35mm shot, hyperdetailed, dramatic atmosphere.';
 
 describe('requestDirectorPrompt', () => {
   it('returns the Director prompt on success and posts mode:director', async () => {
@@ -38,7 +39,7 @@ describe('requestDirectorPrompt', () => {
     const out = await requestDirectorPrompt(base, { fetchImpl: fetchImpl as unknown as typeof fetch });
     expect(out.ok).toBe(true);
     if (out.ok) {
-      expect(out.prompt).toContain('cinematic crossover');
+      expect(out.prompt).toContain('cinematic canon scene');
       expect(out.cost).toBe(0.0123);
       expect(out.truncatedBy).toBe('natural');
     }
@@ -46,7 +47,7 @@ describe('requestDirectorPrompt', () => {
     const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
     const body = JSON.parse(init.body as string);
     expect(body.mode).toBe('director');
-    expect(body.niches).toEqual(['Multiverse Crossovers']);
+    expect(body.niches).toEqual(['Variant Reveal']);
     expect(url).toBe('/api/ai/prompt');
   });
 
@@ -128,7 +129,7 @@ describe('requestDirectorPrompt', () => {
     const fetchImpl = vi.fn(async () =>
       jsonResponse({
         prompt:
-          'I could not complete the prompt draft because the trending search tool failed twice in a row and no usable context was available for this concept.',
+          'I could not complete the prompt draft because the generate_prompt tool failed twice in a row and no usable canon scene could be drafted for this beat.',
         truncatedBy: 'natural',
       }),
     );
@@ -139,7 +140,7 @@ describe('requestDirectorPrompt', () => {
 
   it('falls back on the DIRECTOR_FAILED sentinel', async () => {
     const fetchImpl = vi.fn(async () =>
-      jsonResponse({ prompt: 'DIRECTOR_FAILED: trending_search unavailable after two attempts.' }),
+      jsonResponse({ prompt: 'DIRECTOR_FAILED: generate_image unavailable after two attempts.' }),
     );
     const out = await requestDirectorPrompt(base, { fetchImpl: fetchImpl as unknown as typeof fetch });
     expect(out.ok).toBe(false);

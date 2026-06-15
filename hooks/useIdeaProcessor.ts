@@ -152,8 +152,9 @@ export function useIdeaProcessor(deps: UseIdeaProcessorDeps) {
       // v1.6.0 (opt-in in v1.5.0; users can switch it off in Settings →
       // AI Engine). When enabled AND at least one niche is configured
       // (the Director route validates 1-6 niches), route the idea→prompt
-      // step through the multi-step tool-use loop (trending_search →
-      // generate_prompt → critique → refine) and use its final prompt.
+      // step through the multi-step canon beat loop (plan-beat →
+      // generate_prompt → critique → refine → generate_image) and use its
+      // final prompt.
       // The Director's
       // plan is prompt-ONLY (it ends with the final prompt as assistant
       // text; image generation still happens later via

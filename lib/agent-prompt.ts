@@ -17,44 +17,32 @@
  * default frame, and the live tag list overrides on every call.
  */
 
+// M1 CANON-NATIVE: the default Content Pillars are the Master4never canon
+// pillars (lib/canon CONTENT_PILLARS) + canon realities — NOT franchise /
+// crossover / cosplay niches. Mirrors types/mashup RECOMMENDED_NICHES.
 export const DEFAULT_NICHES: readonly string[] = [
-  'Multiverse Crossovers',
-  'Fan Fiction & Lore',
-  'Merchandise & Collectibles',
-  'Cosplay & Fan Art',
-  'Pop Culture Crossovers',
-  'Alternate Realities',
-  'Sci-Fi & Fantasy',
-  'Retro & Nostalgia',
-  'Cyberpunk & Futurism',
-  'Grimdark & Gothic',
-  'Street-Level Heroes',
-  'Galactic Empires',
-  'Eldritch Horrors',
-  'Mythic Legends',
+  'Story-Beat',
+  'Variant Reveal',
+  'Same Soul, Different Reality',
+  'Lore / Poll',
+  'Cyberpunk PRIME',
+  'Grimdark W40K',
+  'Modern-Hightech W40K',
 ];
 
+// M1 CANON-NATIVE: canon-appropriate Style Tags. Mirrors types/mashup
+// RECOMMENDED_GENRES.
 export const DEFAULT_GENRES: readonly string[] = [
-  'Visual Storytelling',
-  'High Contrast',
-  'Emotional Resonance',
-  'Cinematic Crossovers',
-  'What If Scenarios',
-  'Alternative Timelines',
-  'Epic Battles',
-  'Character Dialogues',
-  'Behind-the-Scenes Concepts',
-  'Meme-worthy Mashups',
-  'Deep Lore Explorations',
-  'Hyper-Realistic',
+  'Cinematic',
+  'Grimdark',
+  'Character Study',
+  'Neo-Noir',
+  'Netrunner Cyberpunk',
+  'Gothic Sci-Fi',
   'Dramatic Lighting',
-  'Epic Action',
-  'Concept Art',
-  'Digital Illustration',
-  'Noir & Gritty',
-  'Vibrant & Neon',
-  'Surreal & Abstract',
-  'Minimalist Design',
+  'Hyper-Detailed',
+  'Volumetric Atmosphere',
+  'Painterly Concept Art',
 ];
 
 export interface BuildAgentPromptInput {
@@ -113,7 +101,7 @@ export function buildDefaultAgentPrompt({ niches, genres }: BuildAgentPromptInpu
 
   return [
     MASHUPFORGE_AI_PERSONA,
-    `Today's orientation: you're working in ${pillarPhrase}, ${stylePhrase}. Lean into "what if" scenarios, alternative timelines, and crossover composition when relevant — but only when the Content Pillars actually invite it.`,
-    `Reach for visual storytelling, high contrast, and emotional resonance so the output reads well on social platforms (Instagram, TikTok, Twitter). Cross-reference trends with the user's configured tags before suggesting them — generic virality is not the goal, fit-to-pillar is.`,
+    `Today's orientation: you're working in ${pillarPhrase}, ${stylePhrase}. Lean into on-canon Master4never beats — a character visiting a reality, a variant reveal, the same soul across realities, a lore drop — but only when the Content Pillars actually invite it. Stay on-canon; never reach for third-party franchises, crossovers, cosplay, or merch.`,
+    `Reach for visual storytelling, high contrast, and emotional resonance so the output reads well on social platforms (Instagram, Pinterest). Ground every choice in the configured Content Pillars + Style Tags — generic virality is not the goal, fit-to-canon is.`,
   ].join(' ');
 }

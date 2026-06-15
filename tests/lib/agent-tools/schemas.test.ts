@@ -12,7 +12,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   zAssetRef,
-  zTrendingSearchInput,
   zGeneratePromptInput,
   zCritiquePromptInput,
   zImageSettings,
@@ -57,8 +56,8 @@ describe('zAssetRef', () => {
 });
 
 describe('zNicheString / zAngleString', () => {
-  it('trims and accepts non-empty niches', () => {
-    expect(zNicheString.parse('  Marvel  ')).toBe('Marvel');
+  it('trims and accepts non-empty pillars', () => {
+    expect(zNicheString.parse('  Variant Reveal  ')).toBe('Variant Reveal');
   });
 
   it('rejects empty niches after trim', () => {
@@ -76,54 +75,20 @@ describe('zNicheString / zAngleString', () => {
   });
 });
 
-describe('zTrendingSearchInput', () => {
-  it('requires at least one niche', () => {
-    expect(() => zTrendingSearchInput.parse({ niches: [] })).toThrow();
-  });
-
-  it('caps at 6 niches', () => {
-    expect(() =>
-      zTrendingSearchInput.parse({ niches: Array.from({ length: 7 }, (_, i) => `n${i}`) }),
-    ).toThrow();
-  });
-
-  it('accepts the canonical shape', () => {
-    const parsed = zTrendingSearchInput.parse({
-      niches: ['Multiverse Crossovers'],
-      ideaConcept: 'Darth Vader meets Iron Man',
-      count: 5,
-    });
-    expect(parsed.count).toBe(5);
-    expect(parsed.ideaConcept).toBe('Darth Vader meets Iron Man');
-  });
-
-  it('defaults count to 5 when omitted', () => {
-    const parsed = zTrendingSearchInput.parse({ niches: ['Sci-Fi & Fantasy'] });
-    expect(parsed.count).toBe(5);
-  });
-
-  it('rejects a count above 10', () => {
-    expect(() =>
-      zTrendingSearchInput.parse({ niches: ['X'], count: 11 }),
-    ).toThrow();
-  });
-
-  it('treats ideaConcept as optional', () => {
-    const parsed = zTrendingSearchInput.parse({ niches: ['X'] });
-    expect(parsed.ideaConcept).toBeUndefined();
-  });
-});
+// M1 CANON-NATIVE: the trending_search tool + its schema are GONE (no tool,
+// no plan step). The only survivor is the optional reference-context row
+// (zTrendResult) folded into generate_prompt as flavour.
 
 describe('zGeneratePromptInput', () => {
   const baseInput = {
-    niches: ['Mythic Legends'],
-    genres: ['Cinematic Crossovers'],
-    angle: 'Darth Vader in Iron Man suit',
+    niches: ['Variant Reveal'],
+    genres: ['Cinematic'],
+    angle: 'Kael steps into the W40K reality and meets Kaelus Vorne',
   };
 
   it('accepts a minimal input', () => {
     const parsed = zGeneratePromptInput.parse(baseInput);
-    expect(parsed.angle).toBe('Darth Vader in Iron Man suit');
+    expect(parsed.angle).toBe('Kael steps into the W40K reality and meets Kaelus Vorne');
     expect(parsed.skillContext).toEqual([]);
   });
 
@@ -258,7 +223,7 @@ describe('zAssetMetadata / zPersistAssetInput', () => {
   it('accepts the full input shape', () => {
     const parsed = zPersistAssetInput.parse({
       assetRef: { provider: 'higgsfield', id: 'x', url: 'https://x.com' },
-      metadata: { title: 'Test', kind: 'image', tags: ['Marvel'] },
+      metadata: { title: 'Test', kind: 'image', tags: ['Variant Reveal'] },
     });
     expect(parsed.metadata.title).toBe('Test');
   });

@@ -18,7 +18,7 @@
  *
  * Naming convention: `z<PascalCase>` for schemas. The inferred types
  * are exported under the same name without the `z` prefix (e.g.
- * `zTrendingSearchInput` schema → `TrendingSearchInput` type) so
+ * `zGeneratePromptInput` schema → `GeneratePromptInput` type) so
  * call sites read naturally.
  */
 import { z } from 'zod';
@@ -28,10 +28,12 @@ import { z } from 'zod';
 // ---------------------------------------------------------------------------
 
 /**
- * `niche` is a free-form string (e.g. "Multiverse Crossovers",
- * "Mythic Legends"). The model is allowed to invent new niches;
- * we only enforce non-empty + length cap so a runaway model can't
- * flood the tool-call payload.
+ * `niche` is a free-form string carrying a Master4never CONTENT PILLAR or
+ * canon reality (e.g. "Story-Beat", "Variant Reveal", "Cyberpunk PRIME").
+ * The model is allowed to refine it; we only enforce non-empty + length cap
+ * so a runaway model can't flood the tool-call payload. (The legacy "niche"
+ * name is kept for settings/schema back-compat — the VALUES are canon, never
+ * third-party franchises or crossovers.)
  */
 export const zNicheString = z
   .string()
@@ -48,7 +50,8 @@ export const zGenreString = z
   .max(80, 'genre too long (max 80 chars)');
 export type GenreString = z.infer<typeof zGenreString>;
 
-/** A free-form angle/concept (e.g. "Darth Vader in Iron Man suit"). */
+/** A free-form on-canon beat/concept (e.g. "Kael steps into the W40K reality
+ *  and meets Kaelus Vorne across a candle-lit nave"). */
 export const zAngleString = z
   .string()
   .trim()
@@ -78,71 +81,33 @@ export const zAssetRef = z.object({
 export type AssetRef = z.infer<typeof zAssetRef>;
 
 // ---------------------------------------------------------------------------
-// 1. trending_search
+// 1. reference-context row (M1 CANON-NATIVE)
 // ---------------------------------------------------------------------------
+//
+// M1 CANON-NATIVE: the old `trending_search` tool + its camofox-macro
+// crossover/fan-art trend-trawling is GONE. The Director is on-canon: its
+// "context" is the canon system block + the locked character Element, not the
+// web. The only survivor is this generic reference-context row, an OPTIONAL
+// flavour input on `generate_prompt` for the rare case a research connector
+// (lib/research) has supplied canon-relevant reference. It is NOT a default
+// step and never carries crossover trends.
 
 /**
- * Input for the `trending_search` tool. The model passes a few niches
- * and an optional idea concept; we run camofox and surface the top
- * trending titles/URLs.
- *
- * `ideaConcept` is optional — without it the search is a pure
- * "what's hot in <niche>" pull; with it we bias the query toward
- * "what's hot in <niche> that relates to <ideaConcept>".
- */
-export const zTrendingSearchInput = z.object({
-  niches: z
-    .array(zNicheString)
-    .min(1, 'trending_search requires at least one niche')
-    .max(6, 'trending_search accepts at most 6 niches')
-    .describe(
-      "1-6 user-selected content pillars (e.g. ['Multiverse Crossovers', 'Mythic Legends']). The tool runs camofox macros for each niche and merges the result set.",
-    ),
-  ideaConcept: z
-    .string()
-    .trim()
-    .max(200, 'ideaConcept too long (max 200 chars)')
-    .optional()
-    .describe(
-      'Optional concept that biases the search query (e.g. "Darth Vader meets Iron Man"). Omit for a pure "what is trending" pull.',
-    ),
-  count: z
-    .number()
-    .int()
-    .min(1)
-    .max(10)
-    .default(5)
-    .describe('How many trending results to return per niche. Default 5, max 10.'),
-});
-export type TrendingSearchInput = z.infer<typeof zTrendingSearchInput>;
-
-/**
- * One trending result row. Mirrors `WebSearchResult` from `lib/web-search.ts`
- * so the agent can pass it through to the prompt-draft step without
- * reshaping.
+ * One optional reference-context row the model may fold into a draft as
+ * flavour (e.g. a canon-relevant concept-art reference from a configured
+ * research connector). Free-form `source` label; no franchise / crossover
+ * framing.
  */
 export const zTrendResult = z.object({
   title: z.string().min(1),
   url: z.string().url(),
   snippet: z.string().default(''),
-  /** Niche this row was sourced from (lets the agent attribute findings). */
+  /** Content pillar / reality this reference relates to. */
   niche: z.string().min(1),
-  /** Search macro that produced the row (e.g. '@google_search'). */
+  /** Free-form source label for the reference (e.g. a research connector id). */
   source: z.string().min(1),
 });
 export type TrendResult = z.infer<typeof zTrendResult>;
-
-/** Output of `trending_search`. */
-export const zTrendingSearchOutput = z.object({
-  results: z
-    .array(zTrendResult)
-    .describe('Trending hits, deduped by URL, ordered by recency heuristic (camofox order preserved).'),
-  /** Niches that actually returned hits — excludes any that yielded zero. */
-  nichesWithHits: z.array(zNicheString),
-  /** Engine that served the search — useful for the route's source-attribution badge. */
-  servedBy: z.enum(['camofox', 'web-search']),
-});
-export type TrendingSearchOutput = z.infer<typeof zTrendingSearchOutput>;
 
 // ---------------------------------------------------------------------------
 // 2. generate_prompt
@@ -164,16 +129,16 @@ export type SkillRef = z.infer<typeof zSkillRef>;
 export const zGeneratePromptInput = z.object({
   niches: z
     .array(zNicheString)
-    .min(1, 'generate_prompt requires at least one niche')
+    .min(1, 'generate_prompt requires at least one content pillar')
     .max(6)
-    .describe('Content pillars that anchor the prompt\'s subject matter.'),
+    .describe('Canon content pillars / realities that anchor the beat (e.g. "Variant Reveal", "Cyberpunk PRIME").'),
   genres: z
     .array(zGenreString)
-    .min(1, 'generate_prompt requires at least one genre')
+    .min(1, 'generate_prompt requires at least one style')
     .max(10)
-    .describe('Style/aesthetic tags (e.g. "Noir & Gritty", "Vibrant & Neon").'),
+    .describe('Canon style tags (e.g. "Cinematic", "Grimdark", "Neo-Noir").'),
   angle: zAngleString.describe(
-    'The crossover concept the prompt should realise (e.g. "Darth Vader in Iron Man suit").',
+    'The on-canon Master4never beat the prompt should realise (e.g. "Kael steps into the W40K reality and meets Kaelus Vorne").',
   ),
   /** Skills auto-injected at build-time (e.g. camera-angles, voice guides). */
   skillContext: z
@@ -181,12 +146,12 @@ export const zGeneratePromptInput = z.object({
     .max(20)
     .default([])
     .describe('Optional list of active skills to fold into the prompt template.'),
-  /** Optional pre-fetched trending context — lets the agent skip the search step. */
+  /** Optional canon-relevant reference context (from a research connector, if any). */
   trendingContext: z
     .array(zTrendResult)
     .max(30)
     .optional()
-    .describe('Trending hits from a prior trending_search call. Used to flavour the prompt.'),
+    .describe('Optional canon-relevant reference rows (from a configured research connector). Used only as flavour; not a default step.'),
 });
 export type GeneratePromptInput = z.infer<typeof zGeneratePromptInput>;
 
@@ -418,7 +383,7 @@ export type GenerateVideoOutput = z.infer<typeof zGenerateVideoOutput>;
  * assetRef.id` on demand.
  */
 export const zAssetMetadata = z.object({
-  /** Display title (e.g. file name or "Darth Vader x Iron Man #12"). */
+  /** Display title (e.g. file name or "Kaelus Vorne — Ashen Halo #12"). */
   title: z.string().trim().min(1).max(200),
   /** Optional caption. */
   caption: z.string().max(2200).optional(),

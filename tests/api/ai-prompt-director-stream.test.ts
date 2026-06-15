@@ -13,7 +13,7 @@
  *
  * The AI SDK is mocked at the `ai` module level (same StubToolLoopAgent shape
  * as ai-prompt-director.test.ts) so we never hit a real LLM. The mock fires
- * two onStepFinish events (trending_search, generate_image → an AssetRef) and
+ * two onStepFinish events (generate_prompt, generate_image → an AssetRef) and
  * returns a final text.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -115,9 +115,9 @@ describe('POST /api/ai/prompt — director STREAM mode', () => {
     generateTextMock.mockImplementation(async (opts: { onStepFinish?: (s: unknown) => Promise<void> | void }) => {
       const s0 = makeMockStepResult({
         stepNumber: 0,
-        toolName: 'trending_search',
-        toolInput: { niches: ['Variant Reveal'] },
-        toolOutput: { results: [], nichesWithHits: ['Variant Reveal'], servedBy: 'camofox' },
+        toolName: 'critique_prompt',
+        toolInput: { prompt: 'a long enough canon scene draft for the variant reveal beat', requirements: { niches: ['Variant Reveal'], angle: 'Kael steps through a reality rift' } },
+        toolOutput: { score: 0.82, issues: [] },
       });
       await opts.onStepFinish?.(s0);
       const s1 = makeMockStepResult({

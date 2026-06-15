@@ -12,10 +12,12 @@ import {
   buildInitialPlanStep,
 } from '@/lib/agent-loop/plan';
 
+// M1 CANON-NATIVE: the context now carries canon content pillars + styles +
+// an on-canon beat — NOT crossover niches / a franchise mashup concept.
 const baseContext = {
-  niches: ['Multiverse Crossovers', 'Mythic Legends'],
-  genres: ['Noir & Gritty'],
-  ideaConcept: 'Darth Vader in Iron Man suit',
+  niches: ['Variant Reveal', 'Cyberpunk PRIME'],
+  genres: ['Cinematic'],
+  ideaConcept: 'Kael steps into the W40K reality and meets Kaelus Vorne',
 };
 
 describe('buildDirectorPlan', () => {
@@ -25,28 +27,38 @@ describe('buildDirectorPlan', () => {
     expect(out.length).toBeGreaterThan(0);
   });
 
-  it('lists the 6 step names in order', () => {
+  // M1 CANON-NATIVE: the canon beat flow — there is NO trending_search step.
+  it('lists the canon beat steps in order, with NO trending_search step', () => {
     const out = buildDirectorPlan(baseContext);
-    expect(out).toMatch(/trending_search/);
+    expect(out).not.toMatch(/trending_search/);
+    expect(out).toMatch(/Determine the beat/);
     expect(out).toMatch(/generate_prompt/);
     expect(out).toMatch(/critique_prompt/);
+    expect(out).toMatch(/generate_image/);
     expect(out).toMatch(/Finalize/);
   });
 
-  it('includes the user\'s niches', () => {
+  // M1 CANON-NATIVE: the plan critiques for canon compliance, not generic trends.
+  it('frames the critique as a canon-compliance gate', () => {
     const out = buildDirectorPlan(baseContext);
-    expect(out).toContain('Multiverse Crossovers');
-    expect(out).toContain('Mythic Legends');
+    expect(out).toMatch(/CANON COMPLIANCE/i);
+    expect(out).toMatch(/cyberdeck/i);
   });
 
-  it('includes the user\'s idea concept', () => {
+  it('includes the active content pillars', () => {
     const out = buildDirectorPlan(baseContext);
-    expect(out).toContain('Darth Vader in Iron Man suit');
+    expect(out).toContain('Variant Reveal');
+    expect(out).toContain('Cyberpunk PRIME');
   });
 
-  it('handles empty niches gracefully', () => {
+  it('includes the on-canon beat', () => {
+    const out = buildDirectorPlan(baseContext);
+    expect(out).toContain('Kael steps into the W40K reality and meets Kaelus Vorne');
+  });
+
+  it('handles empty pillars gracefully', () => {
     const out = buildDirectorPlan({ ...baseContext, niches: [] });
-    expect(out).toMatch(/No niches supplied/);
+    expect(out).toMatch(/No pillars supplied/);
   });
 
   it('handles no skills', () => {
@@ -104,10 +116,11 @@ describe('buildDirectorSystemPrompt', () => {
     expect(out).toMatch(/NO cyberdeck/i);
   });
 
-  it('embeds the plan', () => {
+  it('embeds the canon beat plan (no trending_search)', () => {
     const out = buildDirectorSystemPrompt(baseContext);
     expect(out).toMatch(/Director plan/);
-    expect(out).toMatch(/trending_search/);
+    expect(out).toMatch(/Determine the beat/);
+    expect(out).not.toMatch(/trending_search/);
   });
 
   it('includes the 0\.7 critique threshold as a directive', () => {
@@ -122,21 +135,22 @@ describe('buildDirectorSystemPrompt', () => {
 });
 
 describe('buildUserPrompt', () => {
-  it('starts with "Angle:"', () => {
+  // M1 CANON-NATIVE: "Beat" framing, canon pillars + styles.
+  it('starts with "Beat:"', () => {
     const out = buildUserPrompt(baseContext);
-    expect(out).toMatch(/^Angle: /);
+    expect(out).toMatch(/^Beat: /);
   });
 
-  it('lists the niches and genres', () => {
+  it('lists the content pillars and styles', () => {
     const out = buildUserPrompt(baseContext);
-    expect(out).toContain('Niches: Multiverse Crossovers, Mythic Legends');
-    expect(out).toContain('Genres: Noir & Gritty');
+    expect(out).toContain('Content pillars: Variant Reveal, Cyberpunk PRIME');
+    expect(out).toContain('Styles: Cinematic');
   });
 
-  it('substitutes (none) for empty niches / genres', () => {
+  it('substitutes (none) for empty pillars / styles', () => {
     const out = buildUserPrompt({ ...baseContext, niches: [], genres: [] });
-    expect(out).toContain('Niches: (none)');
-    expect(out).toContain('Genres: (none)');
+    expect(out).toContain('Content pillars: (none)');
+    expect(out).toContain('Styles: (none)');
   });
 
   it('ends with the execute-the-plan directive', () => {
@@ -153,9 +167,10 @@ describe('buildInitialPlanStep', () => {
     expect(step.timestamp).toBe(1234);
   });
 
-  it('includes the plan text in reasoning', () => {
+  it('includes the canon beat plan text in reasoning', () => {
     const step = buildInitialPlanStep(baseContext, { timestamp: 1 });
-    expect(step.reasoning).toContain('trending_search');
+    expect(step.reasoning).toContain('Determine the beat');
+    expect(step.reasoning).not.toContain('trending_search');
   });
 
   it('uses the injected clock when no timestamp is provided', () => {

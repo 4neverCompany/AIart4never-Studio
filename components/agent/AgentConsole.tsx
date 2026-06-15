@@ -7,8 +7,9 @@
  * agent. Unlike the legacy Sidebar chat (`mode:'chat'`, plain tool-less
  * MiniMax stream), this console drives the Director loop (the `ToolLoopAgent`
  * with `AGENT_TOOLS`) via `streamAgent` — so the in-app agent FINALLY uses
- * tools: it plans, calls `generate_image` → Higgsfield, `trending_search`,
- * etc., and the produced beats land back in the thread.
+ * tools: it plans the beat, drafts a canon scene with `generate_prompt`,
+ * critiques it, then calls `generate_image` → Higgsfield (Element-anchored),
+ * and the produced beats land back in the thread.
  *
  * The console renders, per agent turn:
  *   - the operator's prompt bubble (cyan, right-aligned),
@@ -520,10 +521,6 @@ function describeToolArgs(tool: string, args: unknown): string {
   if (tool === 'generate_image' || tool === 'generate_video') {
     const model = typeof a.model === 'string' ? a.model : undefined;
     return model ? ` · ${model}` : ' · Higgsfield';
-  }
-  if (tool === 'trending_search' && Array.isArray(a.niches)) {
-    const first = a.niches.find((n) => typeof n === 'string') as string | undefined;
-    return first ? ` · ${first}` : '';
   }
   return '';
 }
