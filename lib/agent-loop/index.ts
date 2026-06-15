@@ -63,6 +63,9 @@ import { AGENT_TOOLS } from '@/lib/agent-tools';
 import type { SkillRef } from '@/lib/agent-tools/schemas';
 import { buildSkillSystemBlock } from '@/lib/skill-loader';
 import { stripModelCommentary } from '@/lib/agent-tools/prompt-extract';
+// M1 CANON-WIRING: the active Master4never character whose canon shapes the
+// director's drafts. Threaded into the PlanContext (default 'kael').
+import type { CharacterId } from '@/lib/canon';
 
 import { StepLogger, truncateForLog, type Step } from './log';
 import { BudgetTracker, estimateStepCost } from './budget';
@@ -87,6 +90,13 @@ export interface RunDirectorLoopInput {
   ideaConcept: string;
   /** Optional: list of active skills to fold into the prompt template. */
   skillContext?: SkillRef[];
+  /**
+   * M1 CANON-WIRING: the active Master4never canon character whose persona +
+   * locked look + hard rules shape the director's drafts and the image-prompt
+   * identity lock. Threaded into the PlanContext. Defaults to 'kael' (the
+   * protagonist / narrator) when the caller omits it.
+   */
+  characterId?: CharacterId;
   /** Storage partition key. Required for `persistence.listRunsForUser`. */
   userId: string;
   /** Optional: model id override (e.g. 'MiniMax-M3'). Falls back to env-driven default. */
@@ -477,6 +487,9 @@ export async function runDirectorLoop(
         genres: input.genres,
         ideaConcept: input.ideaConcept,
         skillContext: input.skillContext ?? [],
+        // M1 CANON-WIRING: default to 'kael' so the plan/system prompt always
+        // carries a canon character.
+        characterId: input.characterId ?? 'kael',
       },
       { clock },
     ),
@@ -491,6 +504,9 @@ export async function runDirectorLoop(
     genres: input.genres,
     ideaConcept: input.ideaConcept,
     skillContext: input.skillContext ?? [],
+    // M1 CANON-WIRING: default to 'kael' so the director system prompt always
+    // injects a canon block.
+    characterId: input.characterId ?? 'kael',
   };
   const baseSystem = buildDirectorSystemPrompt(planContext);
   // Skill block is appended to the system stack (mirrors the

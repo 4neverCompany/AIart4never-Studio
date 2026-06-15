@@ -52,6 +52,15 @@
 
 import { getErrorMessage } from '@/lib/errors';
 import { buildSkillSystemBlock } from '@/lib/skill-loader';
+// M1 CANON-WIRING: the canon engine shapes every prompt/caption/plan. The
+// system block (full persona + locked look + hard rules + reality hallmarks
+// + persistence mandate) is injected right after BASE_SYSTEM_PROMPT so the
+// Master4never canon persona is authoritative for the text modes.
+import {
+  buildCanonSystemBlock,
+  listCharacters,
+  type CharacterId,
+} from '@/lib/canon';
 import {
   getTextModelParams,
   resolveTextModel,
@@ -130,6 +139,18 @@ function sanitizeStringArray(raw: unknown): string[] {
   return raw
     .filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
     .map((s) => s.trim());
+}
+
+// M1 CANON-WIRING: resolve the active Master4never character from the request
+// body, validating against the canon's registered ids. Anything absent,
+// non-string, or unknown falls back to the protagonist/narrator 'kael' so the
+// canon block is ALWAYS present in the system stack — the server default is
+// the safety net for callers that don't thread settings.activeCharacterId.
+function resolveCharacterId(raw: unknown): CharacterId {
+  const fallback: CharacterId = 'kael';
+  if (typeof raw !== 'string') return fallback;
+  const valid = listCharacters().some((c) => c.id === raw);
+  return valid ? (raw as CharacterId) : fallback;
 }
 
 // V080-DES-003: same focus-block helper as pi route; duplicated to avoid
@@ -424,6 +445,15 @@ export async function POST(req: Request): Promise<Response> {
   const cleanGenres = sanitizeStringArray(genres);
   const focusBlock = buildFocusBlock(cleanNiches, cleanGenres);
   const userSystem = typeof systemPrompt === 'string' ? systemPrompt.trim() : '';
+  // M1 CANON-WIRING: the Master4never canon persona for the active character.
+  // Injected RIGHT AFTER BASE_SYSTEM_PROMPT so the locked persona + look + hard
+  // rules + reality hallmarks + persistence mandate are authoritative — every
+  // caption/idea/enhance/etc. text mode now stays on-model. Defaults to 'kael'
+  // when the caller omits or sends an invalid activeCharacterId.
+  const characterId = resolveCharacterId(
+    (body as { activeCharacterId?: unknown }).activeCharacterId,
+  );
+  const canonBlock = buildCanonSystemBlock(characterId);
   // V1.1.1-SKILLS-AUTO-USE: pull the user's active skills from the
   // request body. The frontend reads `settings.activeSkills` and
   // passes the list here so we don't have to round-trip the IDB
@@ -436,13 +466,13 @@ export async function POST(req: Request): Promise<Response> {
     (s): s is string => typeof s === 'string' && s.length > 0,
   );
   const skillBlock = await buildSkillSystemBlock(activeSkills);
-  // Ordering matches the pi route: directive sets the role, user
-  // prompt refines it, focus block targets niches, skills layer
-  // authoritative directives on top. BASE_SYSTEM_PROMPT anchors
-  // the whole stack so output formatting (JSON-only, no fences)
-  // stays consistent across providers.
+  // Ordering: BASE_SYSTEM_PROMPT anchors output formatting (JSON-only, no
+  // fences); the canon block (M1 CANON-WIRING) sits RIGHT AFTER it so the
+  // Master4never persona + locked look + hard rules are authoritative; then
+  // the directive sets the mode role, the user prompt refines it, the focus
+  // block targets niches, and skills layer authoritative directives on top.
   const system =
-    [BASE_SYSTEM_PROMPT, directive, userSystem, focusBlock, skillBlock]
+    [BASE_SYSTEM_PROMPT, canonBlock, directive, userSystem, focusBlock, skillBlock]
       .filter((s): s is string => typeof s === 'string' && s.length > 0)
       .join('\n\n') || undefined;
 
@@ -627,6 +657,13 @@ async function handleDirectorMode(
 
   const modelOverride = typeof model === 'string' && model.length > 0 ? model : undefined;
 
+  // M1 CANON-WIRING: resolve the active Master4never character so the director
+  // system prompt injects the right canon block. Defaults to 'kael' when the
+  // caller omits or sends an invalid activeCharacterId.
+  const characterId = resolveCharacterId(
+    (body as { activeCharacterId?: unknown }).activeCharacterId,
+  );
+
   // Optional maxSteps / budgetUsd. Both are passed through
   // verbatim to the loop; its own Zod schema rejects
   // nonsense values.
@@ -657,6 +694,9 @@ async function handleDirectorMode(
       genres: cleanGenres,
       ideaConcept: ideaConcept.trim(),
       ...(safeSkillContext ? { skillContext: safeSkillContext } : {}),
+      // M1 CANON-WIRING: the director persona + image-prompt lock are anchored
+      // to this character's canon.
+      characterId,
       userId: safeUserId,
       ...(modelOverride ? { modelId: modelOverride } : {}),
       ...(maxSteps !== undefined ? { maxSteps } : {}),

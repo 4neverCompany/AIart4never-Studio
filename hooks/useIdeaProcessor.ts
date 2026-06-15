@@ -193,6 +193,9 @@ export function useIdeaProcessor(deps: UseIdeaProcessorDeps) {
             genres: s.agentGenres ?? [],
             model: s.activeTextModel,
             activeSkills: s.activeSkills ?? [],
+            // M1 CANON-WIRING: anchor the director persona + image-prompt lock
+            // to the active Master4never character (server default 'kael').
+            activeCharacterId: s.activeCharacterId,
           },
           { signal: combinedSignal },
         );
@@ -301,6 +304,8 @@ export function useIdeaProcessor(deps: UseIdeaProcessorDeps) {
                     // the @higgsfield/cli binary. Without this, the
                     // CLI token entry is dead UI.
                     higgsfieldCliToken: s.higgsfieldCliToken,
+                    // M1 CANON-WIRING: keep param-suggest on-canon too.
+                    activeCharacterId: s.activeCharacterId,
                     signal,
                   }),
               },

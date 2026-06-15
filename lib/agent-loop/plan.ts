@@ -28,12 +28,27 @@
  * system prompt is edited.
  */
 import type { SkillRef } from '@/lib/agent-tools/schemas';
+// M1 CANON-WIRING: the Director is the AIart4never Studio Director generating
+// on-canon Master4never multiverse art. The canon block (full persona + locked
+// look + hard rules + reality hallmarks + persistence mandate) is injected into
+// the director system prompt so every drafted prompt stays on-model.
+import {
+  buildCanonSystemBlock,
+  buildCharacterLockBlock,
+  type CharacterId,
+} from '@/lib/canon';
 
 export interface PlanContext {
   niches: string[];
   genres: string[];
   ideaConcept: string;
   skillContext?: SkillRef[];
+  /**
+   * M1 CANON-WIRING: the active Master4never canon character whose persona +
+   * locked look + hard rules shape the director's drafts. Defaults to 'kael'
+   * (the protagonist / narrator) when the caller omits it.
+   */
+  characterId?: CharacterId;
 }
 
 /**
@@ -63,7 +78,7 @@ export function buildDirectorPlan(context: PlanContext): string {
     '',
     nichesLine,
     skillsLine,
-    `Angle (the crossover concept to realise): "${context.ideaConcept}".`,
+    `Angle (the on-canon Master4never concept to realise): "${context.ideaConcept}".`,
   ].join('\n');
 }
 
@@ -74,9 +89,24 @@ export function buildDirectorPlan(context: PlanContext): string {
  */
 export function buildDirectorSystemPrompt(context: PlanContext): string {
   const plan = buildDirectorPlan(context);
+  const characterId: CharacterId = context.characterId ?? 'kael';
+  // M1 CANON-WIRING: the director now generates on-canon Master4never
+  // multiverse art (NOT third-party crossovers). The canon block carries the
+  // active character's persona, locked look, hard rules, reality hallmarks,
+  // and the persistence/Element mandate so every drafted prompt stays on-model.
+  const canonBlock = buildCanonSystemBlock(characterId);
+  // M1 CANON-WIRING (#4): the compact identity-lock fragment for the active
+  // character — the SAME-man lock + the Higgsfield Element anchor token
+  // (`<<<id>>>`). We append it to the IMAGE-PROMPT instructions (rather than
+  // threading it through the model-filled generate_prompt tool input, which
+  // would be unreliable) so every drafted image prompt carries the Element
+  // token + lock verbatim. See the report for the rationale on this path.
+  const lockBlock = buildCharacterLockBlock(characterId);
 
   return [
-    'You are the Director agent of AIart4never Studio, an AI studio that generates crossover image prompts across Star Wars, Marvel, DC, Warhammer 40k, and other fictional universes.',
+    'You are the AIart4never Studio Director — the agent that plans and writes on-canon image prompts for the Master4never multiverse. Every prompt you draft realises the operator\'s ORIGINAL fictional universe and its locked recurring characters; never lean on copyrighted franchises, brands, trademarks, or named third-party characters.',
+    '',
+    canonBlock,
     '',
     'You operate a multi-step tool-use loop. The plan below is the recommended shape — feel free to skip steps when they are not needed, but always end with a final assistant text containing the prompt the user will use.',
     '',
@@ -85,6 +115,8 @@ export function buildDirectorSystemPrompt(context: PlanContext): string {
     'Rules:',
     '- Every tool call MUST match the JSON schema declared by the tool (the AI SDK enforces this; the route will surface a 4xx if you slip).',
     '- critique_prompt is the quality gate. If score < 0.7, regenerate the draft at most twice — do not loop forever.',
+    '- When the draft renders the active canon character, embed the identity lock below verbatim into the image prompt — keep the SAME man (face + bone structure + features), carry the Anchor element token so the look never drifts:',
+    lockBlock,
     '- The final assistant text is what the user sees. It MUST be the prompt draft (40-150 words), not a summary, not JSON, not a markdown fence.',
     '- If a tool returns an error part, you may try once more with adjusted input. If it still fails AND you cannot produce a usable prompt, finalize with exactly "DIRECTOR_FAILED: <one short sentence naming the issue>" — never a free-form apology. (The pipeline detects this sentinel and falls back to the verbatim concept; an undetected explanation would be sent to the image model as the prompt.)',
   ].join('\n');

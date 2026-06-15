@@ -278,6 +278,95 @@ describe('POST /api/ai/prompt — SSE wire shape', () => {
 
 });
 
+// ---------------------------------------------------------------------------
+// M1 CANON-WIRING: the Master4never canon block is injected into the text-mode
+// system stack, right after BASE_SYSTEM_PROMPT, for the active character.
+// ---------------------------------------------------------------------------
+
+/** Pull the MiniMax request's `system` message out of the mocked fetch call. */
+function systemFromFetchCall(): string {
+  const call = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+  const init = call[1] as RequestInit;
+  const parsed = JSON.parse(init.body as string) as {
+    messages?: Array<{ role: string; content: string }>;
+  };
+  return parsed.messages?.find((m) => m.role === 'system')?.content ?? '';
+}
+
+describe('POST /api/ai/prompt — canon system block injection (M1)', () => {
+  beforeEach(() => {
+    process.env.MINIMAX_API_KEY = 'test-minimax-key';
+    const ssePayload =
+      'data: {"choices":[{"delta":{"content":"x"}}]}\n\n' + 'data: [DONE]\n\n';
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
+      new Response(makeSseStream(ssePayload), {
+        status: 200,
+        headers: { 'Content-Type': 'text/event-stream' },
+      }),
+    );
+  });
+
+  it("injects the Kael canon block (Master4never + cyberdeck lock) when activeCharacterId='kael'", async () => {
+    const { POST } = await import('@/app/api/ai/prompt/route');
+    const res = await POST(
+      new Request('http://x/api/ai/prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'write a caption', mode: 'caption', activeCharacterId: 'kael' }),
+      }),
+    );
+    expect(res.status).toBe(200);
+    const system = systemFromFetchCall();
+    expect(system).toContain('Master4never');
+    expect(system).toMatch(/cyberdeck/i);
+    // The canon block sits AFTER the base system prompt (authoritative persona).
+    const baseIdx = system.indexOf('creative AI engine for AIart4never Studio');
+    const canonIdx = system.indexOf('Canon character');
+    expect(baseIdx).toBeGreaterThanOrEqual(0);
+    expect(canonIdx).toBeGreaterThan(baseIdx);
+  });
+
+  it('defaults to the Kael canon block when no activeCharacterId is supplied', async () => {
+    const { POST } = await import('@/app/api/ai/prompt/route');
+    await POST(
+      new Request('http://x/api/ai/prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'hi', mode: 'caption' }),
+      }),
+    );
+    const system = systemFromFetchCall();
+    expect(system).toContain('Master4never (Kael)');
+  });
+
+  it('injects the requested variant canon (Kaelus Vorne, NO cyberdeck) on a valid activeCharacterId', async () => {
+    const { POST } = await import('@/app/api/ai/prompt/route');
+    await POST(
+      new Request('http://x/api/ai/prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'hi', mode: 'caption', activeCharacterId: 'kaelus-vorne' }),
+      }),
+    );
+    const system = systemFromFetchCall();
+    expect(system).toContain('Kaelus Vorne');
+    expect(system).toMatch(/NO cyberdeck/i);
+  });
+
+  it('falls back to Kael when activeCharacterId is invalid', async () => {
+    const { POST } = await import('@/app/api/ai/prompt/route');
+    await POST(
+      new Request('http://x/api/ai/prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'hi', mode: 'caption', activeCharacterId: 'not-a-real-id' }),
+      }),
+    );
+    const system = systemFromFetchCall();
+    expect(system).toContain('Master4never (Kael)');
+  });
+});
+
 describe('GET /api/ai/status — MiniMax-only chain (4NE-20)', () => {
   it('reports minimax when only MINIMAX_API_KEY is set', async () => {
     process.env.MINIMAX_API_KEY = 'k';

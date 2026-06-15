@@ -65,9 +65,43 @@ describe('buildDirectorPlan', () => {
 });
 
 describe('buildDirectorSystemPrompt', () => {
-  it('starts with the Director persona', () => {
+  it('starts with the AIart4never Studio Director persona', () => {
     const out = buildDirectorSystemPrompt(baseContext);
-    expect(out).toMatch(/Director agent of AIart4never Studio/);
+    expect(out).toMatch(/AIart4never Studio Director/);
+  });
+
+  // M1 CANON-WIRING: the stale MashupForge crossover persona is gone — the
+  // director is now anchored to the original Master4never multiverse canon.
+  it('contains the Master4never canon persona, not the stale crossover line', () => {
+    const out = buildDirectorSystemPrompt(baseContext);
+    expect(out).toMatch(/Master4never/);
+    expect(out).not.toMatch(/Star Wars/);
+    expect(out).not.toMatch(/Marvel/);
+    expect(out).not.toMatch(/crossover image prompts across/);
+  });
+
+  // M1 CANON-WIRING: default character is Kael (the protagonist/narrator) when
+  // none is passed; his PRIME signature is the forehead cyberdeck.
+  it('defaults to Kael and injects his canon block (cyberdeck lock) when no characterId is passed', () => {
+    const out = buildDirectorSystemPrompt(baseContext);
+    expect(out).toMatch(/Master4never \(Kael\)/);
+    expect(out).toMatch(/cyberdeck/i);
+  });
+
+  // M1 CANON-WIRING (#4): the image-prompt instructions carry the compact
+  // identity-lock fragment with the Higgsfield Element anchor token.
+  it('embeds the character identity-lock block with the Element anchor token', () => {
+    const out = buildDirectorSystemPrompt(baseContext);
+    expect(out).toMatch(/Identity lock/);
+    expect(out).toMatch(/<<<[0-9a-f-]+>>>/i);
+  });
+
+  // M1 CANON-WIRING: an explicitly-passed variant injects ITS canon, not Kael's.
+  it('injects the requested character canon when a characterId is passed', () => {
+    const out = buildDirectorSystemPrompt({ ...baseContext, characterId: 'kaelus-vorne' });
+    expect(out).toMatch(/Kaelus Vorne/);
+    // Kaelus Vorne's hard rule: NO cyberdeck (PRIME-only signature).
+    expect(out).toMatch(/NO cyberdeck/i);
   });
 
   it('embeds the plan', () => {

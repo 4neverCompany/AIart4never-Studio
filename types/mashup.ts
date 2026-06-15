@@ -3,6 +3,10 @@ import React from 'react';
 // the quota engine's tier union so Settings and the autonomy gate agree on
 // the allowed values without redefining them here.
 import type { MinimaxTier } from './../lib/minimax-quota';
+// M1 CANON-WIRING: the active Master4never character id. Type-only re-use of
+// the canon engine's union so Settings, the prompt route, and the director
+// loop agree on the allowed character ids without redefining them here.
+import type { CharacterId } from '@/lib/canon';
 
 // ── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -442,6 +446,16 @@ export interface UserSettings {
   /** 4NE-21 / Story 1.5: explicit monthly token cap, used only when
    * `minimaxTier` is 'custom'. Undefined / 0 = no cap (tracking only). */
   minimaxCustomTokenCap?: number;
+  /**
+   * M1 CANON-WIRING: the active Master4never canon character that shapes
+   * every prompt / caption / plan. Drives `buildCanonSystemBlock` injection
+   * into the text-mode system stack (`/api/ai/prompt`), the Director persona
+   * (`lib/agent-loop/plan.ts`), and the image-prompt identity lock
+   * (`buildCharacterLockBlock`). Optional for back-compat with stores that
+   * pre-date canon wiring; the server defaults to `'kael'` (the protagonist /
+   * narrator) when absent or invalid. Default in `defaultSettings` is 'kael'.
+   */
+  activeCharacterId?: CharacterId;
   watermark?: WatermarkSettings;
   agentPrompt?: string;
   agentNiches?: string[];
@@ -1124,6 +1138,9 @@ export const defaultSettings: UserSettings = {
   // (or set a custom cap) in Settings → Token Quota.
   minimaxTier: 'plus',
   minimaxCustomTokenCap: undefined,
+  // M1 CANON-WIRING: default to Kael — the Master4never protagonist / narrator.
+  // Every prompt / caption / plan is shaped by this character's canon block.
+  activeCharacterId: 'kael',
   watermark: {
     enabled: false,
     image: null,

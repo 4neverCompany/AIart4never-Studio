@@ -14,6 +14,7 @@
  */
 
 import { recordTokens } from '@/lib/minimax-quota';
+import type { CharacterId } from '@/lib/canon';
 
 export interface DirectorPromptRequest {
   /** The idea concept (the "angle"). Trimmed + capped to 400 chars here. */
@@ -26,6 +27,13 @@ export interface DirectorPromptRequest {
   model?: string;
   /** Active skill names folded into the prompt template. */
   activeSkills?: string[];
+  /**
+   * M1 CANON-WIRING: the active Master4never character whose canon shapes the
+   * director persona + the image-prompt identity lock. Forwarded as
+   * `activeCharacterId` in the request body; the server defaults to 'kael'
+   * when absent or invalid.
+   */
+  activeCharacterId?: CharacterId;
 }
 
 export type DirectorPromptOutcome =
@@ -119,6 +127,10 @@ export async function requestDirectorPrompt(
         genres: req.genres.filter(Boolean).map((s) => s.trim().slice(0, 80)).slice(0, 10),
         ...(req.model ? { model: req.model } : {}),
         skillContext: (req.activeSkills ?? []).filter(Boolean).map((name) => ({ name })),
+        // M1 CANON-WIRING: forward the active character so the director
+        // persona + image-prompt lock are anchored to the right canon. Omitted
+        // → server default 'kael'.
+        ...(req.activeCharacterId ? { activeCharacterId: req.activeCharacterId } : {}),
         userId: 'pipeline',
       }),
       ...(opts.signal ? { signal: opts.signal } : {}),

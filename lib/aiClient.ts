@@ -45,6 +45,7 @@
 // calls). Fire-and-forget — a persistence failure must never break the
 // stream (see the try/catch around the call below).
 import { recordTokens } from '@/lib/minimax-quota';
+import type { CharacterId } from '@/lib/canon';
 
 export type PiMode =
   | 'chat'
@@ -129,6 +130,15 @@ export interface StreamAIOptions {
    * flow remains the default for new users.
    */
   higgsfieldCliToken?: string;
+
+  /**
+   * M1 CANON-WIRING: the active Master4never character. Forwarded to
+   * `/api/ai/prompt` so the server injects `buildCanonSystemBlock` for this
+   * character into the text-mode system stack — every caption / idea / enhance
+   * / tag / negative-prompt call stays on-canon. The frontend reads
+   * `settings.activeCharacterId`; the server defaults to 'kael' when absent.
+   */
+  activeCharacterId?: CharacterId;
 }
 
 /**
@@ -176,6 +186,9 @@ export async function* streamAI(
       // server. The route plumbs it into the provider registry
       // before the next `getProvider('higgsfield')` call.
       higgsfieldCliToken: options?.higgsfieldCliToken,
+      // M1 CANON-WIRING: forward the active Master4never character so the
+      // server injects the right canon block. Omitted → server default 'kael'.
+      activeCharacterId: options?.activeCharacterId,
     }),
     signal: options?.signal,
   });
