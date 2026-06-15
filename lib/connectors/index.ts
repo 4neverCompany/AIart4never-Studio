@@ -41,3 +41,10 @@ export type {
   ConnectorHealthStatus,
   HealthDeps,
 } from './health';
+
+// Server-backed probe deps: route the connect-probe through POST
+// /api/mcp/probe (Node side) instead of connecting from the browser, so the
+// add/test/health flow works on the public web (no CORS). Inject these as the
+// `connect`/`list` deps for confirmAndInstall / checkConnectorHealth /
+// checkAllConnectors from the hook/component layer.
+export { serverProbeDeps } from './probe-client';

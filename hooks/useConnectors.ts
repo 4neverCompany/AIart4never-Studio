@@ -18,6 +18,15 @@
  * owns that interactive step (a Confirm button) and hands the minted token
  * down to `install()`. This hook is provider-agnostic about how the token was
  * obtained; it just forwards it to `confirmAndInstall`.
+ *
+ * CORS FIX: the connect-probe MUST run server-side. Connecting to a remote MCP
+ * server (Higgsfield / Composio) from the browser fails on the public web —
+ * those servers reject the browser origin via CORS. So every probe here
+ * (install's connect-probe, Test's health check, and the mount health sweep)
+ * injects `serverProbeDeps`, whose `connect`/`list` POST the config to
+ * `POST /api/mcp/probe` and let the Node route connect server-side. We keep the
+ * lib's deps-injection seam — the lib functions never hardcode a fetch; this
+ * hook injects the server-backed probe.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -32,6 +41,7 @@ import {
   uninstallConnector,
   checkConnectorHealth,
   checkAllConnectors,
+  serverProbeDeps,
   type ConnectorProposal,
   type ProposeConnectorInput,
   type InstallOutcome,
@@ -66,7 +76,11 @@ export function useConnectors(): UseConnectorsResult {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    const [list, checks] = await Promise.all([listServers(), checkAllConnectors()]);
+    // Health sweep probes server-side (serverProbeDeps) to dodge browser CORS.
+    const [list, checks] = await Promise.all([
+      listServers(),
+      checkAllConnectors(serverProbeDeps),
+    ]);
     setServers(list);
     const byId: Record<string, ConnectorHealth> = {};
     for (const h of checks) byId[h.id] = h;
@@ -91,7 +105,8 @@ export function useConnectors(): UseConnectorsResult {
     const list = await listServers();
     const cfg = list.find((s) => s.id === id);
     if (!cfg) return undefined;
-    const result = await checkConnectorHealth(cfg);
+    // Test probes server-side (serverProbeDeps) to dodge browser CORS.
+    const result = await checkConnectorHealth(cfg, serverProbeDeps);
     setHealth((prev) => ({ ...prev, [id]: result }));
     return result;
   }, []);
@@ -119,7 +134,9 @@ export function useConnectors(): UseConnectorsResult {
 
   const install = useCallback(
     async (proposal: ConnectorProposal, token: ApprovalToken) => {
-      const outcome = await confirmAndInstall(proposal, token);
+      // Install's connect-probe runs server-side (serverProbeDeps.connect/list)
+      // to dodge browser CORS; the registry deps default to the real ones.
+      const outcome = await confirmAndInstall(proposal, token, serverProbeDeps);
       // Whatever the outcome, the registry may have changed (a probe failure
       // still leaves the connector persisted-but-disabled), so resync.
       await refresh();

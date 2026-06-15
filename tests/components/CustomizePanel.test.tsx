@@ -87,14 +87,21 @@ vi.mock('@/lib/mcp', () => ({
 }));
 
 const proposeConnectorSpy = vi.fn((_input: unknown): ConnectorProposal => PROPOSAL);
-const confirmAndInstallSpy = vi.fn(async (_proposal: unknown, _token: unknown) => ({
+const confirmAndInstallSpy = vi.fn(async (_proposal: unknown, _token: unknown, _deps?: unknown) => ({
   ok: true as const,
   server: { ...PROPOSAL.config, enabled: true, trusted: true },
   tools: [],
 }));
 const uninstallConnectorSpy = vi.fn(async () => [] as McpServerConfig[]);
-const checkConnectorHealthSpy = vi.fn(async () => HEALTH_OK);
-const checkAllConnectorsSpy = vi.fn(async () => serversList.map(() => HEALTH_OK));
+const checkConnectorHealthSpy = vi.fn(async (_cfg?: unknown, _deps?: unknown) => HEALTH_OK);
+const checkAllConnectorsSpy = vi.fn(async (_deps?: unknown) => serversList.map(() => HEALTH_OK));
+
+// The server-backed probe deps the hook injects so the connect-probe runs
+// server-side (POST /api/mcp/probe) instead of in the browser (CORS fix).
+// `vi.hoisted` so the value exists when the hoisted `vi.mock` factory reads it.
+const { SERVER_PROBE_DEPS } = vi.hoisted(() => ({
+  SERVER_PROBE_DEPS: { connect: () => {}, list: () => {} },
+}));
 
 let skillsList: Skill[] = [];
 const saveSkillSpy = vi.fn(async (s: Skill) => {
@@ -114,10 +121,11 @@ const validateSkillSpy = vi.fn((partial: Partial<Skill>) => {
 
 vi.mock('@/lib/connectors', () => ({
   proposeConnector: (input: unknown) => proposeConnectorSpy(input),
-  confirmAndInstall: (proposal: unknown, token: unknown) => confirmAndInstallSpy(proposal, token),
+  confirmAndInstall: (...a: unknown[]) => confirmAndInstallSpy(...(a as Parameters<typeof confirmAndInstallSpy>)),
   uninstallConnector: (...a: unknown[]) => uninstallConnectorSpy(...(a as [])),
-  checkConnectorHealth: (...a: unknown[]) => checkConnectorHealthSpy(...(a as [])),
-  checkAllConnectors: (...a: unknown[]) => checkAllConnectorsSpy(...(a as [])),
+  checkConnectorHealth: (...a: unknown[]) => checkConnectorHealthSpy(...(a as Parameters<typeof checkConnectorHealthSpy>)),
+  checkAllConnectors: (...a: unknown[]) => checkAllConnectorsSpy(...(a as Parameters<typeof checkAllConnectorsSpy>)),
+  serverProbeDeps: SERVER_PROBE_DEPS,
   buildConnectorActivateRequest: (cfg: McpServerConfig) => ({
     kind: 'connector-activate',
     summary: `Activate ${cfg.id}`,
@@ -165,9 +173,12 @@ describe('CustomizePanel — connectors list', () => {
     expect(pill).toHaveTextContent('Connected');
   });
 
-  it('runs the health sweep (checkAllConnectors) on mount', async () => {
+  it('runs the health sweep (checkAllConnectors) on mount, probing server-side', async () => {
     render(<CustomizePanel />);
     await waitFor(() => expect(checkAllConnectorsSpy).toHaveBeenCalled());
+    // CORS fix: the sweep probes through the server (serverProbeDeps), not the
+    // browser. The hook injects those deps as the first arg.
+    expect(checkAllConnectorsSpy).toHaveBeenCalledWith(SERVER_PROBE_DEPS);
   });
 
   it('toggling a connector calls setEnabled', async () => {
@@ -179,11 +190,14 @@ describe('CustomizePanel — connectors list', () => {
     await waitFor(() => expect(setEnabledSpy).toHaveBeenCalledWith('notion-mcp', false));
   });
 
-  it('Test button calls checkConnectorHealth', async () => {
+  it('Test button calls checkConnectorHealth, probing server-side', async () => {
     render(<CustomizePanel />);
     await screen.findAllByTestId('connector-row');
     fireEvent.click(screen.getByRole('button', { name: /test/i }));
     await waitFor(() => expect(checkConnectorHealthSpy).toHaveBeenCalled());
+    // CORS fix: Test probes through the server (serverProbeDeps as 2nd arg).
+    const [, depsArg] = checkConnectorHealthSpy.mock.calls[0];
+    expect(depsArg).toBe(SERVER_PROBE_DEPS);
   });
 
   it('Remove requires a confirm before uninstalling', async () => {
@@ -238,10 +252,13 @@ describe('CustomizePanel — add connector (FR-22)', () => {
 
     await waitFor(() => expect(assertApprovedSpy).toHaveBeenCalled());
     await waitFor(() => expect(confirmAndInstallSpy).toHaveBeenCalled());
-    // confirmAndInstall(proposal, token) — the second arg is the minted token.
-    const [proposalArg, tokenArg] = confirmAndInstallSpy.mock.calls[0];
+    // confirmAndInstall(proposal, token, deps) — token is the minted token and
+    // deps is the server-backed probe (CORS fix: the install connect-probe runs
+    // server-side via POST /api/mcp/probe, not in the browser).
+    const [proposalArg, tokenArg, depsArg] = confirmAndInstallSpy.mock.calls[0];
     expect(proposalArg).toBe(PROPOSAL);
     expect(tokenArg).toEqual(ACTIVATE_TOKEN);
+    expect(depsArg).toBe(SERVER_PROBE_DEPS);
   });
 });
 
