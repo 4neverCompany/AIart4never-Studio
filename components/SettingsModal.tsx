@@ -25,6 +25,7 @@ import {
   Coins,
   Gauge,
   Image as ImageIcon,
+  Plug,
 } from 'lucide-react';
 import { showToast } from '@/components/Toast';
 import {
@@ -43,6 +44,7 @@ import { CameraAnglePicker } from './Settings/CameraAnglePicker';
 import { CreditBudgetSettings } from './Settings/CreditBudgetSettings';
 import { MinimaxQuotaSettings } from './Settings/MinimaxQuotaSettings';
 import { SettingsSection } from './Settings/SettingsSection';
+import { CustomizePanel } from './Settings/CustomizePanel';
 import { Switch } from './Settings/Switch';
 // M3.4-P4-B2: Watermark JSX moved into the WatermarkSettings
 // sub-component. Aliased on import to avoid a name clash with the
@@ -93,7 +95,7 @@ import { APP_VERSION, getAppVersion } from '@/lib/app-version';
 //   apiKeys     — web-only provider credentials + a desktop hint
 //   credits     — per-cycle Higgsfield credit budget
 //   desktop     — auto-update + Tauri-native config panel
-type TabId = 'general' | 'aiEngine' | 'imageVideo' | 'apiKeys' | 'credits' | 'desktop';
+type TabId = 'general' | 'aiEngine' | 'imageVideo' | 'customize' | 'apiKeys' | 'credits' | 'desktop';
 
 /**
  * V082: SettingsSection — moved to `components/Settings/SettingsSection.tsx`
@@ -105,6 +107,7 @@ const TABS: ReadonlyArray<{ id: TabId; label: string; icon: typeof SettingsIcon 
   { id: 'general', label: 'General', icon: Sliders },
   { id: 'aiEngine', label: 'AI Engine', icon: Cpu },
   { id: 'imageVideo', label: 'Image & Video', icon: ImageIcon },
+  { id: 'customize', label: 'Customize', icon: Plug },
   { id: 'apiKeys', label: 'Providers & Keys', icon: KeyRound },
   { id: 'credits', label: 'Credits', icon: Coins },
   { id: 'desktop', label: 'Desktop / Advanced', icon: Monitor },
@@ -1281,6 +1284,11 @@ export function SettingsModal({
           </SettingsSection>
           </>
           )}
+
+          {/* 4NE-12 / 4NE-27: Connectors + Skills manager. Self-contained —
+              loads its own state via useConnectors / useSkills and wires the
+              @/lib/connectors + @/lib/mcp + @/lib/approval public surface. */}
+          {activeTab === 'customize' && <CustomizePanel />}
 
           {activeTab === 'desktop' && (
             <>
