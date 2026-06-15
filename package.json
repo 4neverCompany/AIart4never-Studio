@@ -2,6 +2,9 @@
   "name": "aiart4never-studio",
   "version": "0.1.0",
   "private": true,
+  "bin": {
+    "aiart4never": "bin/aiart4never.ts"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build && node scripts/check-bundle-size.mjs",

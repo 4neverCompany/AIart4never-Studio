@@ -34,3 +34,10 @@ export {
   resolveSkillTools,
 } from './skills';
 export type { SkillValidationResult, ResolvedSkillTools } from './skills';
+
+export { checkConnectorHealth, checkAllConnectors } from './health';
+export type {
+  ConnectorHealth,
+  ConnectorHealthStatus,
+  HealthDeps,
+} from './health';
