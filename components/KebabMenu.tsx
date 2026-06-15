@@ -44,12 +44,12 @@ const VIEWPORT_EDGE_GUARD = 8;
 
 const DEFAULT_TRIGGER_CLASS =
   'w-8 h-8 flex items-center justify-center bg-black/50 text-white rounded-lg backdrop-blur-md ' +
-  'transition-colors hover:bg-[#c5a062]/80 hover:text-zinc-900 ' +
+  'transition-colors hover:bg-[#ff7a18]/80 hover:text-zinc-900 ' +
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00e6ff] focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 ' +
   'disabled:opacity-40 disabled:cursor-not-allowed';
 
 const OPEN_TRIGGER_CLASS =
-  'bg-[#c5a062] text-zinc-900 ring-2 ring-[#00e6ff]/50';
+  'bg-[#ff7a18] text-zinc-900 ring-2 ring-[#00e6ff]/50';
 
 export function KebabMenu({
   ariaLabel,
@@ -344,7 +344,7 @@ export function KebabMenu({
       style={panelStyle}
       className={[
         'z-[9999] min-w-[180px] max-w-[240px] p-1.5',
-        'bg-zinc-900/95 backdrop-blur-md border border-[#c5a062]/30',
+        'bg-zinc-900/95 backdrop-blur-md border border-[#ff7a18]/30',
         'rounded-xl shadow-2xl shadow-black/60',
         resolvedAlign === 'right' ? 'origin-top-right' : 'origin-top-left',
         reduceMotion
@@ -397,7 +397,7 @@ export function KebabMenu({
                   'disabled:opacity-40 disabled:cursor-not-allowed',
                   destructive
                     ? 'text-red-400 hover:bg-red-500/15 hover:text-red-300 focus-visible:bg-red-500/15'
-                    : 'text-zinc-300 hover:bg-[#c5a062]/15 hover:text-white focus-visible:bg-[#c5a062]/15',
+                    : 'text-zinc-300 hover:bg-[#ff7a18]/15 hover:text-white focus-visible:bg-[#ff7a18]/15',
                   isPriorDestructive ? 'border-t border-zinc-800 mt-1 pt-2' : '',
                 ].join(' ')}
               >
@@ -407,7 +407,7 @@ export function KebabMenu({
                       'w-3.5 h-3.5 shrink-0',
                       destructive
                         ? 'text-red-400 group-hover:text-red-300'
-                        : 'text-zinc-400 group-hover:text-[#c5a062]',
+                        : 'text-zinc-400 group-hover:text-[#ff7a18]',
                     ].join(' ')}
                   />
                 )}

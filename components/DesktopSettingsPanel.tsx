@@ -71,7 +71,7 @@ function SecretField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={visible ? 'Paste key here…' : '••••••••••••••••'}
-          className="w-full bg-[#050505] border border-zinc-800/60 hover:border-[#c5a062]/30 focus:border-[#c5a062]/60 rounded-lg px-3 py-2.5 pr-10 text-sm text-white placeholder:text-zinc-700 focus:outline-none focus:ring-1 focus:ring-[#c5a062]/25 transition-colors font-mono"
+          className="w-full bg-[#050505] border border-zinc-800/60 hover:border-[#ff7a18]/30 focus:border-[#ff7a18]/60 rounded-lg px-3 py-2.5 pr-10 text-sm text-white placeholder:text-zinc-700 focus:outline-none focus:ring-1 focus:ring-[#ff7a18]/25 transition-colors font-mono"
           spellCheck={false}
           autoComplete="off"
         />
@@ -116,7 +116,7 @@ function TextField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-[#050505] border border-zinc-800/60 hover:border-[#c5a062]/30 focus:border-[#c5a062]/60 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-zinc-700 focus:outline-none focus:ring-1 focus:ring-[#c5a062]/25 transition-colors font-mono"
+        className="w-full bg-[#050505] border border-zinc-800/60 hover:border-[#ff7a18]/30 focus:border-[#ff7a18]/60 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-zinc-700 focus:outline-none focus:ring-1 focus:ring-[#ff7a18]/25 transition-colors font-mono"
         spellCheck={false}
         autoComplete="off"
       />
@@ -156,8 +156,8 @@ function SelectField({
               className={[
                 'flex items-center justify-center rounded-lg border px-2.5 py-2 text-xs font-medium capitalize transition-colors',
                 selected
-                  ? 'border-[#c5a062] bg-[#c5a062]/10 text-[#c5a062]'
-                  : 'border-zinc-800/60 bg-[#050505] text-zinc-400 hover:border-[#c5a062]/30 hover:text-zinc-200',
+                  ? 'border-[#ff7a18] bg-[#ff7a18]/10 text-[#ff7a18]'
+                  : 'border-zinc-800/60 bg-[#050505] text-zinc-400 hover:border-[#ff7a18]/30 hover:text-zinc-200',
               ].join(' ')}
             >
               {opt}
@@ -221,7 +221,7 @@ function PlatformGroupSection({
     <div className="rounded-lg border border-zinc-800/60 bg-[#050505]/40">
       <div className="flex items-center justify-between gap-2 px-3 py-2.5">
         <div className="flex items-center gap-2 min-w-0">
-          <Icon className="w-3.5 h-3.5 text-[#c5a062] shrink-0" />
+          <Icon className="w-3.5 h-3.5 text-[#ff7a18] shrink-0" />
           <span className="text-xs font-semibold text-white truncate">{group.label}</span>
           {group.alwaysOn && (
             <span className="text-[9px] uppercase tracking-wider text-zinc-600">core</span>
@@ -354,10 +354,10 @@ export function DesktopSettingsPanel() {
   if (!config.isDesktop) return null;
 
   return (
-    <div className="space-y-5 pt-4 border-t border-[#c5a062]/20">
+    <div className="space-y-5 pt-4 border-t border-[#ff7a18]/20">
       {/* Section header */}
       <div className="flex items-center gap-2">
-        <Monitor className="w-4 h-4 text-[#c5a062] shrink-0" />
+        <Monitor className="w-4 h-4 text-[#ff7a18] shrink-0" />
         <h4 className="text-sm font-semibold text-white">Desktop Configuration</h4>
         <span className="ml-auto text-[10px] text-zinc-600 font-mono truncate max-w-[120px] sm:max-w-[220px]" title={config.configPath}>
           {config.configPath}

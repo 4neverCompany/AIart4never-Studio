@@ -23,11 +23,11 @@ export function PortConflictBanner() {
   if (!ephemeral) return null;
 
   return (
-    <div className="rounded-xl border border-[#c5a062]/40 bg-[#c5a062]/5 p-3 space-y-1">
+    <div className="rounded-xl border border-[#ff7a18]/40 bg-[#ff7a18]/5 p-3 space-y-1">
       <div className="flex items-start gap-2">
-        <AlertTriangle className="w-3.5 h-3.5 text-[#c5a062] shrink-0 mt-0.5" />
+        <AlertTriangle className="w-3.5 h-3.5 text-[#ff7a18] shrink-0 mt-0.5" />
         <div className="space-y-1">
-          <p className="text-xs font-semibold text-[#c5a062]">
+          <p className="text-xs font-semibold text-[#ff7a18]">
             Port conflict detected
           </p>
           <p className="text-[10px] text-zinc-400 leading-relaxed">

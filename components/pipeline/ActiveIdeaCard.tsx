@@ -87,7 +87,7 @@ export function ActiveIdeaCard({
                   ? 'bg-[#00e6ff]/15 text-[#00e6ff] border-[#00e6ff]/40'
                   : isCompleted
                     ? 'bg-[#00e6ff]/8 text-[#00e6ff]/80 border-[#00e6ff]/25'
-                    : 'bg-[#050505]/80 text-zinc-500 border-[#c5a062]/15'
+                    : 'bg-[#050505]/80 text-zinc-500 border-[#ff7a18]/15'
               }`}
             >
               <Icon className="w-2.5 h-2.5" />
@@ -99,7 +99,7 @@ export function ActiveIdeaCard({
 
       {/* Live thumbnails */}
       {liveImages.length > 0 && (
-        <div className="space-y-2 pt-2 border-t border-[#c5a062]/15">
+        <div className="space-y-2 pt-2 border-t border-[#ff7a18]/15">
           <div className="flex items-center justify-between">
             <span className="text-[10px] uppercase tracking-wide text-zinc-500">
               Generating ({liveImages.length})
@@ -112,7 +112,7 @@ export function ActiveIdeaCard({
               return (
                 <div
                   key={img.id}
-                  className="relative aspect-square rounded-xl overflow-hidden bg-zinc-900 border border-[#c5a062]/15 hover:border-[#c5a062]/35 transition-colors"
+                  className="relative aspect-square rounded-xl overflow-hidden bg-zinc-900 border border-[#ff7a18]/15 hover:border-[#ff7a18]/35 transition-colors"
                   title={img.modelInfo?.modelName || img.modelInfo?.modelId}
                 >
                   {isReady ? (
@@ -141,7 +141,7 @@ export function ActiveIdeaCard({
                       </p>
                       {img.style && (
                         <span
-                          className="shrink-0 px-1 py-0.5 text-[8px] font-medium bg-[#c5a062]/25 text-[#c5a062] border border-[#c5a062]/40 rounded-full max-w-[70px] truncate"
+                          className="shrink-0 px-1 py-0.5 text-[8px] font-medium bg-[#ff7a18]/25 text-[#ff7a18] border border-[#ff7a18]/40 rounded-full max-w-[70px] truncate"
                           title={`Style: ${img.style}`}
                         >
                           {img.style}

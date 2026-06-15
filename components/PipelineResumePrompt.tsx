@@ -40,15 +40,15 @@ export function PipelineResumePrompt() {
       aria-labelledby="pipeline-resume-title"
       className="fixed bottom-4 left-4 z-[100] max-w-sm w-[calc(100%-2rem)] sm:w-96"
     >
-      <div className="rounded-xl border border-[#c5a062]/40 bg-[#050505]/95 backdrop-blur-md shadow-2xl p-4 space-y-3">
+      <div className="rounded-xl border border-[#ff7a18]/40 bg-[#050505]/95 backdrop-blur-md shadow-2xl p-4 space-y-3">
         <div className="flex items-start gap-2">
-          <RotateCw className="w-4 h-4 text-[#c5a062] mt-0.5 shrink-0" />
+          <RotateCw className="w-4 h-4 text-[#ff7a18] mt-0.5 shrink-0" />
           <div className="flex-1 min-w-0">
             <p id="pipeline-resume-title" className="text-xs font-semibold text-white">
               Resume interrupted pipeline?
             </p>
             <p className="text-[11px] text-zinc-400 mt-1">
-              Last run stopped at <span className="font-mono text-[#c5a062]">{pendingResume.step}</span> on
+              Last run stopped at <span className="font-mono text-[#ff7a18]">{pendingResume.step}</span> on
               {' '}&ldquo;{pendingResume.concept.slice(0, 60)}{pendingResume.concept.length > 60 ? '\u2026' : ''}&rdquo;
             </p>
             <p className="text-[10px] text-zinc-600 mt-1">

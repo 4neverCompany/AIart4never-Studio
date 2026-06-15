@@ -117,7 +117,7 @@ export function CreditBudgetSettings({ cap, onChange }: CreditBudgetSettingsProp
                 e.currentTarget.blur();
               }
             }}
-            className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl pl-9 pr-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-[#c5a062]/30"
+            className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl pl-9 pr-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30"
           />
         </div>
         <button

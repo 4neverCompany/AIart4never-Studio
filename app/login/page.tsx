@@ -47,7 +47,7 @@ export default function LoginPage() {
           y: [0, -100, 0] 
         }}
         transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#c5a062]/5 rounded-full blur-[120px] -z-10" 
+        className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#ff7a18]/5 rounded-full blur-[120px] -z-10" 
       />
 
       <motion.div 
@@ -127,7 +127,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-[#c5a062]/15 text-center">
+          <div className="mt-8 pt-6 border-t border-[#ff7a18]/15 text-center">
             <p className="type-caption text-zinc-600">
               Demo access only. Default: <span className="text-[#00e6ff]/70 font-mono">admin / admin</span>
             </p>

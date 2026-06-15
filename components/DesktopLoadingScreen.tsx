@@ -61,7 +61,7 @@ export function DesktopLoadingScreen() {
       <div className="relative w-14 h-14 mb-7 shrink-0" aria-hidden="true">
         {/* Outer gold ring */}
         <div
-          className="absolute inset-0 rounded-full border border-[#c5a062]/55"
+          className="absolute inset-0 rounded-full border border-[#ff7a18]/55"
           style={{ animation: 'ds-ring-breathe 3s ease-in-out infinite' }}
         />
         {/* Inner blue ring */}
@@ -74,7 +74,7 @@ export function DesktopLoadingScreen() {
         />
         {/* Centre gold dot */}
         <div
-          className="absolute rounded-full bg-[#c5a062]"
+          className="absolute rounded-full bg-[#ff7a18]"
           style={{
             width: 8,
             height: 8,
@@ -92,7 +92,7 @@ export function DesktopLoadingScreen() {
         className="text-2xl font-bold uppercase tracking-[0.2em] mb-1 select-none"
         style={{
           background:
-            'linear-gradient(90deg, #a07840, #c5a062 40%, #e8c987 55%, #c5a062 70%, #a07840)',
+            'linear-gradient(90deg, #a07840, #ff7a18 40%, #e8c987 55%, #ff7a18 70%, #a07840)',
           backgroundSize: '200% auto',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',

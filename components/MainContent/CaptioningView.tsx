@@ -379,7 +379,7 @@ export function CaptioningView({
                         }}
                         placeholder="No caption yet…"
                         minRows={2}
-                        className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-zinc-200 focus:border-[#c5a062]/50 focus:outline-none transition-colors"
+                        className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-zinc-200 focus:border-[#ff7a18]/50 focus:outline-none transition-colors"
                       />
                     </div>
                     {(anchor.postHashtags || []).length > 0 && (
@@ -397,7 +397,7 @@ export function CaptioningView({
                   </div>
 
                   {/* Footer actions */}
-                  <div className="border-t border-[#c5a062]/15 p-3 flex items-center gap-2">
+                  <div className="border-t border-[#ff7a18]/15 p-3 flex items-center gap-2">
                     <button
                       disabled={isWorking || batchCaptioning}
                       onClick={async () => {
@@ -461,7 +461,7 @@ export function CaptioningView({
               <div
                 key={img.id}
                 className={`bg-zinc-900/80 backdrop-blur-sm border rounded-2xl overflow-hidden flex flex-col transition-all duration-200 ${
-                  isSelected ? 'border-[#00e6ff]/50 shadow-[0_0_16px_rgba(0,230,255,0.08)]' : 'border-[#c5a062]/20 hover:border-[#c5a062]/40'
+                  isSelected ? 'border-[#00e6ff]/50 shadow-[0_0_16px_rgba(0,230,255,0.08)]' : 'border-[#ff7a18]/20 hover:border-[#ff7a18]/40'
                 }`}
               >
                 {/* Thumbnail */}
@@ -499,7 +499,7 @@ export function CaptioningView({
                           else next.delete(img.id);
                           setCaptioningSelected(next);
                         }}
-                        className="w-5 h-5 rounded border-zinc-600 bg-zinc-900/80 backdrop-blur-sm text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-[#c5a062]"
+                        className="w-5 h-5 rounded border-zinc-600 bg-zinc-900/80 backdrop-blur-sm text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-[#ff7a18]"
                       />
                     </div>
                   )}
@@ -520,7 +520,7 @@ export function CaptioningView({
                       onChange={(e) => patchImage(img, { postCaption: e.target.value })}
                       placeholder="No caption yet…"
                       minRows={2}
-                      className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-zinc-200 focus:border-[#c5a062]/50 focus:outline-none transition-colors"
+                      className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-zinc-200 focus:border-[#ff7a18]/50 focus:outline-none transition-colors"
                     />
                   </div>
 

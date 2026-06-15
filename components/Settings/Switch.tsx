@@ -3,7 +3,7 @@
 /**
  * M4 unified control kit — the single toggle/switch used across Settings.
  * Replaces the 7 hand-rolled toggles that had drifted into two sizes, two
- * ARIA patterns, and two accent colors. One gold accent (#c5a062, Maurice's
+ * ARIA patterns, and two accent colors. One gold accent (#ff7a18, Maurice's
  * call), one ARIA contract.
  *
  * ARIA: deliberately `aria-pressed` (toggle-button semantics) + an
@@ -49,12 +49,12 @@ export function Switch({ checked, onChange, label, disabled = false, size = 'sm'
       aria-label={checked ? `Disable ${label}` : `Enable ${label}`}
       className={[
         'relative inline-flex shrink-0 cursor-pointer rounded-full border-2 border-transparent',
-        'transition-colors focus:outline-none focus:ring-2 focus:ring-[#c5a062]/40',
+        'transition-colors focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/40',
         sz.track,
         disabled
           ? 'bg-zinc-800 cursor-not-allowed opacity-40'
           : checked
-            ? 'bg-[#c5a062]'
+            ? 'bg-[#ff7a18]'
             : 'bg-zinc-700',
       ].join(' ')}
     >

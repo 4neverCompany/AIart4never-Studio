@@ -77,7 +77,7 @@ export function DndUndoToast({
         }}
       />
       <div className="px-4 py-3 flex items-center gap-3">
-        <Undo2 className="w-4 h-4 text-[#c5a062] shrink-0" aria-hidden="true" />
+        <Undo2 className="w-4 h-4 text-[#ff7a18] shrink-0" aria-hidden="true" />
         <span className="text-sm text-zinc-200">{message}</span>
         <span className="ml-auto flex items-center gap-2">
           <kbd className="font-mono text-[10px] px-1.5 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-300">

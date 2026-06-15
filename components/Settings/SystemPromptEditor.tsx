@@ -90,7 +90,7 @@ export function SystemPromptEditor({
             value={settings.agentPrompt}
             onChange={(e) => updateSettings({ agentPrompt: e.target.value })}
             placeholder="Define who the AI is, how it speaks, and what it focuses on..."
-            className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl px-3 py-2 text-sm text-zinc-300 focus:outline-none focus:ring-2 focus:ring-[#c5a062]/30 min-h-[220px] resize-y leading-relaxed font-mono"
+            className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl px-3 py-2 text-sm text-zinc-300 focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30 min-h-[220px] resize-y leading-relaxed font-mono"
           />
           <p className="text-[10px] text-zinc-500 leading-tight">
             {activeAiAgent === 'vercel-ai'
@@ -182,7 +182,7 @@ export function SystemPromptEditor({
                     }
                   }
                 }}
-                className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-[#c5a062]/30"
+                className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30"
               />
               <div className="pt-2">
                 <p className="text-[10px] text-zinc-500 mb-2 uppercase tracking-tight font-semibold">Recommended Genres</p>

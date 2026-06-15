@@ -98,7 +98,7 @@ export function InlineCaptionEditor({
       onClick={(e) => e.stopPropagation()}
       rows={3}
       placeholder={placeholder}
-      className="w-full text-xs text-zinc-100 bg-zinc-950 border border-[#c5a062]/40 focus:border-[#c5a062] rounded px-2 py-1.5 outline-none resize-y min-h-[3rem]"
+      className="w-full text-xs text-zinc-100 bg-zinc-950 border border-[#ff7a18]/40 focus:border-[#ff7a18] rounded px-2 py-1.5 outline-none resize-y min-h-[3rem]"
       aria-label="Caption editor"
     />
   );

@@ -185,7 +185,7 @@ export function ImageDetailModal({
               />
               <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                 {zoom > 1.01 ? (
-                  <span className="bg-black/60 backdrop-blur-md text-[#c5a062] text-[10px] px-2 py-1 rounded uppercase tracking-widest border border-[#c5a062]/30">
+                  <span className="bg-black/60 backdrop-blur-md text-[#ff7a18] text-[10px] px-2 py-1 rounded uppercase tracking-widest border border-[#ff7a18]/30">
                     {zoom.toFixed(1)}× · dbl-click to reset
                   </span>
                 ) : (
@@ -348,7 +348,7 @@ export function ImageDetailModal({
                       }
                     }
                   }}
-                  className="bg-transparent border border-dashed border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-400 focus:outline-none focus:border-[#c5a062]/60 w-24"
+                  className="bg-transparent border border-dashed border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-400 focus:outline-none focus:border-[#ff7a18]/60 w-24"
                 />
               </div>
             </div>
@@ -371,7 +371,7 @@ export function ImageDetailModal({
                     onImageChange({ ...image, collectionId: undefined });
                   }
                 }}
-                className="w-full bg-zinc-950 border border-zinc-800/60 rounded-xl px-3 py-2 text-sm text-zinc-300 focus:outline-none focus:ring-2 focus:ring-[#c5a062]/30"
+                className="w-full bg-zinc-950 border border-zinc-800/60 rounded-xl px-3 py-2 text-sm text-zinc-300 focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30"
               >
                 <option value="">None</option>
                 {collections.map((col) => (
@@ -384,14 +384,14 @@ export function ImageDetailModal({
                   type="text"
                   placeholder="New collection name..."
                   id="new-col-name"
-                  className="w-full bg-transparent border-b border-zinc-800 text-xs text-zinc-400 py-1 focus:outline-none focus:border-[#c5a062]/60"
+                  className="w-full bg-transparent border-b border-zinc-800 text-xs text-zinc-400 py-1 focus:outline-none focus:border-[#ff7a18]/60"
                 />
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
                     placeholder="Description (optional)..."
                     id="new-col-desc"
-                    className="flex-1 bg-transparent border-b border-zinc-800 text-[10px] text-zinc-500 py-1 focus:outline-none focus:border-[#c5a062]/60"
+                    className="flex-1 bg-transparent border-b border-zinc-800 text-[10px] text-zinc-500 py-1 focus:outline-none focus:border-[#ff7a18]/60"
                   />
                   <button
                     onClick={async () => {

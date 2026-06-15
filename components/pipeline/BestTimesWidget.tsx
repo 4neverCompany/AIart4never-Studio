@@ -36,10 +36,10 @@ export function BestTimesWidget({ settings }: { settings: UserSettings }) {
   };
 
   return (
-    <div className="pt-2 border-t border-[#c5a062]/15">
+    <div className="pt-2 border-t border-[#ff7a18]/15">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-[#c5a062]/60" />
+          <TrendingUp className="w-4 h-4 text-[#ff7a18]/60" />
           <span className="label-overline">Best Posting Times</span>
         </div>
         <button
@@ -66,7 +66,7 @@ export function BestTimesWidget({ settings }: { settings: UserSettings }) {
             {insights.bestTimes?.map((t, i) => (
               <div
                 key={i}
-                className="flex flex-col items-center px-1.5 sm:px-2 py-1 sm:py-1.5 bg-zinc-800/50 border border-[#c5a062]/15 rounded-lg"
+                className="flex flex-col items-center px-1.5 sm:px-2 py-1 sm:py-1.5 bg-zinc-800/50 border border-[#ff7a18]/15 rounded-lg"
               >
                 <span className="text-[11px] sm:text-xs font-mono text-white">{String(t.hour).padStart(2, '0')}:00</span>
                 <div

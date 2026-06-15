@@ -152,11 +152,11 @@ export const PipelineStatusStrip: React.FC<Props> = ({ setView }) => {
       onClick={() => setView('pipeline')}
       title="Open Pipeline"
       aria-label={`Pipeline ${label}, queue ${queueCount}${timerText ? `, ${timerText}` : ''}. Open pipeline tab.`}
-      className="hidden lg:flex items-center gap-3 px-3 py-1.5 rounded-xl border border-[#c5a062]/20 bg-zinc-900/50 hover:bg-zinc-800/70 hover:border-[#00e6ff]/40 transition-colors shrink-0 text-xs text-zinc-300"
+      className="hidden lg:flex items-center gap-3 px-3 py-1.5 rounded-xl border border-[#ff7a18]/20 bg-zinc-900/50 hover:bg-zinc-800/70 hover:border-[#00e6ff]/40 transition-colors shrink-0 text-xs text-zinc-300"
     >
       <span className="flex items-center gap-1.5">
         <span className={`w-2 h-2 rounded-full ${dotClass}`} aria-hidden="true" />
-        <Zap className="w-3.5 h-3.5 text-[#c5a062]" aria-hidden="true" />
+        <Zap className="w-3.5 h-3.5 text-[#ff7a18]" aria-hidden="true" />
         <span className="font-medium text-zinc-200">{label}</span>
       </span>
       <span className="h-3 w-px bg-zinc-700" aria-hidden="true" />

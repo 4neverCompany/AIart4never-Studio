@@ -85,9 +85,9 @@ const TYPE_CFG: Record<ToastType, {
   },
   warning: {
     Icon: AlertTriangle,
-    iconClass:   'text-[#c5a062]',
-    borderClass: 'border-[#c5a062]/40',
-    barClass:    'bg-[#c5a062]',
+    iconClass:   'text-[#ff7a18]',
+    borderClass: 'border-[#ff7a18]/40',
+    barClass:    'bg-[#ff7a18]',
   },
   info: {
     Icon: Info,
@@ -103,9 +103,9 @@ const TYPE_CFG: Record<ToastType, {
   },
   'pipeline-ready': {
     Icon: CheckCheck,
-    iconClass:   'text-[#c5a062]',
-    borderClass: 'border-[#c5a062]/40',
-    barClass:    'bg-[#c5a062]',
+    iconClass:   'text-[#ff7a18]',
+    borderClass: 'border-[#ff7a18]/40',
+    barClass:    'bg-[#ff7a18]',
   },
 };
 

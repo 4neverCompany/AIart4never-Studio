@@ -13,7 +13,7 @@ export default function Loading() {
           className="absolute inset-0 rounded-full border-[1.5px] border-transparent border-t-[#00e6ff] animate-spin"
           style={{ boxShadow: '0 0 8px rgba(0,230,255,0.4)' }}
         />
-        <div className="absolute inset-[9px] rounded-full bg-[#c5a062]/70" />
+        <div className="absolute inset-[9px] rounded-full bg-[#ff7a18]/70" />
       </div>
     </div>
   );

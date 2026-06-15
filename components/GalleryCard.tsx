@@ -197,7 +197,7 @@ export const GalleryCard = memo(function GalleryCard({
         }
       }}
       className={`group relative bg-zinc-900/80 backdrop-blur-sm border rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00e6ff] focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505] ${
-        dragOverCollection ? 'ring-2 ring-[#00e6ff] border-[#00e6ff]/50' : 'border-[#c5a062]/20 hover:border-[#c5a062]/60 hover:shadow-[0_8px_40px_rgba(197,160,98,0.18),0_0_0_1px_rgba(197,160,98,0.15)]'
+        dragOverCollection ? 'ring-2 ring-[#00e6ff] border-[#00e6ff]/50' : 'border-[#ff7a18]/20 hover:border-[#ff7a18]/60 hover:shadow-[0_8px_40px_rgba(197,160,98,0.18),0_0_0_1px_rgba(197,160,98,0.15)]'
       }`}
       draggable={view === 'gallery'}
       onDragStart={(e) => {
@@ -265,7 +265,7 @@ export const GalleryCard = memo(function GalleryCard({
                 onToggleBatch(next);
               }}
               onClick={(e) => e.stopPropagation()}
-              className="w-5 h-5 rounded border-zinc-600 bg-zinc-900/80 backdrop-blur-sm text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-[#c5a062]"
+              className="w-5 h-5 rounded border-zinc-600 bg-zinc-900/80 backdrop-blur-sm text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-[#ff7a18]"
             />
           </div>
         )}
@@ -332,7 +332,7 @@ export const GalleryCard = memo(function GalleryCard({
                   ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
                   : img.modelInfo.provider === 'minimax' || img.modelInfo.provider === 'mmx'
                   ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
-                  : 'bg-[#c5a062]/20 text-[#c5a062] border-[#c5a062]/40'
+                  : 'bg-[#ff7a18]/20 text-[#ff7a18] border-[#ff7a18]/40'
               }`}
             >
               {img.modelInfo.provider === 'higgsfield'
@@ -351,7 +351,7 @@ export const GalleryCard = memo(function GalleryCard({
           const label = col.name.length > 12 ? col.name.slice(0, 12) + '…' : col.name;
           return (
             <div className="absolute bottom-9 left-2 z-[5] pointer-events-none select-none opacity-80 group-hover:opacity-100 transition-opacity">
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide bg-[#c5a062]/15 text-[#c5a062] border border-[#c5a062]/40 rounded-full backdrop-blur-md">
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide bg-[#ff7a18]/15 text-[#ff7a18] border border-[#ff7a18]/40 rounded-full backdrop-blur-md">
                 <FolderOpen className="w-2.5 h-2.5" />
                 {label}
               </span>
@@ -374,7 +374,7 @@ export const GalleryCard = memo(function GalleryCard({
           )}
           {img.style && (
             <span
-              className="px-1.5 py-0.5 text-[9px] font-medium tracking-wide bg-[#c5a062]/20 backdrop-blur-md text-[#c5a062] border border-[#c5a062]/40 rounded-full max-w-[110px] truncate"
+              className="px-1.5 py-0.5 text-[9px] font-medium tracking-wide bg-[#ff7a18]/20 backdrop-blur-md text-[#ff7a18] border border-[#ff7a18]/40 rounded-full max-w-[110px] truncate"
               title={`Style: ${img.style}`}
             >
               {img.style}
@@ -646,7 +646,7 @@ export const GalleryCard = memo(function GalleryCard({
               {img.tags.slice(0, 3).map((t) => (
                 <span
                   key={t}
-                  className="shrink-0 px-1.5 py-0.5 text-[9px] bg-[#c5a062]/15 text-[#c5a062]/85 border border-[#c5a062]/25 rounded-full whitespace-nowrap"
+                  className="shrink-0 px-1.5 py-0.5 text-[9px] bg-[#ff7a18]/15 text-[#ff7a18]/85 border border-[#ff7a18]/25 rounded-full whitespace-nowrap"
                 >
                   {t}
                 </span>
@@ -667,7 +667,7 @@ export const GalleryCard = memo(function GalleryCard({
                 autoTagImage(img.id, img).finally(() => setTaggingId(null));
               }}
               disabled={taggingId === img.id}
-              className="self-start inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] bg-[#c5a062]/10 hover:bg-[#c5a062]/25 text-[#c5a062]/90 hover:text-[#c5a062] border border-[#c5a062]/30 rounded-full whitespace-nowrap pointer-events-auto disabled:opacity-60 disabled:cursor-wait transition-colors"
+              className="self-start inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] bg-[#ff7a18]/10 hover:bg-[#ff7a18]/25 text-[#ff7a18]/90 hover:text-[#ff7a18] border border-[#ff7a18]/30 rounded-full whitespace-nowrap pointer-events-auto disabled:opacity-60 disabled:cursor-wait transition-colors"
               title="Auto-generate tags via pi.dev"
             >
               {taggingId === img.id ? (

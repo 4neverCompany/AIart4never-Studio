@@ -26,10 +26,10 @@ import type { CachedEngagement } from '@/lib/smartScheduler';
 
 export function classifyTint(score: number): string | null {
   if (score < 0.3) return null;
-  if (score < 0.5) return 'bg-[#c5a062]/5';
-  if (score < 0.7) return 'bg-[#c5a062]/10';
-  if (score < 0.85) return 'bg-[#c5a062]/[0.18]';
-  return 'bg-[#c5a062]/[0.28]';
+  if (score < 0.5) return 'bg-[#ff7a18]/5';
+  if (score < 0.7) return 'bg-[#ff7a18]/10';
+  if (score < 0.85) return 'bg-[#ff7a18]/[0.18]';
+  return 'bg-[#ff7a18]/[0.28]';
 }
 
 // ── Confidence-star formula (spec §2.7) ──────────────────────────────
@@ -125,7 +125,7 @@ export function TopSlotStar({ rank }: TopSlotStarProps) {
     : '';
   return (
     <Star
-      className={`absolute top-1 right-1 w-3 h-3 text-[#c5a062] fill-[#c5a062]/30 z-10 pointer-events-none heatmap-star-pulse ${glow}`}
+      className={`absolute top-1 right-1 w-3 h-3 text-[#ff7a18] fill-[#ff7a18]/30 z-10 pointer-events-none heatmap-star-pulse ${glow}`}
       style={{ animation: 'heatmap-star-pulse 2s ease-in-out infinite' }}
       aria-label={`Top slot #${rank}`}
     />
@@ -147,7 +147,7 @@ export function HeatmapToggleButton({ heatmapEnabled, onToggle }: HeatmapToggleB
       aria-pressed={heatmapEnabled}
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] rounded-full border transition-colors ${
         heatmapEnabled
-          ? 'bg-[#c5a062]/20 text-[#c5a062] border-[#c5a062]/40'
+          ? 'bg-[#ff7a18]/20 text-[#ff7a18] border-[#ff7a18]/40'
           : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:border-zinc-500'
       }`}
       title={heatmapEnabled ? 'Hide engagement heatmap' : 'Show engagement heatmap'}
@@ -169,7 +169,7 @@ export function HeatmapLegend({ heatmapEnabled }: HeatmapLegendProps) {
   return (
     <div
       aria-label="Engagement heatmap legend"
-      className="absolute bottom-3 right-3 z-20 w-[200px] bg-zinc-950/85 backdrop-blur border border-[#c5a062]/25 rounded-lg p-2 shadow-lg shadow-black/40 pointer-events-none"
+      className="absolute bottom-3 right-3 z-20 w-[200px] bg-zinc-950/85 backdrop-blur border border-[#ff7a18]/25 rounded-lg p-2 shadow-lg shadow-black/40 pointer-events-none"
     >
       <div className="flex items-center gap-1.5">
         <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
@@ -177,10 +177,10 @@ export function HeatmapLegend({ heatmapEnabled }: HeatmapLegendProps) {
         </span>
       </div>
       <div className="mt-1.5 flex h-2 overflow-hidden rounded-sm">
-        <div className="flex-1 bg-[#c5a062]/5" />
-        <div className="flex-1 bg-[#c5a062]/10" />
-        <div className="flex-1 bg-[#c5a062]/[0.18]" />
-        <div className="flex-1 bg-[#c5a062]/[0.28]" />
+        <div className="flex-1 bg-[#ff7a18]/5" />
+        <div className="flex-1 bg-[#ff7a18]/10" />
+        <div className="flex-1 bg-[#ff7a18]/[0.18]" />
+        <div className="flex-1 bg-[#ff7a18]/[0.28]" />
       </div>
       <div className="mt-1 flex items-center justify-between text-[10px] text-zinc-500">
         <span>low</span>
@@ -266,7 +266,7 @@ export function HeatmapTooltip({
         width: TOOLTIP_W,
         animation: 'heatmap-tooltip-in 120ms ease-out',
       }}
-      className="heatmap-tooltip-anim z-[100] bg-zinc-900/95 backdrop-blur-md border border-[#c5a062]/30 rounded-xl shadow-2xl shadow-black/60 p-3 pointer-events-none"
+      className="heatmap-tooltip-anim z-[100] bg-zinc-900/95 backdrop-blur-md border border-[#ff7a18]/30 rounded-xl shadow-2xl shadow-black/60 p-3 pointer-events-none"
     >
       <div className="text-[11px] font-semibold text-zinc-200">
         {dayFullName} {dayNum} · {timeStr}
@@ -275,7 +275,7 @@ export function HeatmapTooltip({
       <div className="mt-2 space-y-1.5">
         <div className="flex items-center justify-between">
           <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Score</span>
-          <span className="text-xs font-bold text-[#c5a062]">{score.toFixed(2)}</span>
+          <span className="text-xs font-bold text-[#ff7a18]">{score.toFixed(2)}</span>
         </div>
         <div className="flex items-center gap-0.5">
           {[1, 2, 3, 4, 5].map((i) => (
@@ -283,7 +283,7 @@ export function HeatmapTooltip({
               key={i}
               className={`w-3 h-3 ${
                 i <= stars
-                  ? 'text-[#c5a062] fill-[#c5a062]'
+                  ? 'text-[#ff7a18] fill-[#ff7a18]'
                   : 'text-zinc-700'
               }`}
             />

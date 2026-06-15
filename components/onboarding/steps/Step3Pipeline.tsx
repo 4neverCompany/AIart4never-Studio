@@ -102,7 +102,7 @@ export function Step3Pipeline({ universes, genres, progress, setProgress }: Step
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-3">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[#c5a062]" />
+            <Sparkles className="w-4 h-4 text-[#ff7a18]" />
             <h4 className="text-sm font-bold text-white">Use a starter idea</h4>
           </div>
           <p className="text-xs text-zinc-500">Curated ideas based on your niches:</p>
@@ -112,7 +112,7 @@ export function Step3Pipeline({ universes, genres, progress, setProgress }: Step
                 key={idea.title}
                 type="button"
                 onClick={() => handlePickIdea(idea)}
-                className="w-full text-left px-3 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-[#c5a062]/40 rounded-lg text-xs text-zinc-200 transition-colors"
+                className="w-full text-left px-3 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-[#ff7a18]/40 rounded-lg text-xs text-zinc-200 transition-colors"
               >
                 {idea.title}
               </button>
@@ -123,7 +123,7 @@ export function Step3Pipeline({ universes, genres, progress, setProgress }: Step
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <MessageSquare className="w-4 h-4 text-[#c5a062]" />
+              <MessageSquare className="w-4 h-4 text-[#ff7a18]" />
               <h4 className="text-sm font-bold text-white">Brainstorm with AI</h4>
             </div>
             <p className="text-xs text-zinc-500 mt-2">
@@ -175,7 +175,7 @@ function ErrorView({ progress, onRetry, onSkip }: { progress: PipelineOnceProgre
         <p className="text-sm text-zinc-400 mt-1">{progress.message}</p>
       </div>
       <div className="flex gap-2">
-        <button onClick={onRetry} className="px-3 py-1.5 text-xs bg-[#c5a062] text-zinc-950 font-medium rounded-lg">
+        <button onClick={onRetry} className="px-3 py-1.5 text-xs bg-[#ff7a18] text-zinc-950 font-medium rounded-lg">
           Retry
         </button>
         <button onClick={onSkip} className="px-3 py-1.5 text-xs bg-zinc-800 text-zinc-200 rounded-lg">Skip and continue</button>
@@ -188,7 +188,7 @@ function ProgressLine({ state, label }: { state: StepState[keyof StepState]; lab
   return (
     <div className="flex items-center gap-2.5 text-sm">
       {state === 'pending' && <Circle className="w-4 h-4 text-zinc-600" />}
-      {state === 'running' && <Loader2 className="w-4 h-4 text-[#c5a062] animate-spin" />}
+      {state === 'running' && <Loader2 className="w-4 h-4 text-[#ff7a18] animate-spin" />}
       {state === 'done' && <Check className="w-4 h-4 text-emerald-500" />}
       {state === 'failed' && <XIcon className="w-4 h-4 text-red-500" />}
       <span className={state === 'done' ? 'text-zinc-200' : state === 'pending' ? 'text-zinc-500' : 'text-zinc-300'}>

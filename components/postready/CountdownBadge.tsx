@@ -74,7 +74,7 @@ export function CountdownBadge({ scheduledPost }: CountdownBadgeProps) {
       ? 'bg-red-500/20 border-red-400/50 text-red-200'
       : tone === 'soon'
         ? 'bg-amber-500/20 border-amber-400/50 text-amber-200'
-        : 'bg-[#c5a062]/20 border-[#c5a062]/40 text-[#c5a062]';
+        : 'bg-[#ff7a18]/20 border-[#ff7a18]/40 text-[#ff7a18]';
 
   return (
     <span

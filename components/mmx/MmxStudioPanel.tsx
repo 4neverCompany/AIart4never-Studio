@@ -40,18 +40,18 @@ export function MmxStudioPanel() {
   return (
     <>
       <div
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-2 py-1.5 rounded-full bg-[#050505]/85 backdrop-blur-md border border-[#c5a062]/30 shadow-[0_8px_28px_rgba(0,0,0,0.5)]"
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-2 py-1.5 rounded-full bg-[#050505]/85 backdrop-blur-md border border-[#ff7a18]/30 shadow-[0_8px_28px_rgba(0,0,0,0.5)]"
         data-testid="mmx-studio-panel"
         aria-label="MMX generation"
       >
-        <span className="inline-flex items-center gap-1 pl-2 pr-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#c5a062]/80">
+        <span className="inline-flex items-center gap-1 pl-2 pr-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#ff7a18]/80">
           <Sparkles className="w-3 h-3" />
           MMX
         </span>
         <button
           type="button"
           onClick={() => setMusicOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-[#c5a062]/15 hover:bg-[#c5a062]/25 text-[#c5a062] border border-[#c5a062]/40 transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-[#ff7a18]/15 hover:bg-[#ff7a18]/25 text-[#ff7a18] border border-[#ff7a18]/40 transition-colors"
           title="Generate background music"
         >
           <Music className="w-3.5 h-3.5" />
@@ -122,7 +122,7 @@ function MusicModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <ModalShell title="Generate Music" icon={<Music className="w-4 h-4 text-[#c5a062]" />} onClose={onClose}>
+    <ModalShell title="Generate Music" icon={<Music className="w-4 h-4 text-[#ff7a18]" />} onClose={onClose}>
       <label className="space-y-1 block">
         <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Prompt</span>
         <textarea
@@ -146,7 +146,7 @@ function MusicModal({ onClose }: { onClose: () => void }) {
           aria-checked={instrumental}
           onClick={() => setInstrumental((v) => !v)}
           className={`relative w-10 h-5 rounded-full transition-colors ${
-            instrumental ? 'bg-[#c5a062]' : 'bg-zinc-700'
+            instrumental ? 'bg-[#ff7a18]' : 'bg-zinc-700'
           }`}
         >
           <span
@@ -192,8 +192,8 @@ function MusicModal({ onClose }: { onClose: () => void }) {
       </div>
 
       {state.kind === 'ready' && (
-        <div className="space-y-2 p-3 rounded-xl bg-zinc-900/60 border border-[#c5a062]/25">
-          <div className="flex items-center gap-2 text-xs text-[#c5a062]">
+        <div className="space-y-2 p-3 rounded-xl bg-zinc-900/60 border border-[#ff7a18]/25">
+          <div className="flex items-center gap-2 text-xs text-[#ff7a18]">
             <AudioLines className="w-3.5 h-3.5" />
             <span className="font-medium tracking-wide">Track ready</span>
           </div>
@@ -201,7 +201,7 @@ function MusicModal({ onClose }: { onClose: () => void }) {
           <a
             href={state.url}
             download="mmx-track.mp3"
-            className="text-[11px] text-zinc-400 hover:text-[#c5a062] underline-offset-2 hover:underline"
+            className="text-[11px] text-zinc-400 hover:text-[#ff7a18] underline-offset-2 hover:underline"
           >
             Download .mp3
           </a>
@@ -341,7 +341,7 @@ function ModalShell({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-[#050505]/95 backdrop-blur-xl border border-[#c5a062]/30 rounded-2xl p-5 space-y-3 shadow-[0_0_36px_rgba(0,0,0,0.6)]"
+        className="w-full max-w-md bg-[#050505]/95 backdrop-blur-xl border border-[#ff7a18]/30 rounded-2xl p-5 space-y-3 shadow-[0_0_36px_rgba(0,0,0,0.6)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-2">

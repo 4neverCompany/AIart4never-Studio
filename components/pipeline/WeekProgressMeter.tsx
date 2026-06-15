@@ -13,10 +13,10 @@ export function WeekProgressMeter() {
   const hasDays = days.length > 0;
 
   return (
-    <div className="pt-2 border-t border-[#c5a062]/15">
+    <div className="pt-2 border-t border-[#ff7a18]/15">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <CalendarCheck className="w-4 h-4 text-[#c5a062]/60" />
+          <CalendarCheck className="w-4 h-4 text-[#ff7a18]/60" />
           <span className="label-overline">Week Progress</span>
         </div>
         <span
@@ -61,9 +61,9 @@ export function WeekProgressMeter() {
                 ratio >= 1
                   ? 'bg-emerald-500'
                   : ratio >= 0.5
-                    ? 'bg-[#c5a062]'
+                    ? 'bg-[#ff7a18]'
                     : ratio > 0
-                      ? 'bg-[#c5a062]/50'
+                      ? 'bg-[#ff7a18]/50'
                       : 'bg-zinc-800';
               return (
                 <div
@@ -80,7 +80,7 @@ export function WeekProgressMeter() {
                   />
                   <span
                     className={`text-[9px] font-mono uppercase tracking-wider truncate ${
-                      i === 0 ? 'text-[#c5a062]' : 'text-zinc-600'
+                      i === 0 ? 'text-[#ff7a18]' : 'text-zinc-600'
                     }`}
                   >
                     {d.dayLabel}

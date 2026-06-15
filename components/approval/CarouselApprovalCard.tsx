@@ -222,13 +222,13 @@ export function CarouselApprovalCard({
     <div
       className={`relative bg-zinc-900/60 rounded-2xl border p-3 space-y-3 transition-all duration-200 hover:shadow-[0_4px_20px_rgba(0,230,255,0.08)] ${
         selected
-          ? 'border-[#c5a062]/60 shadow-[0_0_12px_rgba(197,160,98,0.18)]'
+          ? 'border-[#ff7a18]/60 shadow-[0_0_12px_rgba(197,160,98,0.18)]'
           : counts.rejected === counts.total
             ? 'border-red-500/40 hover:border-red-500/60'
             : counts.pending === 0
               ? 'border-emerald-500/40 hover:border-emerald-500/60'
               : counts.approved > 0
-                ? 'border-[#c5a062]/40 hover:border-[#c5a062]/60'
+                ? 'border-[#ff7a18]/40 hover:border-[#ff7a18]/60'
                 : 'border-[#00e6ff]/25 hover:border-[#00e6ff]/45'
       }`}
     >
@@ -237,7 +237,7 @@ export function CarouselApprovalCard({
           type="checkbox"
           checked={selected}
           onChange={onToggleSelect}
-          className="w-4 h-4 accent-[#c5a062] cursor-pointer"
+          className="w-4 h-4 accent-[#ff7a18] cursor-pointer"
           aria-label={`Select carousel ${groupId}`}
         />
       </label>
@@ -284,7 +284,7 @@ export function CarouselApprovalCard({
       {!expanded && (
         <>
           {idea && (
-            <div className="flex items-center gap-1 text-[10px] text-[#c5a062]/80">
+            <div className="flex items-center gap-1 text-[10px] text-[#ff7a18]/80">
               <Lightbulb className="w-3 h-3" />
               <span className="truncate">{idea.concept}</span>
             </div>

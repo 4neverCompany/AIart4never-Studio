@@ -58,7 +58,7 @@ export function IdeasView({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="icon-box-gold">
-            <Lightbulb className="w-5 h-5 text-[#c5a062]" />
+            <Lightbulb className="w-5 h-5 text-[#ff7a18]" />
           </div>
           <div>
             <h2 className="type-title">Ideas Board</h2>
@@ -133,7 +133,7 @@ export function IdeasView({
                   >
                     {idea.context && <h4 className="text-sm font-bold text-amber-400">{idea.context}</h4>}
                     <p className="text-xs text-zinc-300 line-clamp-4">{idea.concept}</p>
-                    <div className="flex items-center justify-between mt-auto pt-3 border-t border-[#c5a062]/15">
+                    <div className="flex items-center justify-between mt-auto pt-3 border-t border-[#ff7a18]/15">
                       <span className="text-[10px] text-zinc-500">
                         {new Date(idea.createdAt).toLocaleDateString()}
                       </span>

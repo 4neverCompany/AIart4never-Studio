@@ -28,13 +28,13 @@ export interface SettingsSectionProps {
 }
 
 const TONE_TEXT: Record<SettingsSectionTone, string> = {
-  gold: 'text-[#c5a062]',
+  gold: 'text-[#ff7a18]',
   cyan: 'text-[#00e6ff]',
   emerald: 'text-emerald-400',
 };
 
 const TONE_BORDER: Record<SettingsSectionTone, string> = {
-  gold: 'border-[#c5a062]/20',
+  gold: 'border-[#ff7a18]/20',
   cyan: 'border-[#00e6ff]/20',
   emerald: 'border-emerald-500/20',
 };

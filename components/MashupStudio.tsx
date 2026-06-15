@@ -133,8 +133,8 @@ function MashupApp() {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-[#050505]">
         <div className="flex flex-col items-center gap-5 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-[#c5a062]/10 border border-[#c5a062]/30 flex items-center justify-center">
-            <ShieldAlert className="w-8 h-8 text-[#c5a062]" />
+          <div className="w-16 h-16 rounded-2xl bg-[#ff7a18]/10 border border-[#ff7a18]/30 flex items-center justify-center">
+            <ShieldAlert className="w-8 h-8 text-[#ff7a18]" />
           </div>
           <div>
             <h2 className="text-xl font-bold text-white mb-1">Access Restricted</h2>

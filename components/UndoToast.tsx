@@ -71,7 +71,7 @@ export const UndoToast: React.FC<Props> = ({ message, durationMs, onUndo, onDism
     <div
       role="status"
       aria-live="polite"
-      className="fixed bottom-6 right-6 z-50 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl bg-zinc-900/95 border border-[#c5a062]/30 shadow-xl backdrop-blur-md"
+      className="fixed bottom-6 right-6 z-50 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl bg-zinc-900/95 border border-[#ff7a18]/30 shadow-xl backdrop-blur-md"
     >
       <div className="flex items-center gap-3 px-4 py-3">
         <div className="flex-1 text-sm text-zinc-200">{message}</div>
@@ -95,7 +95,7 @@ export const UndoToast: React.FC<Props> = ({ message, durationMs, onUndo, onDism
       </div>
       <div className="h-1 bg-zinc-800">
         <div
-          className="h-full bg-[#c5a062] transition-[width] duration-100 ease-linear"
+          className="h-full bg-[#ff7a18] transition-[width] duration-100 ease-linear"
           style={{ width: `${pct}%` }}
           aria-hidden="true"
         />

@@ -116,7 +116,7 @@ function statusVisuals(status: PostReadyStatusKind): {
     case 'ready':
     default:
       return {
-        border: 'border-[#c5a062]/30',
+        border: 'border-[#ff7a18]/30',
         pillBg: 'bg-zinc-800/80 border-zinc-700',
         pillText: 'text-zinc-200',
       };
@@ -267,7 +267,7 @@ export const PostReadyCard = memo(function PostReadyCard({
                 onBlur={() => setCaptionExpanded(false)}
                 placeholder="No caption yet…"
                 rows={4}
-                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:border-[#c5a062]/50 focus:outline-none resize-none"
+                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:border-[#ff7a18]/50 focus:outline-none resize-none"
               />
             ) : (
               <button
@@ -314,7 +314,7 @@ export const PostReadyCard = memo(function PostReadyCard({
                   <button
                     type="button"
                     onClick={() => setHashtagsExpanded(true)}
-                    className="px-2 py-0.5 text-[10px] text-[#c5a062] hover:text-[#e0c285] underline-offset-2 hover:underline"
+                    className="px-2 py-0.5 text-[10px] text-[#ff7a18] hover:text-[#e0c285] underline-offset-2 hover:underline"
                   >
                     +{hiddenCount} more
                   </button>

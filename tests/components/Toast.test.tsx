@@ -40,11 +40,11 @@ describe('Toast — variant rendering', () => {
     expect(alert).toHaveTextContent('Failed to save');
   });
 
-  it('renders a warning toast (Metallic Gold accent)', () => {
+  it('renders a warning toast (AIART4NEVER orange accent)', () => {
     render(<Toast />);
     dispatchToast('Are you sure?', 'warning');
     const alert = screen.getByRole('alert');
-    expect(alert.className).toContain('border-[#c5a062]/40');
+    expect(alert.className).toContain('border-[#ff7a18]/40');
   });
 
   it('renders an info toast (zinc accent)', () => {
@@ -65,12 +65,12 @@ describe('Toast — pipeline variants (QOL §4d)', () => {
     expect(alert).toHaveTextContent('3 ideas queued for captions');
   });
 
-  it("renders 'pipeline-ready' with Metallic Gold accent", () => {
+  it("renders 'pipeline-ready' with AIART4NEVER orange accent", () => {
     render(<Toast />);
     dispatchToast('Carousel ready to post', 'pipeline-ready');
     const alert = screen.getByRole('alert');
     expect(alert).toBeInTheDocument();
-    expect(alert.className).toContain('border-[#c5a062]/40');
+    expect(alert.className).toContain('border-[#ff7a18]/40');
     expect(alert).toHaveTextContent('Carousel ready to post');
   });
 
@@ -83,7 +83,7 @@ describe('Toast — pipeline variants (QOL §4d)', () => {
     const progressEl = alerts.find((el) => el.textContent?.includes('progressing'))!;
     const readyEl = alerts.find((el) => el.textContent?.includes('ready'))!;
     expect(progressEl.className).toContain('border-[#00e6ff]/40');
-    expect(readyEl.className).toContain('border-[#c5a062]/40');
+    expect(readyEl.className).toContain('border-[#ff7a18]/40');
   });
 });
 

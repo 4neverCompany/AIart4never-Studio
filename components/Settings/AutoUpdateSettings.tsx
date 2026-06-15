@@ -90,10 +90,10 @@ function UpdateProgressBar({ percent }: { percent: number | null }) {
       className="relative h-1.5 w-full overflow-hidden rounded-full bg-zinc-800/80"
     >
       {percent === null ? (
-        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-[#c5a062]/60 via-[#00e6ff]/80 to-[#c5a062]/60 animate-pulse" />
+        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-[#ff7a18]/60 via-[#00e6ff]/80 to-[#ff7a18]/60 animate-pulse" />
       ) : (
         <div
-          className="h-full rounded-full bg-gradient-to-r from-[#c5a062] to-[#00e6ff] transition-[width] duration-200 ease-out"
+          className="h-full rounded-full bg-gradient-to-r from-[#ff7a18] to-[#00e6ff] transition-[width] duration-200 ease-out"
           style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
         />
       )}
@@ -107,7 +107,7 @@ function ReleaseHistoryList({ currentVersion }: { currentVersion: string | null 
   return (
     <details className="text-[11px] group">
       <summary className="flex items-center gap-1.5 cursor-pointer text-zinc-400 hover:text-zinc-200 select-none">
-        <History className="w-3 h-3 text-[#c5a062] shrink-0" />
+        <History className="w-3 h-3 text-[#ff7a18] shrink-0" />
         Release history
         <span className="text-zinc-600">({releases.length})</span>
       </summary>
@@ -121,7 +121,7 @@ function ReleaseHistoryList({ currentVersion }: { currentVersion: string | null 
                   'inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-mono text-[10px] border',
                   isCurrent
                     ? 'bg-[#00e6ff]/10 border-[#00e6ff]/40 text-[#00e6ff]'
-                    : 'bg-[#c5a062]/10 border-[#c5a062]/30 text-[#c5a062]',
+                    : 'bg-[#ff7a18]/10 border-[#ff7a18]/30 text-[#ff7a18]',
                 ].join(' ')}>
                   {isCurrent && <Sparkles className="w-2.5 h-2.5" aria-hidden />}
                   v{r.version}
@@ -290,7 +290,7 @@ export function AutoUpdateSettings({ draft, onFieldChange, isDesktop }: AutoUpda
 
       {/* Section header */}
       <div className="flex items-center gap-2">
-        <Download className="w-3.5 h-3.5 text-[#c5a062] shrink-0" />
+        <Download className="w-3.5 h-3.5 text-[#ff7a18] shrink-0" />
         <h5 className="text-xs font-semibold text-white">Auto-Update</h5>
         {version && (
           <span className="ml-auto text-[10px] text-zinc-500 font-mono">v{version}</span>
@@ -400,9 +400,9 @@ export function AutoUpdateSettings({ draft, onFieldChange, isDesktop }: AutoUpda
       )}
 
       {result.kind === 'available' && (
-        <div className="rounded-lg border border-[#c5a062]/30 bg-[#c5a062]/5 p-3 space-y-2">
+        <div className="rounded-lg border border-[#ff7a18]/30 bg-[#ff7a18]/5 p-3 space-y-2">
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-mono text-[10px] border bg-[#c5a062]/10 border-[#c5a062]/30 text-[#c5a062]">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-mono text-[10px] border bg-[#ff7a18]/10 border-[#ff7a18]/30 text-[#ff7a18]">
               v{result.version} available
             </span>
           </div>
@@ -424,7 +424,7 @@ export function AutoUpdateSettings({ draft, onFieldChange, isDesktop }: AutoUpda
               href={RELEASES_URL}
               target="_blank"
               rel="noreferrer noopener"
-              className="text-[11px] text-[#c5a062] hover:text-[#d4b478] transition-colors"
+              className="text-[11px] text-[#ff7a18] hover:text-[#ff9d4d] transition-colors"
             >
               Release notes
             </a>

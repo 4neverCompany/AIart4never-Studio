@@ -75,22 +75,24 @@
 }
 
 /*
- * 4neverCompany brand palette — Tailwind v4 @theme overrides.
+ * 4neverCompany / AIart4never Studio palette — "Ashen Cyberforge".
+ * Grounded in the real AIART4NEVER logo (near-black badge, glowing orange
+ * ring + wordmark, cyan circuit glow). Tailwind v4 @theme overrides.
  *
- *   Agency Black    #050505  — page / deepest backgrounds
- *   Metallic Gold   #C5A062  — borders, accents, card edges
- *   Electric Blue   #00E6FF  — buttons, active states, links
+ *   Agency Black       #050505  — page / deepest backgrounds
+ *   AIART4NEVER orange #FF7A18  — hero accent, borders, active states, the wordmark
+ *   Electric cyan      #00E6FF  — secondary accent, links, the cyberdeck glow
  *
- * emerald + indigo → Electric Blue family
- * amber            → Metallic Gold family
+ * emerald + indigo → Electric cyan family
+ * amber            → AIART4NEVER orange family  (var name kept as *-amber-* / brand-gold)
  * zinc-950         → Agency Black
  *
  * Full 300–950 scale ensures no shade falls through to Tailwind defaults.
  */
 @theme {
   --color-brand-black:    #050505;
-  --color-brand-gold:     #c5a062;
-  --color-brand-gold-soft:#d4b478;
+  --color-brand-gold:     #ff7a18;
+  --color-brand-gold-soft:#ff9d4d;
   --color-brand-blue:     #00e6ff;
   --color-brand-blue-deep:#00b8cc;
 
@@ -118,14 +120,14 @@
   --color-indigo-950: #001e22;
 
   /* ── Metallic Gold family (amber) — full 300-950 ────────────────── */
-  --color-amber-300: #e8d0a0;
-  --color-amber-400: #d4b478;
-  --color-amber-500: #c5a062;
-  --color-amber-600: #a68748;
-  --color-amber-700: #7a6434;
-  --color-amber-800: #524227;
-  --color-amber-900: #30271a;
-  --color-amber-950: #18130d;
+  --color-amber-300: #ffc28a;
+  --color-amber-400: #ff9d4d;
+  --color-amber-500: #ff7a18;
+  --color-amber-600: #e8650a;
+  --color-amber-700: #b84e08;
+  --color-amber-800: #7a3608;
+  --color-amber-900: #4a2206;
+  --color-amber-950: #2a1304;
 
   /* ── Typeface stack ─────────────────────────────────────────────── */
   /* next/font (layout.tsx) overrides --font-sans and --font-mono at    */
@@ -175,42 +177,42 @@ select optgroup {
 
   /* Surface depth — card vs. elevated vs. overlay */
   .surface-base {
-    @apply bg-[#080808] border border-[#c5a062]/18 rounded-2xl;
+    @apply bg-[#080808] border border-[#ff7a18]/18 rounded-2xl;
   }
 
   .surface-elevated {
-    @apply bg-[#0f0f0f] border border-[#c5a062]/22 rounded-2xl
+    @apply bg-[#0f0f0f] border border-[#ff7a18]/22 rounded-2xl
            shadow-[0_4px_24px_rgba(0,0,0,0.6),0_1px_0_rgba(255,255,255,0.04)];
   }
 
   .surface-overlay {
-    @apply bg-[#0d0d0d]/98 border border-[#c5a062]/28 rounded-2xl
+    @apply bg-[#0d0d0d]/98 border border-[#ff7a18]/28 rounded-2xl
            shadow-[0_8px_48px_rgba(0,0,0,0.8),0_0_0_1px_rgba(197,160,98,0.08)];
   }
 
   /* ── Glass surfaces ─────────────────────────────────────────────── */
   .glass {
-    @apply backdrop-blur-xl bg-white/[0.03] border border-[#c5a062]/20;
+    @apply backdrop-blur-xl bg-white/[0.03] border border-[#ff7a18]/20;
   }
 
   .glass-card {
-    @apply backdrop-blur-sm bg-zinc-900/80 border border-[#c5a062]/25 rounded-2xl shadow-xl;
+    @apply backdrop-blur-sm bg-zinc-900/80 border border-[#ff7a18]/25 rounded-2xl shadow-xl;
   }
 
   /* Sidebar / fixed panels — deep Agency Black with gold right border */
   .glass-panel {
-    @apply backdrop-blur-xl bg-[#050505]/95 border-r border-[#c5a062]/25 shadow-xl;
+    @apply backdrop-blur-xl bg-[#050505]/95 border-r border-[#ff7a18]/25 shadow-xl;
   }
 
   /* Standard content card — gold edge, frosted background, ambient depth */
   .card {
-    @apply bg-zinc-900/80 backdrop-blur-sm border border-[#c5a062]/20 rounded-2xl
+    @apply bg-zinc-900/80 backdrop-blur-sm border border-[#ff7a18]/20 rounded-2xl
            shadow-[0_2px_16px_rgba(0,0,0,0.4),0_1px_0_rgba(255,255,255,0.03)];
   }
 
   /* ── Brand-selected state (comparison / gallery active) ─────────── */
   .brand-selected {
-    @apply border-[#c5a062] ring-1 ring-[#c5a062]/40;
+    @apply border-[#ff7a18] ring-1 ring-[#ff7a18]/40;
   }
 
   /* ── Button hierarchy ───────────────────────────────────────────── */
@@ -226,9 +228,9 @@ select optgroup {
 
   .btn-secondary {
     @apply inline-flex items-center gap-2 px-4 py-2
-           bg-transparent border border-[#c5a062]/50
-           hover:border-[#c5a062] hover:bg-[#c5a062]/10
-           text-[#c5a062] font-semibold text-sm rounded-xl
+           bg-transparent border border-[#ff7a18]/50
+           hover:border-[#ff7a18] hover:bg-[#ff7a18]/10
+           text-[#ff7a18] font-semibold text-sm rounded-xl
            transition-all duration-200
            disabled:opacity-50 disabled:cursor-not-allowed;
   }
@@ -262,7 +264,7 @@ select optgroup {
   /* Compact Gold — secondary action buttons (schedule, archive, etc.) */
   .btn-gold-sm {
     @apply inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl
-           bg-[#c5a062] hover:bg-[#d4b478] active:bg-[#a68748]
+           bg-[#ff7a18] hover:bg-[#ff9d4d] active:bg-[#e8650a]
            text-[#050505] transition-all duration-200
            disabled:opacity-40 disabled:cursor-not-allowed;
   }
@@ -288,7 +290,7 @@ select optgroup {
 
   /* ── Text gradients ─────────────────────────────────────────────── */
   .text-gradient-gold {
-    background: linear-gradient(135deg, #c5a062 0%, #e8d0a0 50%, #c5a062 100%);
+    background: linear-gradient(135deg, #ff7a18 0%, #ffc28a 50%, #ff7a18 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -320,12 +322,12 @@ select optgroup {
   .section-heading {
     @apply text-lg font-semibold text-white relative pb-2
            after:content-[''] after:absolute after:bottom-0 after:left-0
-           after:w-8 after:h-px after:bg-[#c5a062]/60;
+           after:w-8 after:h-px after:bg-[#ff7a18]/60;
   }
 
   /* ── Dividers ───────────────────────────────────────────────────── */
   .divider-gold {
-    @apply border-[#c5a062]/15;
+    @apply border-[#ff7a18]/15;
   }
 
   /* ── Toggle switch (Electric Blue when on) ──────────────────────── */
@@ -344,7 +346,7 @@ select optgroup {
   }
 
   .icon-box-gold {
-    @apply w-10 h-10 rounded-xl bg-[#c5a062]/10 border border-[#c5a062]/25
+    @apply w-10 h-10 rounded-xl bg-[#ff7a18]/10 border border-[#ff7a18]/25
            flex items-center justify-center;
   }
 
@@ -407,7 +409,7 @@ select optgroup {
     @apply after:content-[''] after:absolute after:bottom-0
            after:left-0 after:right-0 after:h-px
            after:bg-gradient-to-r after:from-transparent
-           after:via-[#c5a062]/30 after:to-transparent;
+           after:via-[#ff7a18]/30 after:to-transparent;
   }
 }
 

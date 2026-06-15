@@ -212,7 +212,7 @@ export function VercelAiModelPicker({
                         !m.available
                           ? 'border-zinc-800/60 bg-zinc-900/30 opacity-50 cursor-not-allowed'
                           : checked
-                          ? 'bg-[#c5a062]/10 border-[#c5a062]/40'
+                          ? 'bg-[#ff7a18]/10 border-[#ff7a18]/40'
                           : 'border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-900/40'
                       }`}
                       title={
@@ -229,7 +229,7 @@ export function VercelAiModelPicker({
                         checked={checked}
                         disabled={!m.available || !!saving}
                         onChange={() => onSelect(m.modelId)}
-                        className="mt-0.5 accent-[#c5a062]"
+                        className="mt-0.5 accent-[#ff7a18]"
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -277,7 +277,7 @@ export function VercelAiModelPicker({
                         )}
                       </div>
                       {isThisSaving && (
-                        <span className="text-[10px] text-[#c5a062] self-center shrink-0">
+                        <span className="text-[10px] text-[#ff7a18] self-center shrink-0">
                           Saving…
                         </span>
                       )}

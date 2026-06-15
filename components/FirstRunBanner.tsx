@@ -49,15 +49,15 @@ export function FirstRunBanner() {
 
   return (
     <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[90] max-w-md w-[calc(100%-2rem)]">
-      <div className="flex items-start gap-3 rounded-xl border border-[#c5a062]/40 bg-[#050505]/95 backdrop-blur-md shadow-2xl px-4 py-3">
-        <Sparkles className="w-4 h-4 text-[#c5a062] mt-0.5 shrink-0" />
+      <div className="flex items-start gap-3 rounded-xl border border-[#ff7a18]/40 bg-[#050505]/95 backdrop-blur-md shadow-2xl px-4 py-3">
+        <Sparkles className="w-4 h-4 text-[#ff7a18] mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-xs text-zinc-200 leading-relaxed">
-            Welcome to <span className="text-[#c5a062] font-semibold">AIart4never Studio</span> — configure your API keys in{' '}
+            Welcome to <span className="text-[#ff7a18] font-semibold">AIart4never Studio</span> — configure your API keys in{' '}
             <button
               type="button"
               onClick={openSettings}
-              className="inline-flex items-center gap-1 text-[#c5a062] hover:text-[#d4b478] underline underline-offset-2 font-medium transition-colors"
+              className="inline-flex items-center gap-1 text-[#ff7a18] hover:text-[#ff9d4d] underline underline-offset-2 font-medium transition-colors"
             >
               <SettingsIcon className="w-3 h-3" />
               Settings

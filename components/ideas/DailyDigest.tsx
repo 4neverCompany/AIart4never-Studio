@@ -182,7 +182,7 @@ export const DailyDigest: React.FC<Props> = ({ setView }) => {
       ? 'bg-emerald-500'
       : weekFillStatus.percent >= 70
         ? 'bg-amber-500'
-        : 'bg-[#c5a062]';
+        : 'bg-[#ff7a18]';
 
   // Single source of truth: lib/platform-credentials.isPlatformConfigured.
   // Without consulting desktopCreds, IG configured via the desktop settings
@@ -214,12 +214,12 @@ export const DailyDigest: React.FC<Props> = ({ setView }) => {
       id="daily-digest-region"
       role="region"
       aria-label="Daily digest"
-      className="bg-zinc-900/40 border border-[#c5a062]/20 rounded-2xl p-5 space-y-4"
+      className="bg-zinc-900/40 border border-[#ff7a18]/20 rounded-2xl p-5 space-y-4"
     >
       {/* Header row */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <GreetingIcon className="w-4 h-4 text-[#c5a062]" aria-hidden="true" />
+          <GreetingIcon className="w-4 h-4 text-[#ff7a18]" aria-hidden="true" />
           <span className="text-base font-semibold text-white">{greeting.label}</span>
           <span className="text-zinc-500">·</span>
           <span className="text-sm text-zinc-400">{dateLabel}</span>

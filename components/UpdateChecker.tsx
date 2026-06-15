@@ -549,16 +549,16 @@ export function UpdateChecker() {
         aria-modal="true"
         aria-labelledby="update-restart-heading"
       >
-        <div className="max-w-md w-[calc(100%-2rem)] rounded-2xl border border-[#c5a062]/40 bg-[#050505]/95 shadow-2xl p-6 space-y-4">
+        <div className="max-w-md w-[calc(100%-2rem)] rounded-2xl border border-[#ff7a18]/40 bg-[#050505]/95 shadow-2xl p-6 space-y-4">
           <div className="flex items-center gap-3">
-            <RotateCw className="w-5 h-5 text-[#c5a062]" />
+            <RotateCw className="w-5 h-5 text-[#ff7a18]" />
             <h2 id="update-restart-heading" className="text-sm font-semibold text-white">
               Restarting in {state.secondsLeft} {state.secondsLeft === 1 ? 'second' : 'seconds'}
             </h2>
           </div>
           <p className="text-xs text-zinc-400 leading-relaxed">
             AIart4never Studio is restarting to apply update{' '}
-            <span className="font-mono text-[#c5a062]">v{state.update.version}</span>. Any
+            <span className="font-mono text-[#ff7a18]">v{state.update.version}</span>. Any
             in-flight pipeline work has finished — you can wait or restart now.
           </p>
           <div className="flex items-center justify-end gap-2 pt-1">
@@ -604,7 +604,7 @@ export function UpdateChecker() {
             <button
               type="button"
               onClick={handleRetry}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-semibold bg-[#c5a062] hover:bg-[#d4b478] active:bg-[#a68748] text-[#050505] transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-semibold bg-[#ff7a18] hover:bg-[#ff9d4d] active:bg-[#e8650a] text-[#050505] transition-colors"
               aria-label="Retry update"
             >
               <RotateCw className="w-3 h-3" />
@@ -642,12 +642,12 @@ export function UpdateChecker() {
     const minutesLeft = now === null ? 0 : Math.max(0, Math.round((state.deadline - now) / 60000));
     return (
       <div className="fixed bottom-4 right-4 z-[100] max-w-sm w-[calc(100%-2rem)] sm:w-96">
-        <div className="rounded-xl border border-[#c5a062]/30 bg-[#050505]/95 backdrop-blur-md shadow-xl p-4">
+        <div className="rounded-xl border border-[#ff7a18]/30 bg-[#050505]/95 backdrop-blur-md shadow-xl p-4">
           <div className="flex items-start gap-2">
-            <Clock className="w-4 h-4 text-[#c5a062] mt-0.5 shrink-0" />
+            <Clock className="w-4 h-4 text-[#ff7a18] mt-0.5 shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-white">
-                Update <span className="font-mono text-[#c5a062]">v{state.update.version}</span> waiting
+                Update <span className="font-mono text-[#ff7a18]">v{state.update.version}</span> waiting
               </p>
               <p className="text-[11px] text-zinc-400 mt-1">
                 Pipeline is running. Install will start as soon as the current run finishes
@@ -668,12 +668,12 @@ export function UpdateChecker() {
 
   return (
     <div className="fixed bottom-4 right-4 z-[100] max-w-sm w-[calc(100%-2rem)] sm:w-96">
-      <div className="rounded-xl border border-[#c5a062]/40 bg-[#050505]/95 backdrop-blur-md shadow-2xl p-4 space-y-3">
+      <div className="rounded-xl border border-[#ff7a18]/40 bg-[#050505]/95 backdrop-blur-md shadow-2xl p-4 space-y-3">
         <div className="flex items-start gap-2">
-          <Download className="w-4 h-4 text-[#c5a062] mt-0.5 shrink-0" />
+          <Download className="w-4 h-4 text-[#ff7a18] mt-0.5 shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-white">
-              Update available — <span className="text-[#c5a062] font-mono">v{update.version}</span>
+              Update available — <span className="text-[#ff7a18] font-mono">v{update.version}</span>
               {/* UPDATE-P0-2 (2026-05-21): size hint rendered only when
                   the background HEAD resolved a positive content-length.
                   Silent omission on any failure path (CDN returns 0,
@@ -726,11 +726,11 @@ export function UpdateChecker() {
             >
               {progress !== null ? (
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-[#c5a062] to-[#00e6ff] transition-[width] duration-200 ease-out"
+                  className="h-full rounded-full bg-gradient-to-r from-[#ff7a18] to-[#00e6ff] transition-[width] duration-200 ease-out"
                   style={{ width: `${progress}%` }}
                 />
               ) : (
-                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-[#c5a062]/60 via-[#00e6ff]/80 to-[#c5a062]/60 animate-pulse" />
+                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-[#ff7a18]/60 via-[#00e6ff]/80 to-[#ff7a18]/60 animate-pulse" />
               )}
             </div>
           </div>

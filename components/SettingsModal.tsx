@@ -306,11 +306,11 @@ export function SettingsModal({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         transition={{ duration: 0.3, ease: 'easeOut' }}
-        className="bg-[#0d0d0d]/99 backdrop-blur-xl border-0 sm:border border-[#c5a062]/30 rounded-none sm:rounded-2xl w-full sm:max-w-2xl overflow-hidden shadow-[0_8px_48px_rgba(0,0,0,0.8),0_0_60px_rgba(197,160,98,0.08),0_0_0_1px_rgba(197,160,98,0.06)] flex flex-col h-full sm:h-auto max-h-[100dvh] sm:max-h-[90vh]"
+        className="bg-[#0d0d0d]/99 backdrop-blur-xl border-0 sm:border border-[#ff7a18]/30 rounded-none sm:rounded-2xl w-full sm:max-w-2xl overflow-hidden shadow-[0_8px_48px_rgba(0,0,0,0.8),0_0_60px_rgba(197,160,98,0.08),0_0_0_1px_rgba(197,160,98,0.06)] flex flex-col h-full sm:h-auto max-h-[100dvh] sm:max-h-[90vh]"
       >
-        <div className="flex items-center justify-between p-6 border-b border-[#c5a062]/20 bg-[#050505]/60 shrink-0">
+        <div className="flex items-center justify-between p-6 border-b border-[#ff7a18]/20 bg-[#050505]/60 shrink-0">
           <h3 className="type-title flex items-center gap-2">
-            <SettingsIcon className="w-5 h-5 text-[#c5a062]" />
+            <SettingsIcon className="w-5 h-5 text-[#ff7a18]" />
             Settings
           </h3>
           <div className="flex items-center gap-3">
@@ -373,7 +373,7 @@ export function SettingsModal({
                 <Icon className="w-3.5 h-3.5" />
                 {t.label}
                 {active && (
-                  <span className="absolute left-2 right-2 -bottom-px h-0.5 bg-[#c5a062] rounded-full" />
+                  <span className="absolute left-2 right-2 -bottom-px h-0.5 bg-[#ff7a18] rounded-full" />
                 )}
               </button>
             );
@@ -389,8 +389,8 @@ export function SettingsModal({
               tab. The actual web-only inputs below are gated by
               `isDesktop === false` for STORY-130 / INSTAGRAM-CRED-FIX. */}
           {isDesktop === true && (
-            <div className="rounded-xl border border-[#c5a062]/30 bg-[#c5a062]/5 p-4 flex items-start gap-3">
-              <Monitor className="w-4 h-4 text-[#c5a062] shrink-0 mt-0.5" />
+            <div className="rounded-xl border border-[#ff7a18]/30 bg-[#ff7a18]/5 p-4 flex items-start gap-3">
+              <Monitor className="w-4 h-4 text-[#ff7a18] shrink-0 mt-0.5" />
               <div className="space-y-1.5">
                 <p className="text-xs font-semibold text-white">Managed in Desktop Configuration</p>
                 <p className="text-[11px] text-zinc-400 leading-relaxed">
@@ -425,7 +425,7 @@ export function SettingsModal({
                     value={settings.apiKeys.leonardo || ''}
                     onChange={(e) => updateSettings({ apiKeys: { ...settings.apiKeys, leonardo: e.target.value } })}
                     placeholder="••••••••••••••••"
-                    className="w-full bg-zinc-950 border border-zinc-800/60 rounded-lg px-3 py-2 pr-16 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#c5a062]/30"
+                    className="w-full bg-zinc-950 border border-zinc-800/60 rounded-lg px-3 py-2 pr-16 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30"
                   />
                   <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                     {settings.apiKeys.leonardo && (
@@ -460,7 +460,7 @@ export function SettingsModal({
                       value={settings.apiKeys.instagram?.igAccountId || ''}
                       onChange={(e) => updateSettings({ apiKeys: { ...settings.apiKeys, instagram: { accessToken: settings.apiKeys.instagram?.accessToken ?? '', igAccountId: e.target.value } } })}
                       placeholder="Instagram Business Account ID"
-                      className="w-full bg-zinc-950 border border-zinc-800/60 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#c5a062]/30"
+                      className="w-full bg-zinc-950 border border-zinc-800/60 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30"
                     />
                     <div className="relative">
                       <input
@@ -468,7 +468,7 @@ export function SettingsModal({
                         value={settings.apiKeys.instagram?.accessToken || ''}
                         onChange={(e) => updateSettings({ apiKeys: { ...settings.apiKeys, instagram: { accessToken: e.target.value, igAccountId: settings.apiKeys.instagram?.igAccountId ?? '' } } })}
                         placeholder="Long-lived Page Access Token"
-                        className="w-full bg-zinc-950 border border-zinc-800/60 rounded-lg px-3 py-2 pr-16 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#c5a062]/30"
+                        className="w-full bg-zinc-950 border border-zinc-800/60 rounded-lg px-3 py-2 pr-16 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30"
                       />
                       <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                         {settings.apiKeys.instagram?.accessToken && (
@@ -497,7 +497,7 @@ export function SettingsModal({
                       value={settings.apiKeys.pinterest?.accessToken || ''}
                       onChange={(e) => updateSettings({ apiKeys: { ...settings.apiKeys, pinterest: { accessToken: e.target.value, boardId: settings.apiKeys.pinterest?.boardId } } })}
                       placeholder="Pinterest Access Token"
-                      className="w-full bg-zinc-950 border border-zinc-800/60 rounded-lg px-3 py-2 pr-16 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#c5a062]/30"
+                      className="w-full bg-zinc-950 border border-zinc-800/60 rounded-lg px-3 py-2 pr-16 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30"
                     />
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                       {settings.apiKeys.pinterest?.accessToken && (
@@ -515,7 +515,7 @@ export function SettingsModal({
                     value={settings.apiKeys.pinterest?.boardId || ''}
                     onChange={(e) => updateSettings({ apiKeys: { ...settings.apiKeys, pinterest: { accessToken: settings.apiKeys.pinterest?.accessToken ?? '', boardId: e.target.value } } })}
                     placeholder="Board ID (optional — defaults to account's first board)"
-                    className="w-full bg-zinc-950 border border-zinc-800/60 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#c5a062]/30"
+                    className="w-full bg-zinc-950 border border-zinc-800/60 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30"
                   />
                 </div>
                 <p className="text-[10px] text-zinc-500 mt-1">
@@ -532,8 +532,8 @@ export function SettingsModal({
           <>
           <div className="space-y-4">
             <div className="flex items-center gap-2 mb-2">
-              <div className="p-1.5 bg-[#c5a062]/10 rounded-lg">
-                <Bot className="w-4 h-4 text-[#c5a062]" />
+              <div className="p-1.5 bg-[#ff7a18]/10 rounded-lg">
+                <Bot className="w-4 h-4 text-[#ff7a18]" />
               </div>
               <h4 className="text-sm font-bold text-white uppercase tracking-wider">Active AI Agent</h4>
             </div>
@@ -599,16 +599,16 @@ export function SettingsModal({
                     aria-pressed={selected}
                     className={`text-left rounded-xl border p-4 transition-all ${
                       selected
-                        ? 'border-[#c5a062] bg-[#c5a062]/10 shadow-[0_0_0_1px_rgba(197,160,98,0.3)]'
+                        ? 'border-[#ff7a18] bg-[#ff7a18]/10 shadow-[0_0_0_1px_rgba(197,160,98,0.3)]'
                         : 'border-zinc-800/60 bg-zinc-950/40 hover:border-zinc-700'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <Cpu className="w-4 h-4 text-[#c5a062]" />
+                        <Cpu className="w-4 h-4 text-[#ff7a18]" />
                         <span className="text-sm font-bold text-white">vercel-ai</span>
                       </div>
-                      <span className={`text-[10px] font-semibold uppercase tracking-wider ${selected ? 'text-[#c5a062]' : 'text-zinc-500'}`}>
+                      <span className={`text-[10px] font-semibold uppercase tracking-wider ${selected ? 'text-[#ff7a18]' : 'text-zinc-500'}`}>
                         {selected ? '● Selected' : '○ Select'}
                       </span>
                     </div>
@@ -646,8 +646,8 @@ export function SettingsModal({
           <div className="space-y-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-[#c5a062]/10 rounded-lg">
-                  <Folder className="w-4 h-4 text-[#c5a062]" />
+                <div className="p-1.5 bg-[#ff7a18]/10 rounded-lg">
+                  <Folder className="w-4 h-4 text-[#ff7a18]" />
                 </div>
                 <h4 className="text-sm font-bold text-white uppercase tracking-wider">Manage Collections</h4>
               </div>
@@ -688,8 +688,8 @@ export function SettingsModal({
           {/* FEAT-002b: Channel Name (lifted out of watermark conditional) */}
           <div className="space-y-4 pt-4 border-t border-zinc-800/50">
             <div className="flex items-center gap-2 mb-2">
-              <div className="p-1.5 bg-[#c5a062]/10 rounded-lg">
-                <Tag className="w-4 h-4 text-[#c5a062]" />
+              <div className="p-1.5 bg-[#ff7a18]/10 rounded-lg">
+                <Tag className="w-4 h-4 text-[#ff7a18]" />
               </div>
               <h4 className="text-sm font-bold text-white uppercase tracking-wider">Social Media</h4>
             </div>
@@ -700,7 +700,7 @@ export function SettingsModal({
                 value={settings.channelName || ''}
                 onChange={(e) => updateSettings({ channelName: e.target.value })}
                 placeholder="e.g. MultiverseMashupAI"
-                className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-[#c5a062]/30 transition-all"
+                className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30 transition-all"
               />
             </div>
           </div>
@@ -726,7 +726,7 @@ export function SettingsModal({
                   type="checkbox"
                   checked={!!settings.higgsfieldEnabled}
                   onChange={(e) => updateSettings({ higgsfieldEnabled: e.target.checked })}
-                  className="h-4 w-4 rounded border-zinc-700 bg-zinc-950 text-[#c5a062] focus:ring-[#c5a062]/30"
+                  className="h-4 w-4 rounded border-zinc-700 bg-zinc-950 text-[#ff7a18] focus:ring-[#ff7a18]/30"
                 />
                 <span>Also generate with Higgsfield (in addition to Leonardo)</span>
               </label>
@@ -758,7 +758,7 @@ export function SettingsModal({
                               : enabled.filter((s) => s !== m.slug)
                             updateSettings({ higgsfieldImageModels: next })
                           }}
-                          className="mt-0.5 h-3.5 w-3.5 rounded border-zinc-700 bg-zinc-950 text-[#c5a062] focus:ring-[#c5a062]/30"
+                          className="mt-0.5 h-3.5 w-3.5 rounded border-zinc-700 bg-zinc-950 text-[#ff7a18] focus:ring-[#ff7a18]/30"
                         />
                         <span>
                           <span className="font-medium">{m.displayName}</span>
@@ -781,7 +781,7 @@ export function SettingsModal({
                 <select
                   value={settings.defaultLeonardoModel}
                   onChange={(e) => updateSettings({ defaultLeonardoModel: e.target.value })}
-                  className="w-full bg-zinc-950 border border-zinc-800/60 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#c5a062]/30"
+                  className="w-full bg-zinc-950 border border-zinc-800/60 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30"
                 >
                   {/* P3 of PROV-AGNOSTIC-PARAMS: group models by backend
                       provider so the user can see at a glance which
@@ -830,7 +830,7 @@ export function SettingsModal({
                   <select
                     value={settings.activeTextModel ?? ''}
                     onChange={(e) => updateSettings({ activeTextModel: e.target.value || undefined })}
-                    className="w-full bg-zinc-950 border border-zinc-800/60 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#c5a062]/30"
+                    className="w-full bg-zinc-950 border border-zinc-800/60 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30"
                   >
                     <option value="">— Server default —</option>
                     {(() => {
@@ -1090,7 +1090,7 @@ export function SettingsModal({
                 <select
                   value={settings.defaultAnimationDuration || 5}
                   onChange={(e) => updateSettings({ defaultAnimationDuration: Number(e.target.value) as 5 | 10 })}
-                  className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#c5a062]/30 cursor-pointer"
+                  className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30 cursor-pointer"
                 >
                   <option value={5}>5 Seconds</option>
                   <option value={10}>10 Seconds</option>
@@ -1101,7 +1101,7 @@ export function SettingsModal({
                 <select
                   value={settings.defaultAnimationStyle || 'DYNAMIC'}
                   onChange={(e) => updateSettings({ defaultAnimationStyle: e.target.value })}
-                  className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#c5a062]/30 cursor-pointer"
+                  className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30 cursor-pointer"
                 >
                   <option value="DYNAMIC">Dynamic</option>
                   <option value="STATIC">Static</option>
@@ -1147,7 +1147,7 @@ export function SettingsModal({
                             : current.filter((x) => x !== p);
                           updateSettings({ videoProviders: next });
                         }}
-                        className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-[#c5a062] focus:ring-[#c5a062]"
+                        className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-[#ff7a18] focus:ring-[#ff7a18]"
                       />
                       <span className="text-sm text-zinc-200">{labels[p].name}</span>
                       <span className="text-[10px] text-zinc-500">{labels[p].cost}</span>
@@ -1167,7 +1167,7 @@ export function SettingsModal({
                   <select
                     value={settings.defaultVideoModel || 'kling-3.0'}
                     onChange={(e) => updateSettings({ defaultVideoModel: e.target.value })}
-                    className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#c5a062]/30 cursor-pointer"
+                    className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30 cursor-pointer"
                   >
                     <option value="kling-video-o-3">Kling O3 Omni (New)</option>
                     <option value="kling-3.0">Kling 3.0 (Pro Quality)</option>
@@ -1186,7 +1186,7 @@ export function SettingsModal({
                   <select
                     value={settings.defaultMinimaxVideoModel || 'MiniMax-Hailuo-2.3'}
                     onChange={(e) => updateSettings({ defaultMinimaxVideoModel: e.target.value })}
-                    className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#c5a062]/30 cursor-pointer"
+                    className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30 cursor-pointer"
                   >
                     <option value="MiniMax-Hailuo-2.3">Hailuo 2.3 (Latest, recommended)</option>
                     <option value="MiniMax-Hailuo-02">Hailuo 02 (Mature)</option>
@@ -1268,7 +1268,7 @@ export function SettingsModal({
                           : current.filter((x) => x !== skill.name);
                         updateSettings({ activeSkills: next });
                       }}
-                      className="mt-1 h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-[#c5a062] focus:ring-[#c5a062]"
+                      className="mt-1 h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-[#ff7a18] focus:ring-[#ff7a18]"
                     />
                     <div>
                       <div className="text-sm text-zinc-200">{skill.label}</div>

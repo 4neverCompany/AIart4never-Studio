@@ -1327,7 +1327,7 @@ export function MainContent() {
         
         <div className="flex items-center gap-2 md:gap-4 overflow-hidden">
           <div className="relative hidden md:block">
-            <div className="flex bg-zinc-900/60 rounded-xl p-1 border border-[#c5a062]/15 overflow-x-auto hide-scrollbar snap-x">
+            <div className="flex bg-zinc-900/60 rounded-xl p-1 border border-[#ff7a18]/15 overflow-x-auto hide-scrollbar snap-x">
               {['ideas', 'compare', 'gallery', 'captioning', 'post-ready', 'pipeline'].map((v) => (
                 <button
                   key={v}
@@ -1392,7 +1392,7 @@ export function MainContent() {
 
       {/* Mobile bottom nav — replaces the header tab bar below md */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#050505]/95 backdrop-blur-xl border-t border-[#c5a062]/20 pb-[env(safe-area-inset-bottom)]"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#050505]/95 backdrop-blur-xl border-t border-[#ff7a18]/20 pb-[env(safe-area-inset-bottom)]"
         aria-label="Primary"
       >
         <div className="flex justify-around items-stretch px-1 py-1">
@@ -1499,7 +1499,7 @@ export function MainContent() {
                   <div className="card p-6 space-y-6">
                     <div className="flex flex-wrap justify-end gap-2">
                         <select
-                          className="text-xs bg-zinc-950 border border-zinc-800/60 rounded-xl px-2 py-1 text-zinc-300 focus:outline-none focus:ring-2 focus:ring-[#c5a062]/30 max-w-[150px]"
+                          className="text-xs bg-zinc-950 border border-zinc-800/60 rounded-xl px-2 py-1 text-zinc-300 focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30 max-w-[150px]"
                           onChange={(e) => {
                             if (e.target.value) {
                               setComparisonPrompt(e.target.value);
@@ -1538,8 +1538,8 @@ export function MainContent() {
                                 aria-pressed={isSelected}
                                 className={`px-3 py-2 rounded-xl text-xs font-medium border transition-all text-left flex items-center justify-between ${
                                   isSelected
-                                    ? 'bg-[#c5a062]/15 border-[#c5a062] text-[#c5a062]'
-                                    : 'bg-zinc-900 border-zinc-800/60 text-zinc-500 opacity-70 hover:opacity-100 hover:border-[#c5a062]/40'
+                                    ? 'bg-[#ff7a18]/15 border-[#ff7a18] text-[#ff7a18]'
+                                    : 'bg-zinc-900 border-zinc-800/60 text-zinc-500 opacity-70 hover:opacity-100 hover:border-[#ff7a18]/40'
                                 }`}
                               >
                                 <span className="truncate mr-2">{model.name}</span>
@@ -1619,7 +1619,7 @@ export function MainContent() {
                           lib/modelOptimizer whenever the prompt changes.
                           During generation the same optimizer runs again
                           so these pills accurately preview what will be sent. */}
-                      <div className="bg-zinc-900/50 border border-[#c5a062]/15 rounded-xl p-4 space-y-3">
+                      <div className="bg-zinc-900/50 border border-[#ff7a18]/15 rounded-xl p-4 space-y-3">
                         <div className="flex items-center gap-2 text-xs text-zinc-500">
                           <Sparkles className="w-3 h-3" />
                           <span className="uppercase tracking-wider font-medium">AI-Optimized Parameters</span>
@@ -1963,11 +1963,11 @@ export function MainContent() {
                         <div
                           role="group"
                           aria-label="Scheduler queue status"
-                          className="flex flex-wrap items-center gap-1.5 bg-[#080808] border border-[#c5a062]/20 rounded-xl px-2 py-1.5"
+                          className="flex flex-wrap items-center gap-1.5 bg-[#080808] border border-[#ff7a18]/20 rounded-xl px-2 py-1.5"
                         >
                           {[
                             { key: 'scheduled' as const, label: 'Scheduled', count: queueCounts.scheduled, dot: 'bg-[#00e6ff]', text: 'text-[#00e6ff]' },
-                            { key: 'pending'   as const, label: 'Pending',   count: queueCounts.pending,   dot: 'bg-[#c5a062]', text: 'text-[#c5a062]' },
+                            { key: 'pending'   as const, label: 'Pending',   count: queueCounts.pending,   dot: 'bg-[#ff7a18]', text: 'text-[#ff7a18]' },
                             { key: 'posted'    as const, label: 'Posted',    count: queueCounts.posted,    dot: 'bg-emerald-500', text: 'text-emerald-300' },
                             { key: 'failed'    as const, label: 'Failed',    count: queueCounts.failed,    dot: 'bg-red-500',     text: 'text-red-300'    },
                           ].map((s, idx, arr) => (
@@ -1985,7 +1985,7 @@ export function MainContent() {
                                 </span>
                               </span>
                               {idx < arr.length - 1 && (
-                                <span className="h-3 w-px bg-[#c5a062]/15" aria-hidden="true" />
+                                <span className="h-3 w-px bg-[#ff7a18]/15" aria-hidden="true" />
                               )}
                             </span>
                           ))}
@@ -2058,7 +2058,7 @@ export function MainContent() {
                                   )
                                 }
                                 aria-label="Sort Post Ready cards"
-                                className="bg-transparent text-xs text-zinc-300 px-2 py-1 rounded-full cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#c5a062]/40"
+                                className="bg-transparent text-xs text-zinc-300 px-2 py-1 rounded-full cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#ff7a18]/40"
                               >
                                 <option value="savedAt">Saved (newest)</option>
                                 <option value="scheduled">Scheduled (soonest)</option>
@@ -2069,7 +2069,7 @@ export function MainContent() {
                         </div>
 
                         {/* Visual divider between display and action groups */}
-                        <span className="hidden sm:block h-6 w-px bg-[#c5a062]/15" aria-hidden="true" />
+                        <span className="hidden sm:block h-6 w-px bg-[#ff7a18]/15" aria-hidden="true" />
 
                         {/* Action group — carousel + scheduling */}
                         <div className="flex flex-wrap items-center gap-2">
@@ -2195,7 +2195,7 @@ export function MainContent() {
                         return (
                           <div className="card overflow-hidden relative">
                             {/* Calendar header */}
-                            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 p-4 border-b border-[#c5a062]/15">
+                            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 p-4 border-b border-[#ff7a18]/15">
                               <div className="flex items-center gap-2">
                                 <button
                                   onClick={() => setCalendarDate(addDays(calendarDate, -7))}
@@ -2291,7 +2291,7 @@ export function MainContent() {
                                         type="button"
                                         onClick={() => setSelectedImage(editingImg)}
                                         title="Open full image"
-                                        className="shrink-0 group relative w-16 h-16 rounded-xl overflow-hidden border border-[#c5a062]/30 hover:border-[#c5a062]/70 transition-colors"
+                                        className="shrink-0 group relative w-16 h-16 rounded-xl overflow-hidden border border-[#ff7a18]/30 hover:border-[#ff7a18]/70 transition-colors"
                                       >
                                         {/* eslint-disable-next-line @next/next/no-img-element */}
                                         <img
@@ -2332,7 +2332,7 @@ export function MainContent() {
                                         type="date"
                                         value={editing.date}
                                         onChange={(e) => patchField({ date: e.target.value })}
-                                        className="w-full bg-zinc-900 border border-zinc-800/60 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-[#c5a062]/30"
+                                        className="w-full bg-zinc-900 border border-zinc-800/60 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30"
                                       />
                                     </div>
                                     <div className="space-y-1">
@@ -2340,7 +2340,7 @@ export function MainContent() {
                                       <TimePicker24
                                         value={editing.time}
                                         onChange={(v) => patchField({ time: v })}
-                                        className="w-full bg-zinc-900 border border-zinc-800/60 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-[#c5a062]/30"
+                                        className="w-full bg-zinc-900 border border-zinc-800/60 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30"
                                       />
                                     </div>
                                   </div>
@@ -2666,7 +2666,7 @@ export function MainContent() {
 
                       return (
                         <div className="card overflow-hidden">
-                          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 p-4 border-b border-[#c5a062]/15">
+                          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 p-4 border-b border-[#ff7a18]/15">
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={() =>
@@ -3046,13 +3046,13 @@ export function MainContent() {
                               </div>
                             </div>
 
-                            <div className="flex items-start gap-3 p-3 rounded-xl bg-zinc-900/60 border border-[#c5a062]/15">
+                            <div className="flex items-start gap-3 p-3 rounded-xl bg-zinc-900/60 border border-[#ff7a18]/15">
                               {targetImg?.url && (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img
                                   src={targetImg.url}
                                   alt=""
-                                  className="w-14 h-14 rounded-lg object-cover shrink-0 border border-[#c5a062]/15"
+                                  className="w-14 h-14 rounded-lg object-cover shrink-0 border border-[#ff7a18]/15"
                                 />
                               )}
                               <div className="min-w-0 flex-1 space-y-1">

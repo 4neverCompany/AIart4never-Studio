@@ -27,7 +27,7 @@ export function CarouselStatusPill({
     return <Pill cls="bg-emerald-500/15 text-emerald-300 border-emerald-500/30">{label}</Pill>;
   }
   return (
-    <Pill cls="bg-[#c5a062]/15 text-[#c5a062] border-[#c5a062]/30">
+    <Pill cls="bg-[#ff7a18]/15 text-[#ff7a18] border-[#ff7a18]/30">
       Partial · {approved} of {total}
     </Pill>
   );

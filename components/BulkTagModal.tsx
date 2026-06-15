@@ -88,7 +88,7 @@ export function BulkTagModal({
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
               placeholder="e.g. Marvel, Cinematic, 4k"
-              className="w-full bg-zinc-950 border border-zinc-800/60 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#c5a062]/30"
+              className="w-full bg-zinc-950 border border-zinc-800/60 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30"
             />
           </div>
           <div className="flex gap-4">

@@ -331,7 +331,7 @@ export function PipelinePanel() {
                 transition={{ delay: idx * 0.05 }}
                 className={`relative p-2.5 sm:p-4 rounded-xl border overflow-hidden transition-colors duration-200 ${
                   isActive ? 'bg-[#050505]/90 border-[#00e6ff]/40 shadow-[0_0_18px_rgba(0,230,255,0.10)]' :
-                  isCompleted ? 'bg-[#050505]/70 border-[#c5a062]/30' : 'bg-[#050505]/80 border-[#c5a062]/15'
+                  isCompleted ? 'bg-[#050505]/70 border-[#ff7a18]/30' : 'bg-[#050505]/80 border-[#ff7a18]/15'
                 }`}
               >
                 {/* Shared-layout glow — spring-animates between active stages */}
@@ -410,7 +410,7 @@ export function PipelinePanel() {
         </div>
 
         {/* Delay config */}
-        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-[#c5a062]/15">
+        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-[#ff7a18]/15">
           <Clock className="w-4 h-4 text-zinc-500" />
           <span className="text-sm text-zinc-400">Delay between ideas:</span>
           <input
@@ -421,13 +421,13 @@ export function PipelinePanel() {
             onChange={(e) =>
               setPipelineDelay(Math.max(5, Math.min(300, Number(e.target.value))))
             }
-            className="w-20 px-2 py-1 bg-zinc-900 border border-[#c5a062]/25 rounded-xl text-sm text-white text-center focus:outline-none focus:ring-2 focus:ring-[#00e6ff]/30 focus:border-[#00e6ff]/40 transition-colors"
+            className="w-20 px-2 py-1 bg-zinc-900 border border-[#ff7a18]/25 rounded-xl text-sm text-white text-center focus:outline-none focus:ring-2 focus:ring-[#00e6ff]/30 focus:border-[#00e6ff]/40 transition-colors"
           />
           <span className="text-sm text-zinc-500">seconds</span>
         </div>
 
         {/* Continuous mode */}
-        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-[#c5a062]/15">
+        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-[#ff7a18]/15">
           <RefreshCw className="w-4 h-4 text-zinc-500" />
           <span className="text-sm text-zinc-400">Continuous mode</span>
           <button
@@ -455,7 +455,7 @@ export function PipelinePanel() {
                   max={1440}
                   value={pipelineInterval}
                   onChange={(e) => setPipelineInterval(Math.max(120, Math.min(1440, Number(e.target.value))))}
-                  className="w-20 px-2 py-1 bg-zinc-900 border border-[#c5a062]/25 rounded-xl text-sm text-white text-center focus:outline-none focus:ring-2 focus:ring-[#00e6ff]/30 focus:border-[#00e6ff]/40 transition-colors"
+                  className="w-20 px-2 py-1 bg-zinc-900 border border-[#ff7a18]/25 rounded-xl text-sm text-white text-center focus:outline-none focus:ring-2 focus:ring-[#00e6ff]/30 focus:border-[#00e6ff]/40 transition-colors"
                 />
                 <span className="text-sm text-zinc-500">min</span>
               </div>
@@ -467,7 +467,7 @@ export function PipelinePanel() {
                   max={30}
                   value={pipelineTargetDays}
                   onChange={(e) => setPipelineTargetDays(Math.max(1, Math.min(30, Number(e.target.value))))}
-                  className="w-16 px-2 py-1 bg-zinc-900 border border-[#c5a062]/25 rounded-xl text-sm text-white text-center focus:outline-none focus:ring-2 focus:ring-[#00e6ff]/30 focus:border-[#00e6ff]/40 transition-colors"
+                  className="w-16 px-2 py-1 bg-zinc-900 border border-[#ff7a18]/25 rounded-xl text-sm text-white text-center focus:outline-none focus:ring-2 focus:ring-[#00e6ff]/30 focus:border-[#00e6ff]/40 transition-colors"
                 />
                 <span className="text-sm text-zinc-500">days ahead</span>
               </div>
@@ -481,7 +481,7 @@ export function PipelinePanel() {
                   max={10}
                   value={pipelineIdeasPerCycle}
                   onChange={(e) => setPipelineIdeasPerCycle(Math.max(1, Math.min(10, Number(e.target.value))))}
-                  className="w-16 px-2 py-1 bg-zinc-900 border border-[#c5a062]/25 rounded-xl text-sm text-white text-center focus:outline-none focus:ring-2 focus:ring-[#00e6ff]/30 focus:border-[#00e6ff]/40 transition-colors"
+                  className="w-16 px-2 py-1 bg-zinc-900 border border-[#ff7a18]/25 rounded-xl text-sm text-white text-center focus:outline-none focus:ring-2 focus:ring-[#00e6ff]/30 focus:border-[#00e6ff]/40 transition-colors"
                 />
               </div>
             </div>
@@ -535,7 +535,7 @@ export function PipelinePanel() {
         <BestTimesWidget settings={settings} />
 
         {/* Stage toggles */}
-        <div className="pt-2 border-t border-[#c5a062]/15 space-y-2">
+        <div className="pt-2 border-t border-[#ff7a18]/15 space-y-2">
           <p className="label-overline">Stages</p>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
             {[
@@ -545,7 +545,7 @@ export function PipelinePanel() {
             ].map((opt) => (
               <label
                 key={opt.key}
-                className="flex items-center gap-2 px-3 py-2 bg-zinc-800/40 border border-[#c5a062]/15 rounded-xl cursor-pointer hover:border-[#c5a062]/35 hover:bg-zinc-800/60 transition-all duration-200"
+                className="flex items-center gap-2 px-3 py-2 bg-zinc-800/40 border border-[#ff7a18]/15 rounded-xl cursor-pointer hover:border-[#ff7a18]/35 hover:bg-zinc-800/60 transition-all duration-200"
               >
                 <input
                   type="checkbox"
@@ -560,8 +560,8 @@ export function PipelinePanel() {
         </div>
 
         {/* Carousel mode — collapses all images from one idea into a single carousel post */}
-        <div className="pt-2 border-t border-[#c5a062]/15 space-y-2">
-          <label className="flex items-start gap-2 px-3 py-2 bg-zinc-800/40 border border-[#c5a062]/15 rounded-xl cursor-pointer hover:border-[#c5a062]/35 hover:bg-zinc-800/60 transition-all duration-200">
+        <div className="pt-2 border-t border-[#ff7a18]/15 space-y-2">
+          <label className="flex items-start gap-2 px-3 py-2 bg-zinc-800/40 border border-[#ff7a18]/15 rounded-xl cursor-pointer hover:border-[#ff7a18]/35 hover:bg-zinc-800/60 transition-all duration-200">
             <input
               type="checkbox"
               checked={settings.pipelineCarouselMode ?? false}
@@ -579,7 +579,7 @@ export function PipelinePanel() {
             </div>
           </label>
 
-          <label className="flex items-start gap-2 px-3 py-2 bg-zinc-800/40 border border-[#c5a062]/15 rounded-xl cursor-pointer hover:border-[#c5a062]/35 hover:bg-zinc-800/60 transition-all duration-200">
+          <label className="flex items-start gap-2 px-3 py-2 bg-zinc-800/40 border border-[#ff7a18]/15 rounded-xl cursor-pointer hover:border-[#ff7a18]/35 hover:bg-zinc-800/60 transition-all duration-200">
             <input
               type="checkbox"
               checked={settings.pipelineThemedBatches ?? false}
@@ -602,7 +602,7 @@ export function PipelinePanel() {
             pending_approval, then publishes via the approval flow), so
             the picker now only depends on autoSchedule. */}
         {autoSchedule && (
-          <div className="pt-2 border-t border-[#c5a062]/15 space-y-2">
+          <div className="pt-2 border-t border-[#ff7a18]/15 space-y-2">
             <p className="label-overline">Platforms</p>
             {availablePlatforms.length === 0 ? (
               <p className="text-[11px] text-amber-400">
@@ -647,7 +647,7 @@ export function PipelinePanel() {
         )}
 
         {/* Per-platform approval gating (V040-008) */}
-        <div className="pt-2 border-t border-[#c5a062]/15 space-y-2">
+        <div className="pt-2 border-t border-[#ff7a18]/15 space-y-2">
           <div className="flex items-center justify-between">
             <p className="label-overline">Auto-Approve (per platform)</p>
             <span className="text-[10px] text-zinc-500">off = manual review</span>
@@ -672,7 +672,7 @@ export function PipelinePanel() {
                     type="checkbox"
                     checked={isAuto}
                     onChange={(e) => setAutoApprove(p, e.target.checked)}
-                    className="w-3.5 h-3.5 accent-[#c5a062] cursor-pointer"
+                    className="w-3.5 h-3.5 accent-[#ff7a18] cursor-pointer"
                   />
                   <span className="text-[11px] capitalize flex-1">{p}</span>
                   <span className={`text-[9px] uppercase tracking-wider ${isAuto ? 'text-emerald-400' : 'text-amber-400'}`}>
@@ -691,7 +691,7 @@ export function PipelinePanel() {
         </div>
 
         {/* Per-platform daily caps */}
-        <div className="pt-2 border-t border-[#c5a062]/15 space-y-2">
+        <div className="pt-2 border-t border-[#ff7a18]/15 space-y-2">
           <div className="flex items-center justify-between">
             <p className="label-overline">Daily Caps (per platform)</p>
             <span className="text-[10px] text-zinc-500">empty = no cap</span>
@@ -723,7 +723,7 @@ export function PipelinePanel() {
                       setDailyCap(p, raw === '' ? null : Number(raw));
                     }}
                     placeholder="∞"
-                    className="w-12 px-1.5 py-0.5 bg-zinc-900 border border-[#c5a062]/25 rounded-lg text-xs text-white text-center focus:outline-none focus:ring-2 focus:ring-[#00e6ff]/30 focus:border-[#00e6ff]/40 transition-colors"
+                    className="w-12 px-1.5 py-0.5 bg-zinc-900 border border-[#ff7a18]/25 rounded-lg text-xs text-white text-center focus:outline-none focus:ring-2 focus:ring-[#00e6ff]/30 focus:border-[#00e6ff]/40 transition-colors"
                   />
                   <span className="text-[10px] text-zinc-500">/day</span>
                 </label>
@@ -737,7 +737,7 @@ export function PipelinePanel() {
         </div>
 
         {/* Stats */}
-        <div className="flex flex-wrap gap-4 pt-2 border-t border-[#c5a062]/15">
+        <div className="flex flex-wrap gap-4 pt-2 border-t border-[#ff7a18]/15">
           <div className="flex items-center gap-2">
             <Lightbulb className="w-4 h-4 text-amber-400" />
             <span className="text-sm text-zinc-400">
@@ -781,14 +781,14 @@ export function PipelinePanel() {
           )}
         </button>
         {queueExpanded && (
-          <div className="border-t border-[#c5a062]/15 max-h-60 overflow-y-auto hide-scrollbar">
+          <div className="border-t border-[#ff7a18]/15 max-h-60 overflow-y-auto hide-scrollbar">
             {(pipelineRunning ? pipelineQueue : pendingIdeas).length === 0 ? (
               <p className="p-4 text-sm text-zinc-500 text-center">No ideas in queue</p>
             ) : (
               (pipelineRunning ? pipelineQueue : pendingIdeas).map((idea, idx) => (
                 <div
                   key={idea.id}
-                  className="flex items-center gap-3 px-4 py-2.5 border-b border-[#c5a062]/10 last:border-0"
+                  className="flex items-center gap-3 px-4 py-2.5 border-b border-[#ff7a18]/10 last:border-0"
                 >
                   <span className="text-xs text-zinc-600 font-mono w-6">{idx + 1}</span>
                   <Lightbulb className="w-3.5 h-3.5 text-amber-500/60 shrink-0" />
@@ -838,7 +838,7 @@ export function PipelinePanel() {
           )}
         </div>
         {logExpanded && (
-          <div className="border-t border-[#c5a062]/15 max-h-80 overflow-y-auto hide-scrollbar">
+          <div className="border-t border-[#ff7a18]/15 max-h-80 overflow-y-auto hide-scrollbar">
             {displayLog.length === 0 ? (
               <p className="p-4 text-sm text-zinc-500 text-center">
                 {logErrorsOnly ? 'No errors in log' : 'No log entries yet'}
@@ -851,7 +851,7 @@ export function PipelinePanel() {
                     initial={{ opacity: 0, y: -8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.18, ease: 'easeOut' }}
-                    className="flex items-start gap-3 px-4 py-2.5 border-b border-[#c5a062]/10 last:border-0"
+                    className="flex items-start gap-3 px-4 py-2.5 border-b border-[#ff7a18]/10 last:border-0"
                   >
                     {entry.status === 'success' ? (
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mt-0.5 shrink-0" />

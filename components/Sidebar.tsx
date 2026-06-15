@@ -301,7 +301,7 @@ Return ONLY the JSON array, no prose.`;
       )}
       
       <aside aria-label="Sidebar" className={`fixed md:static inset-y-0 left-0 z-50 w-[85vw] sm:w-80 glass-panel flex flex-col h-full shrink-0 transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-        <div role="tablist" aria-label="Sidebar panels" className="flex p-2 gap-1.5 border-b border-[#c5a062]/15">
+        <div role="tablist" aria-label="Sidebar panels" className="flex p-2 gap-1.5 border-b border-[#ff7a18]/15">
           {(
             [
               { id: 'content', label: 'Content', Icon: Search, controls: 'sidebar-content-panel' },
@@ -361,7 +361,7 @@ Return ONLY the JSON array, no prose.`;
                 {images.filter(img => img.status === 'ready').map((img) => (
                   <button
                     key={img.id}
-                    className="group relative aspect-square bg-zinc-900/60 rounded-xl overflow-hidden border border-[#c5a062]/15 hover:border-[#c5a062]/50 transition-all duration-200 cursor-pointer text-left"
+                    className="group relative aspect-square bg-zinc-900/60 rounded-xl overflow-hidden border border-[#ff7a18]/15 hover:border-[#ff7a18]/50 transition-all duration-200 cursor-pointer text-left"
                     onClick={() => {
                       setComparisonPrompt(img.prompt);
                       setView('compare');
@@ -533,7 +533,7 @@ Return ONLY the JSON array, no prose.`;
       </div>
 
       {activeTab !== 'history' && (
-      <div className="p-4 border-t border-[#c5a062]/15 bg-[#050505]/90">
+      <div className="p-4 border-t border-[#ff7a18]/15 bg-[#050505]/90">
         <form
           suppressHydrationWarning
           onSubmit={(e) => {

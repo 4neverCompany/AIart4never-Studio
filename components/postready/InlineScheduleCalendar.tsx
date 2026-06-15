@@ -137,7 +137,7 @@ export function InlineScheduleCalendar({
 
   return (
     <div
-      className="border-t border-[#c5a062]/20 bg-zinc-950/60 p-3 space-y-3"
+      className="border-t border-[#ff7a18]/20 bg-zinc-950/60 p-3 space-y-3"
       role="region"
       aria-label="Schedule calendar"
     >
@@ -146,7 +146,7 @@ export function InlineScheduleCalendar({
         <button
           type="button"
           onClick={handleAutoSchedule}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium bg-[#c5a062]/15 hover:bg-[#c5a062]/25 text-[#c5a062] border border-[#c5a062]/40 rounded-full transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium bg-[#ff7a18]/15 hover:bg-[#ff7a18]/25 text-[#ff7a18] border border-[#ff7a18]/40 rounded-full transition-colors"
         >
           <Sparkles className="w-3.5 h-3.5" />
           Auto-Schedule
@@ -185,13 +185,13 @@ export function InlineScheduleCalendar({
                   type="button"
                   role="gridcell"
                   onClick={() => setPickedDate(dateStr)}
-                  className="relative flex flex-col items-center justify-center py-2 px-1 rounded-lg border border-zinc-800 hover:border-[#c5a062]/50 bg-zinc-900/60 transition-colors overflow-hidden"
+                  className="relative flex flex-col items-center justify-center py-2 px-1 rounded-lg border border-zinc-800 hover:border-[#ff7a18]/50 bg-zinc-900/60 transition-colors overflow-hidden"
                   title={`Score ${avgScore.toFixed(2)}`}
                 >
                   <HeatmapTint score={avgScore} enabled={heatmapEnabled} />
                   {rank && (
                     <Star
-                      className="absolute top-0.5 right-0.5 w-2.5 h-2.5 text-[#c5a062] fill-[#c5a062]/50 z-10"
+                      className="absolute top-0.5 right-0.5 w-2.5 h-2.5 text-[#ff7a18] fill-[#ff7a18]/50 z-10"
                       aria-label={`Top day #${rank}`}
                     />
                   )}
@@ -254,8 +254,8 @@ export function InlineScheduleCalendar({
                     isTaken
                       ? 'border-zinc-800 bg-zinc-900/40 text-zinc-600 cursor-not-allowed line-through'
                       : isTop
-                        ? 'border-[#c5a062]/60 bg-[#c5a062]/15 text-[#c5a062] hover:bg-[#c5a062]/25'
-                        : 'border-zinc-800 bg-zinc-900/60 text-zinc-300 hover:border-[#c5a062]/40 hover:text-zinc-100'
+                        ? 'border-[#ff7a18]/60 bg-[#ff7a18]/15 text-[#ff7a18] hover:bg-[#ff7a18]/25'
+                        : 'border-zinc-800 bg-zinc-900/60 text-zinc-300 hover:border-[#ff7a18]/40 hover:text-zinc-100'
                   }`}
                   title={isTaken ? 'Already scheduled' : `Score ${score.toFixed(2)}`}
                 >

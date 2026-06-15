@@ -72,7 +72,7 @@ export function CarouselPickerModal({
       onClick={onClose}
     >
       <div
-        className="bg-zinc-900/95 backdrop-blur-xl border-0 sm:border border-[#c5a062]/25 rounded-none sm:rounded-2xl w-full sm:max-w-4xl h-full sm:h-auto max-h-[100dvh] sm:max-h-[85vh] flex flex-col"
+        className="bg-zinc-900/95 backdrop-blur-xl border-0 sm:border border-[#ff7a18]/25 rounded-none sm:rounded-2xl w-full sm:max-w-4xl h-full sm:h-auto max-h-[100dvh] sm:max-h-[85vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-5 border-b border-zinc-800/60">

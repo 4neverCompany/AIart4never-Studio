@@ -118,12 +118,12 @@ export function CarouselReviewPanel({
 
       <DegradeNotice visible={rejectGuarded} />
 
-      <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#c5a062]/15">
+      <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#ff7a18]/15">
         <button
           type="button"
           onClick={onApproveRemaining}
           disabled={pendingCount === 0}
-          className="flex-1 min-w-[140px] inline-flex items-center justify-center gap-1 px-3 py-1.5 bg-[#c5a062] hover:bg-[#d4b478] active:bg-[#a68748] disabled:opacity-40 disabled:cursor-not-allowed text-[#050505] text-xs font-semibold rounded-xl transition-colors"
+          className="flex-1 min-w-[140px] inline-flex items-center justify-center gap-1 px-3 py-1.5 bg-[#ff7a18] hover:bg-[#ff9d4d] active:bg-[#e8650a] disabled:opacity-40 disabled:cursor-not-allowed text-[#050505] text-xs font-semibold rounded-xl transition-colors"
         >
           <Check className="w-3.5 h-3.5" />
           Approve remaining ({pendingCount})

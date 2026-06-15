@@ -214,7 +214,7 @@ export function WatermarkSettings({ settings, updateSettings }: WatermarkSetting
                     watermark: { position: e.target.value as WatermarkSettings['position'] } as WatermarkSettings,
                   })
                 }
-                className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#c5a062]/30 cursor-pointer"
+                className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30 cursor-pointer"
               >
                 <option value="bottom-right">Bottom Right</option>
                 <option value="bottom-left">Bottom Left</option>
@@ -233,7 +233,7 @@ export function WatermarkSettings({ settings, updateSettings }: WatermarkSetting
                     watermark: { opacity: parseFloat(e.target.value) } as WatermarkSettings,
                   })
                 }
-                className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#c5a062]/30 cursor-pointer"
+                className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30 cursor-pointer"
               >
                 {[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0].map((val) => (
                   <option key={val} value={val}>{Math.round(val * 100)}%</option>
@@ -251,7 +251,7 @@ export function WatermarkSettings({ settings, updateSettings }: WatermarkSetting
                   watermark: { scale: parseFloat(e.target.value) } as WatermarkSettings,
                 })
               }
-              className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#c5a062]/30 cursor-pointer"
+              className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30 cursor-pointer"
             >
               {[0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5].map((val) => (
                 <option key={val} value={val}>{Math.round(val * 100)}%</option>

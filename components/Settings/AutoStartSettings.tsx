@@ -61,7 +61,7 @@ export function AutoStartSettings({ isDesktop }: AutoStartSettingsProps) {
   return (
     <div className="space-y-3 pt-4 border-t border-zinc-800/60">
       <div className="flex items-center gap-2">
-        <Power className="w-3.5 h-3.5 text-[#c5a062] shrink-0" />
+        <Power className="w-3.5 h-3.5 text-[#ff7a18] shrink-0" />
         <h5 className="text-xs font-semibold text-white">Auto-Start</h5>
       </div>
 

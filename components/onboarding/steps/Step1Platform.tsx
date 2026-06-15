@@ -117,11 +117,11 @@ export function Step1Platform({ selected, onSelect, saved, onSaved, onSkip }: St
               onClick={() => handleSelect(t.key)}
               className={`aspect-[3/2] rounded-xl border p-4 text-left transition-colors flex flex-col justify-between ${
                 isSel
-                  ? 'border-[#c5a062] bg-[#c5a062]/5 ring-2 ring-[#c5a062]/30'
-                  : 'border-zinc-800 hover:border-[#c5a062]/40'
+                  ? 'border-[#ff7a18] bg-[#ff7a18]/5 ring-2 ring-[#ff7a18]/30'
+                  : 'border-zinc-800 hover:border-[#ff7a18]/40'
               }`}
             >
-              <Icon className={`w-6 h-6 ${isSel ? 'text-[#c5a062]' : 'text-zinc-300'}`} />
+              <Icon className={`w-6 h-6 ${isSel ? 'text-[#ff7a18]' : 'text-zinc-300'}`} />
               <div>
                 <div className={`text-sm font-bold ${isSel ? 'text-white' : 'text-zinc-200'}`}>{t.label}</div>
                 <div className="text-xs text-zinc-500 mt-0.5">{t.subtitle}</div>
@@ -139,7 +139,7 @@ export function Step1Platform({ selected, onSelect, saved, onSaved, onSkip }: St
               href={tile.helpUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-[#c5a062] hover:underline inline-flex items-center gap-1"
+              className="text-xs text-[#ff7a18] hover:underline inline-flex items-center gap-1"
             >
               Where do I find these? <ExternalLink className="w-3 h-3" />
             </a>
@@ -174,7 +174,7 @@ export function Step1Platform({ selected, onSelect, saved, onSaved, onSkip }: St
               type="button"
               onClick={handleSave}
               disabled={!isFormValid()}
-              className="px-3 py-1.5 text-xs bg-[#c5a062] hover:bg-[#d4b478] disabled:opacity-40 disabled:cursor-not-allowed text-zinc-950 font-medium rounded-lg transition-colors"
+              className="px-3 py-1.5 text-xs bg-[#ff7a18] hover:bg-[#ff9d4d] disabled:opacity-40 disabled:cursor-not-allowed text-zinc-950 font-medium rounded-lg transition-colors"
             >
               {saved ? 'Saved ✓' : 'Save credentials'}
             </button>
@@ -202,7 +202,7 @@ function Field({
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:border-[#c5a062]/60 focus:outline-none"
+        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:border-[#ff7a18]/60 focus:outline-none"
       />
     </div>
   );

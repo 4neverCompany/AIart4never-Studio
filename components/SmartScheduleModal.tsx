@@ -67,7 +67,7 @@ export function SmartScheduleModal({
         {/* Header */}
         <div className="flex items-center justify-between">
           <h3 className="type-title flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-[#c5a062]" />
+            <TrendingUp className="w-5 h-5 text-[#ff7a18]" />
             Smart Schedule ({postCount} posts)
           </h3>
           <button type="button" onClick={onClose} className="p-1 text-zinc-400 hover:text-white" aria-label="Close smart schedule dialog">
@@ -103,7 +103,7 @@ export function SmartScheduleModal({
                   >
                     <span className="text-[10px] text-zinc-500 w-5">#{i + 1}</span>
                     <span className="text-xs font-mono text-white">{slot.date}</span>
-                    <span className="text-xs font-mono text-[#c5a062]">{formatTimeShort(slot.time)}</span>
+                    <span className="text-xs font-mono text-[#ff7a18]">{formatTimeShort(slot.time)}</span>
                     <span className="text-[10px] text-zinc-600">{dayLabel}</span>
                     <div className="flex-1" />
                     <div className="w-20 h-1.5 bg-zinc-700 rounded-full overflow-hidden">
@@ -156,7 +156,7 @@ export function SmartScheduleModal({
 
         {/* Actions */}
         {confirmed ? (
-          <div className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#c5a062]/10 border border-[#c5a062]/30 rounded-xl text-[#c5a062] text-xs font-semibold">
+          <div className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#ff7a18]/10 border border-[#ff7a18]/30 rounded-xl text-[#ff7a18] text-xs font-semibold">
             <Check className="w-4 h-4 shrink-0" />
             {confirmLabel}
           </div>

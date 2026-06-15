@@ -50,26 +50,26 @@ export const status = {
 } as const;
 
 // ── Brand gold border + tint scale ──────────────────────────────────────────
-// The brand gold (#c5a062) was used at ten different opacities across
+// The brand gold (#ff7a18) was used at ten different opacities across
 // MainContent. Collapse to four documented steps. Use `subtle` for
 // passive surfaces, `default` for active borders / focused chrome,
 // `strong` for hover states + focus rings, and `solid` only when the
 // gold itself needs to read at full saturation (rarely — usually text).
 
 export const gold = {
-  hex: '#c5a062',
-  text: 'text-[#c5a062]',
+  hex: '#ff7a18',
+  text: 'text-[#ff7a18]',
   border: {
-    subtle: 'border-[#c5a062]/15',
-    default: 'border-[#c5a062]/30',
-    strong: 'border-[#c5a062]/50',
+    subtle: 'border-[#ff7a18]/15',
+    default: 'border-[#ff7a18]/30',
+    strong: 'border-[#ff7a18]/50',
   },
   bg: {
-    subtle: 'bg-[#c5a062]/10',
-    default: 'bg-[#c5a062]/15',
-    strong: 'bg-[#c5a062]/25',
+    subtle: 'bg-[#ff7a18]/10',
+    default: 'bg-[#ff7a18]/15',
+    strong: 'bg-[#ff7a18]/25',
   },
-  ring: 'focus:ring-[#c5a062]/30',
+  ring: 'focus:ring-[#ff7a18]/30',
 } as const;
 
 // ── Surface chrome ──────────────────────────────────────────────────────────

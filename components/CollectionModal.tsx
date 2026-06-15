@@ -77,13 +77,13 @@ export function CollectionModal({
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.12 }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-md bg-zinc-900/95 backdrop-blur-xl border-0 sm:border border-[#c5a062]/30 rounded-none sm:rounded-2xl shadow-2xl overflow-hidden h-full sm:h-auto max-h-[100dvh] sm:max-h-none flex flex-col"
+        className="w-full sm:max-w-md bg-zinc-900/95 backdrop-blur-xl border-0 sm:border border-[#ff7a18]/30 rounded-none sm:rounded-2xl shadow-2xl overflow-hidden h-full sm:h-auto max-h-[100dvh] sm:max-h-none flex flex-col"
       >
         <div className="px-5 pt-4 pb-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
             <h3 className="text-sm font-semibold text-white truncate">New Collection</h3>
             {selectionCount > 0 && (
-              <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-mono bg-[#c5a062]/15 text-[#c5a062] border border-[#c5a062]/30 rounded-full">
+              <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-mono bg-[#ff7a18]/15 text-[#ff7a18] border border-[#ff7a18]/30 rounded-full">
                 from {selectionCount} image{selectionCount === 1 ? '' : 's'}
               </span>
             )}
@@ -120,9 +120,9 @@ export function CollectionModal({
               // V080-DES-004: subtle gold-tinted ring while pi.dev is
               // composing the suggestion so users see WHICH fields will
               // get populated, not just that the button is busy.
-              className={`flex-1 min-w-0 bg-zinc-950 border rounded-lg px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-[#c5a062]/40 disabled:opacity-60 transition-colors ${
+              className={`flex-1 min-w-0 bg-zinc-950 border rounded-lg px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/40 disabled:opacity-60 transition-colors ${
                 isSuggesting
-                  ? 'border-[#c5a062]/50 ring-1 ring-[#c5a062]/30 animate-pulse'
+                  ? 'border-[#ff7a18]/50 ring-1 ring-[#ff7a18]/30 animate-pulse'
                   : 'border-zinc-800/60'
               }`}
             />
@@ -133,7 +133,7 @@ export function CollectionModal({
                 disabled={isSuggesting || isCreating}
                 title="Suggest a name from your selection"
                 aria-label="Suggest name and description from selection"
-                className="shrink-0 inline-flex items-center gap-1.5 px-3 rounded-lg text-xs font-semibold bg-[#c5a062]/15 hover:bg-[#c5a062]/25 text-[#c5a062] border border-[#c5a062]/30 disabled:opacity-60 disabled:cursor-wait transition-colors"
+                className="shrink-0 inline-flex items-center gap-1.5 px-3 rounded-lg text-xs font-semibold bg-[#ff7a18]/15 hover:bg-[#ff7a18]/25 text-[#ff7a18] border border-[#ff7a18]/30 disabled:opacity-60 disabled:cursor-wait transition-colors"
               >
                 {isSuggesting ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -168,9 +168,9 @@ export function CollectionModal({
                   : 'What is this collection about?'
               }
               disabled={isSuggesting || isCreating}
-              className={`w-full bg-zinc-950 border rounded-lg px-3 py-2 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-[#c5a062]/40 min-h-[64px] resize-none disabled:opacity-60 transition-colors ${
+              className={`w-full bg-zinc-950 border rounded-lg px-3 py-2 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/40 min-h-[64px] resize-none disabled:opacity-60 transition-colors ${
                 isSuggesting
-                  ? 'border-[#c5a062]/50 ring-1 ring-[#c5a062]/30 animate-pulse'
+                  ? 'border-[#ff7a18]/50 ring-1 ring-[#ff7a18]/30 animate-pulse'
                   : 'border-zinc-800/60'
               }`}
             />

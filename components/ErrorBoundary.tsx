@@ -52,7 +52,7 @@ function FullScreenError({
       {/* ── Logo mark (distressed — red-tinted centre dot) ── */}
       <div className="relative w-14 h-14 mb-7 shrink-0" aria-hidden="true">
         <div
-          className="absolute inset-0 rounded-full border border-[#c5a062]/40"
+          className="absolute inset-0 rounded-full border border-[#ff7a18]/40"
           style={{ animation: 'eb-ring 4s ease-in-out infinite' }}
         />
         <div
@@ -105,7 +105,7 @@ function FullScreenError({
       <div className="flex gap-3">
         <button
           onClick={onRetry}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-[#c5a062] hover:bg-[#d4b278] text-[#050505] transition-colors shadow-[0_0_12px_rgba(197,160,98,0.25)]"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-[#ff7a18] hover:bg-[#d4b278] text-[#050505] transition-colors shadow-[0_0_12px_rgba(197,160,98,0.25)]"
         >
           <RefreshCw className="w-3.5 h-3.5" />
           Retry
@@ -142,12 +142,12 @@ function InlineError({
 }) {
   return (
     <div
-      className="flex flex-col items-center justify-center p-4 sm:p-8 min-h-[150px] sm:min-h-[200px] rounded-xl bg-[#050505] border border-[#c5a062]/20 shadow-[0_4px_24px_rgba(0,0,0,0.5)]"
+      className="flex flex-col items-center justify-center p-4 sm:p-8 min-h-[150px] sm:min-h-[200px] rounded-xl bg-[#050505] border border-[#ff7a18]/20 shadow-[0_4px_24px_rgba(0,0,0,0.5)]"
       role="alert"
     >
       {/* Icon */}
-      <div className="w-10 h-10 rounded-xl bg-[#c5a062]/10 border border-[#c5a062]/30 flex items-center justify-center mb-4">
-        <AlertTriangle className="w-5 h-5 text-[#c5a062]" />
+      <div className="w-10 h-10 rounded-xl bg-[#ff7a18]/10 border border-[#ff7a18]/30 flex items-center justify-center mb-4">
+        <AlertTriangle className="w-5 h-5 text-[#ff7a18]" />
       </div>
 
       {/* Heading */}
@@ -170,7 +170,7 @@ function InlineError({
       {/* Retry */}
       <button
         onClick={onRetry}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#c5a062]/15 hover:bg-[#c5a062]/25 border border-[#c5a062]/30 text-[#c5a062] transition-colors"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#ff7a18]/15 hover:bg-[#ff7a18]/25 border border-[#ff7a18]/30 text-[#ff7a18] transition-colors"
       >
         <RefreshCw className="w-3 h-3" />
         Retry

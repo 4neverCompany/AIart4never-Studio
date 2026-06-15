@@ -69,9 +69,9 @@ export function RecoveryPanel() {
   return (
     <div
       data-testid="recovery-panel"
-      className="border border-[#C5A062]/30 bg-[#050505] text-white rounded-lg p-4 my-4"
+      className="border border-[#ff7a18]/30 bg-[#050505] text-white rounded-lg p-4 my-4"
     >
-      <h3 className="text-lg font-semibold text-[#C5A062] mb-2">
+      <h3 className="text-lg font-semibold text-[#ff7a18] mb-2">
         Recover failed posts ({failed.length})
       </h3>
       <p className="text-sm text-white/70 mb-4">
@@ -89,7 +89,7 @@ export function RecoveryPanel() {
                 <span className="text-sm font-mono text-white/80">
                   {post.id}
                 </span>
-                <span className="text-xs text-[#C5A062] uppercase">
+                <span className="text-xs text-[#ff7a18] uppercase">
                   {FAILURE_LABELS[reason]}
                 </span>
               </div>

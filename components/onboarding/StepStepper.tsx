@@ -35,7 +35,7 @@ export function StepStepper({ current, total = 3 }: StepStepperProps) {
                   isPast
                     ? 'bg-emerald-500'
                     : isCurrent
-                      ? 'bg-[#c5a062] ring-2 ring-[#c5a062]/40'
+                      ? 'bg-[#ff7a18] ring-2 ring-[#ff7a18]/40'
                       : 'bg-zinc-700'
                 }`}
               />

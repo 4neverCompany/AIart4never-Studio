@@ -43,7 +43,7 @@ export function EmptyGalleryState({ firstRun, ideaCount, setView }: EmptyGallery
     >
       <div className="w-24 h-24 mb-6 rounded-full bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
         {firstRun ? (
-          <Sparkles className="w-10 h-10 text-[#c5a062]" />
+          <Sparkles className="w-10 h-10 text-[#ff7a18]" />
         ) : (
           <Bookmark className="w-10 h-10 text-zinc-700" />
         )}

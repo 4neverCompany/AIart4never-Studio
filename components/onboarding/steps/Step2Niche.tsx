@@ -109,7 +109,7 @@ function ChipRow({
               onClick={() => toggle(name)}
               className={`px-3 py-1.5 rounded-full border text-sm transition-all ${
                 isSel
-                  ? 'border-[#c5a062] bg-[#c5a062]/15 text-[#c5a062]'
+                  ? 'border-[#ff7a18] bg-[#ff7a18]/15 text-[#ff7a18]'
                   : 'border-zinc-700 text-zinc-300 hover:border-zinc-500'
               } ${!isSel && selected.length >= max ? 'opacity-40 cursor-not-allowed' : ''}`}
               disabled={!isSel && selected.length >= max}
@@ -119,7 +119,7 @@ function ChipRow({
           );
         })}
         {adding ? (
-          <span className="inline-flex items-center gap-1 border border-[#c5a062]/40 rounded-full pl-3 pr-1 py-0.5">
+          <span className="inline-flex items-center gap-1 border border-[#ff7a18]/40 rounded-full pl-3 pr-1 py-0.5">
             <input
               autoFocus
               value={draft}
@@ -129,7 +129,7 @@ function ChipRow({
                 if (e.key === 'Escape') { setDraft(''); setAdding(false); }
               }}
               placeholder="Enter custom..."
-              className="bg-transparent text-sm text-[#c5a062] focus:outline-none w-32"
+              className="bg-transparent text-sm text-[#ff7a18] focus:outline-none w-32"
             />
             <button type="button" onClick={() => { setDraft(''); setAdding(false); }}
               className="p-1 text-zinc-500 hover:text-zinc-300">
@@ -141,7 +141,7 @@ function ChipRow({
             type="button"
             onClick={() => setAdding(true)}
             disabled={selected.length >= max}
-            className="text-xs text-zinc-500 hover:text-[#c5a062] inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="text-xs text-zinc-500 hover:text-[#ff7a18] inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Plus className="w-3 h-3" /> Add custom
           </button>
@@ -155,8 +155,8 @@ function IdentityPreview({ universes, genres }: { universes: string[]; genres: s
   const hasBoth = universes.length > 0 && genres.length > 0;
 
   return (
-    <div className="bg-zinc-900/60 rounded-xl p-3 border border-[#c5a062]/15 flex items-start gap-3">
-      <Drama className="w-5 h-5 text-[#c5a062] mt-0.5 shrink-0" />
+    <div className="bg-zinc-900/60 rounded-xl p-3 border border-[#ff7a18]/15 flex items-start gap-3">
+      <Drama className="w-5 h-5 text-[#ff7a18] mt-0.5 shrink-0" />
       <div className="text-xs">
         <div className="text-zinc-300 font-medium mb-0.5">Your agent identity</div>
         {hasBoth ? (

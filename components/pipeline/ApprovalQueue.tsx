@@ -203,7 +203,7 @@ export function ApprovalQueue({
           <button
             onClick={handleApproveAllFiltered}
             disabled={filtered.length === 0}
-            className="text-[11px] px-2.5 py-1 bg-[#c5a062] hover:bg-[#d4b478] active:bg-[#a68748] text-[#050505] font-semibold rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1"
+            className="text-[11px] px-2.5 py-1 bg-[#ff7a18] hover:bg-[#ff9d4d] active:bg-[#e8650a] text-[#050505] font-semibold rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1"
           >
             <Check className="w-3 h-3" />
             Approve All ({filtered.length})
@@ -235,7 +235,7 @@ export function ApprovalQueue({
                 className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
                   ideaFilter === null
                     ? 'bg-[#00e6ff]/15 text-[#00e6ff] border-[#00e6ff]/40'
-                    : 'bg-[#050505]/80 text-zinc-400 border-[#c5a062]/20 hover:border-[#c5a062]/50'
+                    : 'bg-[#050505]/80 text-zinc-400 border-[#ff7a18]/20 hover:border-[#ff7a18]/50'
                 }`}
               >
                 All
@@ -247,7 +247,7 @@ export function ApprovalQueue({
                   className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
                     ideaFilter === id
                       ? 'bg-[#00e6ff]/15 text-[#00e6ff] border-[#00e6ff]/40'
-                      : 'bg-[#050505]/80 text-zinc-400 border-[#c5a062]/20 hover:border-[#c5a062]/50'
+                      : 'bg-[#050505]/80 text-zinc-400 border-[#ff7a18]/20 hover:border-[#ff7a18]/50'
                   }`}
                   title={ideaById.get(id)?.concept || id}
                 >
@@ -265,7 +265,7 @@ export function ApprovalQueue({
                 className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
                   modelFilter === null
                     ? 'bg-[#00e6ff]/15 text-[#00e6ff] border-[#00e6ff]/40'
-                    : 'bg-[#050505]/80 text-zinc-400 border-[#c5a062]/20 hover:border-[#c5a062]/50'
+                    : 'bg-[#050505]/80 text-zinc-400 border-[#ff7a18]/20 hover:border-[#ff7a18]/50'
                 }`}
               >
                 All
@@ -277,7 +277,7 @@ export function ApprovalQueue({
                   className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
                     modelFilter === m
                       ? 'bg-[#00e6ff]/15 text-[#00e6ff] border-[#00e6ff]/40'
-                      : 'bg-[#050505]/80 text-zinc-400 border-[#c5a062]/20 hover:border-[#c5a062]/50'
+                      : 'bg-[#050505]/80 text-zinc-400 border-[#ff7a18]/20 hover:border-[#ff7a18]/50'
                   }`}
                 >
                   {m}
@@ -319,8 +319,8 @@ export function ApprovalQueue({
 
       {/* Bulk action bar — shown only when items are selected */}
       {selectedCount > 0 && (
-        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#c5a062]/20">
-          <span className="text-xs text-[#c5a062]">{selectedCount} selected</span>
+        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#ff7a18]/20">
+          <span className="text-xs text-[#ff7a18]">{selectedCount} selected</span>
           <button
             onClick={handleBulkApprove}
             className="text-xs px-3 py-1 bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 rounded-xl border border-emerald-500/40 transition-colors"
@@ -389,20 +389,20 @@ export function ApprovalQueue({
               key={post.id}
               className={`relative bg-[#050505]/70 rounded-xl border p-3 space-y-2 transition-all duration-200 ${
                 isSelected
-                  ? 'border-[#c5a062]/60 shadow-[0_0_14px_rgba(197,160,98,0.22)]'
-                  : 'border-[#c5a062]/20 hover:border-[#c5a062]/45 hover:shadow-[0_0_10px_rgba(197,160,98,0.10)]'
+                  ? 'border-[#ff7a18]/60 shadow-[0_0_14px_rgba(197,160,98,0.22)]'
+                  : 'border-[#ff7a18]/20 hover:border-[#ff7a18]/45 hover:shadow-[0_0_10px_rgba(197,160,98,0.10)]'
               }`}
             >
-              <label className="absolute top-2 left-2 z-10 flex items-center justify-center w-5 h-5 bg-[#050505]/85 border border-[#c5a062]/25 rounded cursor-pointer">
+              <label className="absolute top-2 left-2 z-10 flex items-center justify-center w-5 h-5 bg-[#050505]/85 border border-[#ff7a18]/25 rounded cursor-pointer">
                 <input
                   type="checkbox"
                   checked={isSelected}
                   onChange={() => toggleSelect(post.id)}
-                  className="w-4 h-4 accent-[#c5a062] cursor-pointer"
+                  className="w-4 h-4 accent-[#ff7a18] cursor-pointer"
                 />
               </label>
 
-              <div className="w-full aspect-video rounded-xl overflow-hidden bg-zinc-900 border border-[#c5a062]/15">
+              <div className="w-full aspect-video rounded-xl overflow-hidden bg-zinc-900 border border-[#ff7a18]/15">
                 {img ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -420,7 +420,7 @@ export function ApprovalQueue({
               </div>
 
               {idea && (
-                <div className="flex items-center gap-1 text-[10px] text-[#c5a062]/80">
+                <div className="flex items-center gap-1 text-[10px] text-[#ff7a18]/80">
                   <Lightbulb className="w-3 h-3" />
                   <span className="truncate">{idea.concept}</span>
                 </div>
@@ -441,7 +441,7 @@ export function ApprovalQueue({
                   {post.platforms.map((pl) => (
                     <span
                       key={pl}
-                      className="text-[9px] px-1.5 py-0.5 bg-[#050505]/80 border border-[#c5a062]/20 text-zinc-300 rounded"
+                      className="text-[9px] px-1.5 py-0.5 bg-[#050505]/80 border border-[#ff7a18]/20 text-zinc-300 rounded"
                     >
                       {pl}
                     </span>

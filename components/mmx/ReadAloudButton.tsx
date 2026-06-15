@@ -121,7 +121,7 @@ export function ReadAloudButton({ text }: { text: string }) {
     <button
       type="button"
       onClick={play}
-      className="inline-flex items-center gap-1 text-[10px] text-zinc-500 hover:text-[#c5a062] px-1.5 py-0.5 rounded-full transition-colors"
+      className="inline-flex items-center gap-1 text-[10px] text-zinc-500 hover:text-[#ff7a18] px-1.5 py-0.5 rounded-full transition-colors"
       aria-label="Read message aloud"
     >
       <Volume2 className="w-3 h-3" />
