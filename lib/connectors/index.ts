@@ -19,6 +19,8 @@ export {
   confirmAndInstall,
   uninstallConnector,
   slugifyName,
+  ApprovalRequiredError,
+  buildConnectorActivateRequest,
 } from './install';
 export type { ProposeConnectorInput, InstallDeps } from './install';
 

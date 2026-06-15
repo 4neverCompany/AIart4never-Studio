@@ -50,9 +50,13 @@ import {
   confirmAndInstall,
   uninstallConnector,
   slugifyName,
+  ApprovalRequiredError,
+  buildConnectorActivateRequest,
   type ProposeConnectorInput,
 } from '@/lib/connectors/install';
 import type { ConnectorProposal } from '@/lib/connectors/types';
+import { requestApproval } from '@/lib/approval';
+import type { ApprovalToken } from '@/lib/approval';
 import * as mcp from '@/lib/mcp';
 
 const mocks = {
@@ -140,6 +144,20 @@ describe('confirmAndInstall', () => {
     return proposeConnector(operatorInput(), 1000);
   }
 
+  /**
+   * Mint a REAL `connector-activate` token for a proposal's config via the
+   * unified chokepoint, using an auto-approving operator stub. This is exactly
+   * how a production caller obtains the token before activation.
+   */
+  async function tokenFor(proposal: ConnectorProposal): Promise<ApprovalToken> {
+    const decision = await requestApproval(
+      buildConnectorActivateRequest(proposal.config),
+      { askOperator: async () => ({ verdict: 'approved' }) },
+    );
+    if (!decision.token) throw new Error('test setup: expected an approval token');
+    return decision.token;
+  }
+
   it('on a successful probe: saves, lists tools, then markTrusted + setEnabled(true)', async () => {
     const close = vi.fn().mockResolvedValue(undefined);
     const fakeClient = { id: 'client' };
@@ -156,7 +174,7 @@ describe('confirmAndInstall', () => {
     }));
 
     const proposal = proposalFixture();
-    const outcome = await confirmAndInstall(proposal);
+    const outcome = await confirmAndInstall(proposal, await tokenFor(proposal));
 
     // (1) persisted first, untrusted + disabled
     expect(mocks.saveServer).toHaveBeenCalledTimes(1);
@@ -189,7 +207,8 @@ describe('confirmAndInstall', () => {
     mocks.connectMcp.mockResolvedValue({ client: {}, close });
     mocks.listMcpTools.mockRejectedValue(new Error('handshake failed'));
 
-    const outcome = await confirmAndInstall(proposalFixture());
+    const proposal = proposalFixture();
+    const outcome = await confirmAndInstall(proposal, await tokenFor(proposal));
 
     // saved (still disabled/untrusted) but NOT trusted/enabled
     expect(mocks.saveServer).toHaveBeenCalledTimes(1);
@@ -209,7 +228,8 @@ describe('confirmAndInstall', () => {
   it('when connect itself throws: stage is "probe", no trust/enable, no client to close', async () => {
     mocks.connectMcp.mockRejectedValue(new Error('connect-failed'));
 
-    const outcome = await confirmAndInstall(proposalFixture());
+    const proposal = proposalFixture();
+    const outcome = await confirmAndInstall(proposal, await tokenFor(proposal));
 
     expect(mocks.markTrusted).not.toHaveBeenCalled();
     expect(mocks.setEnabled).not.toHaveBeenCalled();
@@ -220,11 +240,50 @@ describe('confirmAndInstall', () => {
   it('when saveServer throws: stage is "validate" and no probe is attempted', async () => {
     mocks.saveServer.mockRejectedValue(new Error('storage down'));
 
-    const outcome = await confirmAndInstall(proposalFixture());
+    const proposal = proposalFixture();
+    const outcome = await confirmAndInstall(proposal, await tokenFor(proposal));
 
     expect(mocks.connectMcp).not.toHaveBeenCalled();
     expect(outcome.ok).toBe(false);
     if (!outcome.ok) expect(outcome.stage).toBe('validate');
+  });
+
+  it('4NE-26: a MISSING token returns {ok:false, stage:"validate"} and does NOT save/probe/enable', async () => {
+    const proposal = proposalFixture();
+    const outcome = await confirmAndInstall(
+      proposal,
+      // No valid token (simulate a bypass attempt).
+      undefined as unknown as ApprovalToken,
+    );
+
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) {
+      expect(outcome.stage).toBe('validate');
+      expect(outcome.error).toBeInstanceOf(ApprovalRequiredError);
+    }
+    // Fail-closed BEFORE any side effect: nothing persisted, probed, trusted, or enabled.
+    expect(mocks.saveServer).not.toHaveBeenCalled();
+    expect(mocks.connectMcp).not.toHaveBeenCalled();
+    expect(mocks.markTrusted).not.toHaveBeenCalled();
+    expect(mocks.setEnabled).not.toHaveBeenCalled();
+  });
+
+  it('4NE-26: a token for a DIFFERENT connector is rejected and does NOT enable', async () => {
+    // Token bound to a different connector id.
+    const otherProposal = proposeConnector(operatorInput({ name: 'Other Server' }), 1000);
+    const otherToken = await tokenFor(otherProposal);
+
+    const proposal = proposalFixture();
+    const outcome = await confirmAndInstall(proposal, otherToken);
+
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) {
+      expect(outcome.stage).toBe('validate');
+      expect(outcome.error).toBeInstanceOf(ApprovalRequiredError);
+    }
+    expect(mocks.saveServer).not.toHaveBeenCalled();
+    expect(mocks.markTrusted).not.toHaveBeenCalled();
+    expect(mocks.setEnabled).not.toHaveBeenCalled();
   });
 
   it('respects fully-injected deps (no default registry/client touched)', async () => {
@@ -239,7 +298,8 @@ describe('confirmAndInstall', () => {
       },
     };
 
-    const outcome = await confirmAndInstall(proposalFixture(), injected);
+    const proposal = proposalFixture();
+    const outcome = await confirmAndInstall(proposal, await tokenFor(proposal), injected);
 
     expect(injected.registry.saveServer).toHaveBeenCalledTimes(1);
     expect(injected.connect).toHaveBeenCalledTimes(1);

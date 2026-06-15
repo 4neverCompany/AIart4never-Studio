@@ -3,7 +3,11 @@
  * generic MCP primitive (`lib/mcp`), gate-first.
  *
  * Order of operations is the whole point:
- *   1. {@link import('./gate').assertPublishable} runs FIRST, before any
+ *   0. APPROVAL TOKEN (4NE-26) runs FIRST: verify `deps.approvalToken` binds to
+ *      THIS exact publish action (`@/lib/approval`'s `verifyToken`). No valid
+ *      token → fail closed, before any gate/plan/network. The publish layer
+ *      only VERIFIES; the caller mints it via `assertApproved`.
+ *   1. {@link import('./gate').assertPublishable} runs next, before any
  *      network. An unapproved set never reaches `connect` — the human gate is
  *      enforced ahead of every side effect.
  *   2. Build the per-target plan (Instagram / Pinterest).
@@ -22,11 +26,53 @@ import { callMcpTool, connectMcp } from '@/lib/mcp';
 import { getErrorMessage } from '@/lib/errors';
 import type { GeneratedImage } from '@/types/mashup';
 import { getServer } from '@/lib/mcp';
+import { verifyToken } from '@/lib/approval';
+import type { ApprovalRequest, ApprovalToken } from '@/lib/approval';
 import { assertPublishable } from './gate';
 import { buildInstagramPlan } from './instagram';
 import { childToken, PARENT_TOKEN } from './instagram';
 import { buildPinterestPlan } from './pinterest';
 import type { PublishPlan, PublishRequest, PublishResult } from './types';
+
+/**
+ * 4NE-26: thrown when {@link publish} is called WITHOUT a valid approval token
+ * for the exact request. This is the first gate — it fires before
+ * {@link assertPublishable} and before any connect, so an action that hasn't
+ * passed the unified approval chokepoint can never open a connection. Mirrors
+ * the `PublishGateError` / `McpError` convention (prototype fix-up for
+ * `instanceof`).
+ */
+export class ApprovalRequiredError extends Error {
+  constructor(message = 'publish requires a valid approval token') {
+    super(message);
+    this.name = 'ApprovalRequiredError';
+    Object.setPrototypeOf(this, ApprovalRequiredError.prototype);
+  }
+}
+
+/**
+ * Build the CANONICAL approval request for a publish job. The caller obtains a
+ * token by passing THIS exact request to `@/lib/approval`'s `assertApproved`;
+ * the dispatcher recomputes it and verifies the token against it. Both sides
+ * MUST derive the request the same way, so it lives here as the single source
+ * of truth.
+ *
+ *  - `kind`           — `'publish'`.
+ *  - `target`         — `'<target>:<connectorId>'` (e.g. `'instagram:my-ig'`),
+ *    so a token for Instagram can't authorise a Pinterest post and vice-versa.
+ *  - `payloadPreview` — `{ assetIds, caption }`, the material the operator saw.
+ */
+export function buildPublishApprovalRequest(request: PublishRequest): ApprovalRequest {
+  return {
+    kind: 'publish',
+    summary: `Publish ${request.assets.length} asset(s) to ${request.target}`,
+    target: `${request.target}:${request.connectorId}`,
+    payloadPreview: {
+      assetIds: request.assets.map((a) => a.id),
+      caption: request.caption,
+    },
+  };
+}
 
 /**
  * The request shape the dispatcher accepts: a {@link PublishRequest} plus an
@@ -50,6 +96,16 @@ export interface DispatchRequest extends PublishRequest {
 export interface PublishDeps {
   connect: typeof connectMcp;
   assetsForGate: GeneratedImage[];
+  /**
+   * 4NE-26 — proof the operator approved THIS exact publish via the unified
+   * approval chokepoint. REQUIRED: the caller (autonomy loop / CLI / route)
+   * obtains it from `@/lib/approval`'s `assertApproved`, passing the request
+   * built by {@link buildPublishApprovalRequest}, and hands the resulting token
+   * in here. The publish layer only VERIFIES (via `verifyToken`); it never asks
+   * for approval itself. A missing/mismatched token fails closed before any
+   * network — see {@link publish}.
+   */
+  approvalToken: ApprovalToken;
   /**
    * Optional connector-config resolver. Defaults to the registry's `getServer`.
    * Injected so tests don't need a populated registry.
@@ -203,8 +259,13 @@ function resolveArgs(
  * Gate-first publish. See module docs for the full order of operations.
  *
  * `deps.connect` is injected so tests can supply a fake client; production
- * passes the real `connectMcp`. The gate runs BEFORE `connect`, so an
- * unapproved set never opens a connection.
+ * passes the real `connectMcp`. Two independent gates run BEFORE `connect`, so
+ * an unauthorised/unapproved set never opens a connection:
+ *   0. 4NE-26 token verify — the unified approval chokepoint. The request's
+ *      canonical {@link ApprovalRequest} is recomputed and `verifyToken` checks
+ *      `deps.approvalToken` against it. A missing/mismatched token throws
+ *      {@link ApprovalRequiredError} before anything else.
+ *   1. {@link assertPublishable} — the per-asset `approved`-flag human gate.
  */
 export async function publish(
   request: DispatchRequest,
@@ -212,8 +273,25 @@ export async function publish(
 ): Promise<PublishResult> {
   const { target } = request;
 
-  // 1. GATE FIRST — before any plan build or network. Throwing here means we
-  //    never connect. This is the human-approval hard stop.
+  // 0. APPROVAL TOKEN FIRST — before assertPublishable, before plan build,
+  //    before connect. Recompute the canonical publish request and verify the
+  //    token binds to THIS exact action. No valid token → fail closed, no
+  //    connection. This is the unified-chokepoint enforcement: the publish
+  //    layer only VERIFIES; the caller obtained the token via
+  //    `@/lib/approval`'s `assertApproved`.
+  const approvalRequest = buildPublishApprovalRequest(request);
+  if (!verifyToken(deps.approvalToken, approvalRequest)) {
+    return {
+      ok: false,
+      target,
+      error: new ApprovalRequiredError(
+        `publish blocked: no valid approval token for ${approvalRequest.target}`,
+      ),
+    };
+  }
+
+  // 1. GATE — before any plan build or network. Throwing here means we never
+  //    connect. This is the per-asset human-approval hard stop.
   try {
     assertPublishable(deps.assetsForGate);
   } catch (e) {

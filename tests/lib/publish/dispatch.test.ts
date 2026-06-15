@@ -33,8 +33,16 @@ vi.mock('@/lib/mcp', () => ({
   })),
 }));
 
-import { publish, extractId } from '@/lib/publish/dispatch';
+import {
+  publish,
+  extractId,
+  ApprovalRequiredError,
+  buildPublishApprovalRequest,
+} from '@/lib/publish/dispatch';
 import type { DispatchRequest, PublishDeps } from '@/lib/publish/dispatch';
+import type { PublishRequest } from '@/lib/publish/types';
+import { requestApproval } from '@/lib/approval';
+import type { ApprovalToken } from '@/lib/approval';
 import type { GeneratedImage } from '@/types/mashup';
 
 const closeSpy = vi.fn();
@@ -48,6 +56,19 @@ function fakeConnect() {
 
 function approved(id: string, url = `https://cdn/${id}.png`): GeneratedImage {
   return { id, prompt: 'p', url, approved: true };
+}
+
+/**
+ * Mint a REAL approval token for a publish request via the unified chokepoint,
+ * using an auto-approving operator stub (no network). This is exactly how a
+ * production caller obtains the token it then hands to `publish`.
+ */
+async function tokenFor(request: PublishRequest): Promise<ApprovalToken> {
+  const decision = await requestApproval(buildPublishApprovalRequest(request), {
+    askOperator: async () => ({ verdict: 'approved' }),
+  });
+  if (!decision.token) throw new Error('test setup: expected an approval token');
+  return decision.token;
 }
 
 /** A create result whose id is `containerId`. */
@@ -70,6 +91,9 @@ describe('publish — gate enforcement', () => {
     const deps: PublishDeps = {
       connect: fakeConnect(),
       assetsForGate: [{ id: 'i1', prompt: 'p', url: 'https://cdn/i1.png', approved: false }],
+      // A VALID token so we get past the 4NE-26 token gate and exercise the
+      // per-asset `approved`-flag gate that this test targets.
+      approvalToken: await tokenFor(req),
     };
 
     const res = await publish(req, deps);
@@ -81,12 +105,58 @@ describe('publish — gate enforcement', () => {
   });
 
   it('an empty set returns ok:false and never connects', async () => {
-    const res = await publish(
-      { target: 'instagram', connectorId: 'c', assets: [], caption: 'x' },
-      { connect: fakeConnect(), assetsForGate: [] },
-    );
+    const req: DispatchRequest = { target: 'instagram', connectorId: 'c', assets: [], caption: 'x' };
+    const res = await publish(req, {
+      connect: fakeConnect(),
+      assetsForGate: [],
+      approvalToken: await tokenFor(req),
+    });
     expect(res.ok).toBe(false);
     expect(connectSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('publish — 4NE-26 approval-token enforcement (no bypass)', () => {
+  it('a MISSING token returns ok:false (ApprovalRequiredError) and NEVER connects', async () => {
+    const req: DispatchRequest = {
+      target: 'instagram',
+      connectorId: 'c',
+      assets: [{ id: 'i1', url: 'https://cdn/i1.png' }],
+      caption: 'x',
+    };
+    const res = await publish(req, {
+      connect: fakeConnect(),
+      assetsForGate: [approved('i1')],
+      // No valid token (cast around the required field to simulate a bypass attempt).
+      approvalToken: undefined as unknown as ApprovalToken,
+    });
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error).toBeInstanceOf(ApprovalRequiredError);
+    expect(connectSpy).not.toHaveBeenCalled();
+    expect(callMcpToolSpy).not.toHaveBeenCalled();
+  });
+
+  it('a MISMATCHED token (approved a different request) is rejected and never connects', async () => {
+    const approvedReq: DispatchRequest = {
+      target: 'instagram',
+      connectorId: 'c',
+      assets: [{ id: 'i1', url: 'https://cdn/i1.png' }],
+      caption: 'original caption',
+    };
+    // Token bound to the original request...
+    const token = await tokenFor(approvedReq);
+    // ...but we attempt to publish a DIFFERENT request (caption tampered).
+    const tamperedReq: DispatchRequest = { ...approvedReq, caption: 'tampered caption' };
+
+    const res = await publish(tamperedReq, {
+      connect: fakeConnect(),
+      assetsForGate: [approved('i1')],
+      approvalToken: token,
+    });
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error).toBeInstanceOf(ApprovalRequiredError);
+    expect(connectSpy).not.toHaveBeenCalled();
+    expect(callMcpToolSpy).not.toHaveBeenCalled();
   });
 });
 
@@ -105,15 +175,20 @@ describe('publish — Instagram carousel placeholder resolution', () => {
       .mockResolvedValueOnce(createResult('parent-9'))
       .mockResolvedValueOnce([{ type: 'text', text: JSON.stringify({ id: 'PUBLISHED_42' }) }]);
 
+    const req: DispatchRequest = {
+      target: 'instagram',
+      connectorId: 'c',
+      assets,
+      caption: 'cap',
+      igUserId: 'me',
+    };
     const deps: PublishDeps = {
       connect: fakeConnect(),
       assetsForGate: assets.map((a) => approved(a.id, a.url)),
+      approvalToken: await tokenFor(req),
     };
 
-    const res = await publish(
-      { target: 'instagram', connectorId: 'c', assets, caption: 'cap', igUserId: 'me' },
-      deps,
-    );
+    const res = await publish(req, deps);
 
     expect(res.ok).toBe(true);
     if (res.ok) expect(res.publishedId).toBe('PUBLISHED_42');
@@ -145,15 +220,17 @@ describe('publish — single image', () => {
       .mockResolvedValueOnce(createResult('single-1'))
       .mockResolvedValueOnce(createResult('PUB-1'));
 
-    const res = await publish(
-      {
-        target: 'instagram',
-        connectorId: 'c',
-        assets: [{ id: 'i1', url: 'https://cdn/i1.png' }],
-        caption: 'one',
-      },
-      { connect: fakeConnect(), assetsForGate: [approved('i1')] },
-    );
+    const req: DispatchRequest = {
+      target: 'instagram',
+      connectorId: 'c',
+      assets: [{ id: 'i1', url: 'https://cdn/i1.png' }],
+      caption: 'one',
+    };
+    const res = await publish(req, {
+      connect: fakeConnect(),
+      assetsForGate: [approved('i1')],
+      approvalToken: await tokenFor(req),
+    });
 
     expect(res.ok).toBe(true);
     if (res.ok) expect(res.publishedId).toBe('PUB-1');
@@ -165,16 +242,18 @@ describe('publish — single image', () => {
 describe('publish — Pinterest', () => {
   it('runs the single create-pin step and returns the pin id', async () => {
     callMcpToolSpy.mockResolvedValueOnce(createResult('pin-77'));
-    const res = await publish(
-      {
-        target: 'pinterest',
-        connectorId: 'c',
-        assets: [{ id: 'p1', url: 'https://cdn/p1.png' }],
-        caption: 'pin it',
-        boardId: 'board-1',
-      },
-      { connect: fakeConnect(), assetsForGate: [approved('p1')] },
-    );
+    const req: DispatchRequest = {
+      target: 'pinterest',
+      connectorId: 'c',
+      assets: [{ id: 'p1', url: 'https://cdn/p1.png' }],
+      caption: 'pin it',
+      boardId: 'board-1',
+    };
+    const res = await publish(req, {
+      connect: fakeConnect(),
+      assetsForGate: [approved('p1')],
+      approvalToken: await tokenFor(req),
+    });
     expect(res.ok).toBe(true);
     if (res.ok) expect(res.publishedId).toBe('pin-77');
     expect(callMcpToolSpy).toHaveBeenCalledTimes(1);
@@ -192,10 +271,12 @@ describe('publish — error handling', () => {
       { id: 'i1', url: 'https://cdn/i1.png' },
       { id: 'i2', url: 'https://cdn/i2.png' },
     ];
-    const res = await publish(
-      { target: 'instagram', connectorId: 'c', assets, caption: 'cap' },
-      { connect: fakeConnect(), assetsForGate: assets.map((a) => approved(a.id, a.url)) },
-    );
+    const req: DispatchRequest = { target: 'instagram', connectorId: 'c', assets, caption: 'cap' };
+    const res = await publish(req, {
+      connect: fakeConnect(),
+      assetsForGate: assets.map((a) => approved(a.id, a.url)),
+      approvalToken: await tokenFor(req),
+    });
 
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error.message).toMatch(/rate limit/i);
@@ -204,20 +285,19 @@ describe('publish — error handling', () => {
   });
 
   it('returns ok:false when the connector cannot be resolved', async () => {
-    const res = await publish(
-      {
-        target: 'pinterest',
-        connectorId: 'missing',
-        assets: [{ id: 'p1', url: 'https://cdn/p1.png' }],
-        caption: 'x',
-        boardId: 'b',
-      },
-      {
-        connect: fakeConnect(),
-        assetsForGate: [approved('p1')],
-        getConnector: async () => undefined,
-      },
-    );
+    const req: DispatchRequest = {
+      target: 'pinterest',
+      connectorId: 'missing',
+      assets: [{ id: 'p1', url: 'https://cdn/p1.png' }],
+      caption: 'x',
+      boardId: 'b',
+    };
+    const res = await publish(req, {
+      connect: fakeConnect(),
+      assetsForGate: [approved('p1')],
+      approvalToken: await tokenFor(req),
+      getConnector: async () => undefined,
+    });
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error.message).toMatch(/unknown connector/i);
     expect(connectSpy).not.toHaveBeenCalled();
@@ -228,15 +308,17 @@ describe('publish — error handling', () => {
       .mockResolvedValueOnce(createResult('single-1'))
       // A result with no id-bearing key and no text part: nothing to extract.
       .mockResolvedValueOnce([{ type: 'image', mimeType: 'image/png' }]);
-    const res = await publish(
-      {
-        target: 'instagram',
-        connectorId: 'c',
-        assets: [{ id: 'i1', url: 'https://cdn/i1.png' }],
-        caption: 'x',
-      },
-      { connect: fakeConnect(), assetsForGate: [approved('i1')] },
-    );
+    const req: DispatchRequest = {
+      target: 'instagram',
+      connectorId: 'c',
+      assets: [{ id: 'i1', url: 'https://cdn/i1.png' }],
+      caption: 'x',
+    };
+    const res = await publish(req, {
+      connect: fakeConnect(),
+      assetsForGate: [approved('i1')],
+      approvalToken: await tokenFor(req),
+    });
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error.message).toMatch(/no published id/i);
   });

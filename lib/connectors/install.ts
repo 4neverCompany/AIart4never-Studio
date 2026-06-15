@@ -38,7 +38,39 @@ import {
   type McpConnection,
 } from '@/lib/mcp';
 import { getErrorMessage } from '@/lib/errors';
+import { verifyToken } from '@/lib/approval';
+import type { ApprovalRequest, ApprovalToken } from '@/lib/approval';
 import type { ConnectorProposal, InstallOutcome } from './types';
+
+/**
+ * 4NE-26: thrown / returned when {@link confirmAndInstall} is asked to activate
+ * a connector WITHOUT a valid `connector-activate` approval token for that exact
+ * connector. Activation (trust + enable) is an irreversible grant of authority,
+ * so it funnels through the unified approval chokepoint. Mirrors the
+ * `McpError` convention (prototype fix-up for `instanceof`).
+ */
+export class ApprovalRequiredError extends Error {
+  constructor(message = 'connector activation requires a valid approval token') {
+    super(message);
+    this.name = 'ApprovalRequiredError';
+    Object.setPrototypeOf(this, ApprovalRequiredError.prototype);
+  }
+}
+
+/**
+ * Build the CANONICAL approval request for activating a connector. The caller
+ * obtains a token by passing THIS exact request to `@/lib/approval`'s
+ * `assertApproved`; `confirmAndInstall` recomputes it and verifies the token.
+ * `target` is the connector id, so a token for connector A cannot activate B.
+ */
+export function buildConnectorActivateRequest(config: McpServerConfig): ApprovalRequest {
+  return {
+    kind: 'connector-activate',
+    summary: `Activate connector ${config.name} (${config.id})`,
+    target: config.id,
+    payloadPreview: { id: config.id, transport: config.transport },
+  };
+}
 
 /**
  * Operator-provided install input. `source` MUST be the literal `'operator'`:
@@ -168,7 +200,17 @@ export function proposeConnector(
  * Step 2 of FR-22: the operator-confirmed commit path. Reaching here means the
  * operator inspected `proposal.redactedView` and confirmed the exact config.
  *
+ * 4NE-26: activation (trust + enable) is an irreversible grant of authority, so
+ * it funnels through the unified approval chokepoint. `approvalToken` is the
+ * proof the operator approved activating THIS exact connector; the caller
+ * obtains it from `@/lib/approval`'s `assertApproved` using the request from
+ * {@link buildConnectorActivateRequest}. A missing/mismatched token fails closed
+ * BEFORE trust/enable: nothing is trusted or enabled.
+ *
  * Sequence:
+ *   0. verify `approvalToken` against the canonical activate request. Bad/absent
+ *      → `{ok:false, stage:'validate', error: ApprovalRequiredError}` — no
+ *      persistence, no probe, nothing enabled.
  *   1. `saveServer(config)` — persists, still untrusted+disabled.
  *   2. connect-probe via `connect` + `list` (never trusts on its own).
  *   3. probe SUCCESS → `markTrusted(id)` + `setEnabled(id, true)` → `{ok:true}`.
@@ -179,6 +221,7 @@ export function proposeConnector(
  */
 export async function confirmAndInstall(
   proposal: ConnectorProposal,
+  approvalToken: ApprovalToken,
   deps: InstallDeps = {},
 ): Promise<InstallOutcome> {
   const connect = deps.connect ?? defaultConnectMcp;
@@ -188,6 +231,20 @@ export async function confirmAndInstall(
   const setEnabled = deps.registry?.setEnabled ?? defaultSetEnabled;
 
   const { config } = proposal;
+
+  // (0) APPROVAL TOKEN FIRST — before saveServer, before the probe, before any
+  // trust/enable. Verify the token binds to activating THIS exact connector.
+  // No valid token → fail closed: do NOT persist, probe, trust, or enable.
+  const activateRequest = buildConnectorActivateRequest(config);
+  if (!verifyToken(approvalToken, activateRequest)) {
+    return {
+      ok: false,
+      stage: 'validate',
+      error: new ApprovalRequiredError(
+        `connector activation blocked: no valid approval token for ${config.id}`,
+      ),
+    };
+  }
 
   // (1) Persist first — still untrusted + disabled. Defensive: ensure the
   // committed row can never carry trust/enabled even if a caller hand-built a

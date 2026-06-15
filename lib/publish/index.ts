@@ -37,5 +37,5 @@ export {
 
 export { buildPinterestPlan, PINTEREST_CREATE_PIN } from './pinterest';
 
-export { publish, extractId } from './dispatch';
+export { publish, extractId, ApprovalRequiredError, buildPublishApprovalRequest } from './dispatch';
 export type { DispatchRequest, PublishDeps } from './dispatch';
