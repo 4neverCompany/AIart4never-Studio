@@ -797,6 +797,10 @@ async function handleDirectorMode(
         modelId: result.modelId,
         provider: result.provider,
         truncatedBy: result.truncatedBy,
+        // 4NE-23: canon compliance of the final prompt (omitted by
+        // JSON.stringify when undefined). The approval gate can flag canon
+        // drift (e.g. a cyberdeck on a variant) before publish.
+        canon: result.canon,
       }),
       {
         status: 200,

@@ -66,6 +66,7 @@ import { stripModelCommentary } from '@/lib/agent-tools/prompt-extract';
 // M1 CANON-WIRING: the active Master4never character whose canon shapes the
 // director's drafts. Threaded into the PlanContext (default 'kael').
 import type { CharacterId } from '@/lib/canon';
+import { checkCanonCompliance, type CanonCheck } from '@/lib/canon/guard';
 
 import { StepLogger, truncateForLog, type Step } from './log';
 import { BudgetTracker, estimateStepCost } from './budget';
@@ -167,6 +168,13 @@ export interface RunDirectorLoopResult {
    * never reported usage (mock runs, errored-before-first-step runs).
    */
   tokensUsed: { input: number; output: number };
+  /**
+   * M1 / 4NE-23: canon compliance of `finalPrompt` against the active
+   * character's hard locks (e.g. NO cyberdeck on a variant). Undefined for
+   * runs that produced no prompt. The route forwards it so the approval gate
+   * can flag canon drift before publish. See lib/canon/guard.ts.
+   */
+  canon?: CanonCheck;
 }
 
 // ---------------------------------------------------------------------------
@@ -657,6 +665,7 @@ export async function runDirectorLoop(
       niches: input.niches,
       genres: input.genres,
       ideaConcept: input.ideaConcept,
+      characterId: input.characterId ?? 'kael',
       stepLimit: maxSteps,
       start,
       finish: clock(),
@@ -702,6 +711,7 @@ export async function runDirectorLoop(
       niches: input.niches,
       genres: input.genres,
       ideaConcept: input.ideaConcept,
+      characterId: input.characterId ?? 'kael',
       stepLimit: maxSteps,
       start,
       finish: clock(),
@@ -796,10 +806,16 @@ async function finalizeResult(args: {
   niches: string[];
   genres: string[];
   ideaConcept: string;
+  characterId: CharacterId;
   stepLimit: number;
   start: number;
   finish: number;
 }): Promise<RunDirectorLoopResult> {
+  // 4NE-23: validate the finished prompt against the character's hard canon
+  // locks (skip empty/errored runs to avoid false "missing anchor" noise).
+  const canon = args.finalPrompt.trim()
+    ? checkCanonCompliance(args.characterId, args.finalPrompt)
+    : undefined;
   const result: RunDirectorLoopResult = {
     runId: args.runId,
     finalPrompt: args.finalPrompt,
@@ -809,6 +825,7 @@ async function finalizeResult(args: {
     modelId: args.modelId,
     provider: args.provider,
     tokensUsed: args.tokensUsed,
+    ...(canon ? { canon } : {}),
   };
   // Best-effort persistence. On the server, `saveRun`
   // no-ops, so this is a fast no-op. On the client, the
