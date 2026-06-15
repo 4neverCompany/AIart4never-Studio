@@ -60,28 +60,26 @@ export function useReconciler(): UseReconcilerState {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const ensureReconciler = (): Reconciler | null => {
+  const ensureReconciler = async (): Promise<Reconciler | null> => {
     if (reconcilerRef.current) return reconcilerRef.current;
 
-    // Storage backend is selected at runtime. We do a dynamic import
-    // to avoid pulling the Tauri SQLite driver into the web bundle.
+    // Storage backend is selected at runtime. We use a typed dynamic
+    // import (NOT `require`, which returns `any` and hides API misuse
+    // from tsc) so the wrong-construction class of bug can't recur.
     //
-    // For now, both surfaces use the IDB implementation as a
-    // uniform fallback. The Tauri SQLite driver is loaded
-    // conditionally in the desktop app.
-    //
-    // The production code path is:
-    //   - Tauri: import { getSqliteStorage } from '@/lib/post-lifecycle/storage/tauri-driver'
-    //   - Web: import { getIdbStorage } from '@/lib/post-lifecycle/storage/idb'
-    //
-    // Wiring both paths in this hook requires a Promise-based dynamic
-    // import, which we do here.
+    // For now, both surfaces use the IDB implementation as a uniform
+    // fallback (the Tauri webview also has IndexedDB). The Tauri SQLite
+    // driver is loaded conditionally in the desktop app.
 
     try {
-      // Synchronous init for IDB. The IDB driver is sync to construct.
-       
-      const { IdbPostLifecycleStorage } = require('@/lib/post-lifecycle/storage/idb');
-      const storage: PostLifecycleStorage = new IdbPostLifecycleStorage();
+      // `IdbPostLifecycleStorage.open()` is the async factory — the
+      // private constructor takes an already-opened driver, so the
+      // DB open MUST be awaited here (the old `new IdbPostLifecycleStorage()`
+      // left `this.driver` undefined and threw on the first listPosts).
+      const { IdbPostLifecycleStorage } = await import(
+        '@/lib/post-lifecycle/storage/idb'
+      );
+      const storage: PostLifecycleStorage = await IdbPostLifecycleStorage.open();
       reconcilerRef.current = new Reconciler(storage);
       return reconcilerRef.current;
     } catch (e) {
@@ -97,7 +95,7 @@ export function useReconciler(): UseReconcilerState {
     setRunning(true);
     setError(null);
     try {
-      const reconciler = ensureReconciler();
+      const reconciler = await ensureReconciler();
       if (!reconciler) return null;
       const result = await reconciler.reconcile();
       setLastResult(result);
