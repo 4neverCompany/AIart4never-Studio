@@ -378,8 +378,10 @@ export async function* streamAgent(
       stream: true,
       // The Director loop reads the concept from `ideaConcept` (not `message`).
       ideaConcept: message,
-      niches: options.niches,
-      genres: options.genres ?? [],
+      // Clamp to the director input schema (niches <=6, genres <=10) so the
+      // operator's full Settings lists never trip runDirectorLoop validation.
+      niches: (options.niches ?? []).slice(0, 6),
+      genres: (options.genres ?? []).slice(0, 10),
       activeCharacterId: options.characterId,
       higgsfieldConnector: options.higgsfieldConnector,
       skillContext: options.skills,
