@@ -36,14 +36,13 @@ export {
 export type { McpErrorCode, McpConnection } from './client';
 
 export {
-  BrowserOAuthClientProvider,
   OAuthFlowError,
   beginConnectorOAuth,
   completeConnectorOAuth,
   refreshConnectorTokenIfNeeded,
   applyTokensToConfig,
   computeRedirectUrl,
-  getPendingFlowId,
+  readConnectorDescriptor,
   isUnauthorized,
   OAUTH_CALLBACK_PATH,
 } from './oauth';
