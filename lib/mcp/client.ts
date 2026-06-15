@@ -75,6 +75,32 @@ export interface McpConnection {
 }
 
 /**
+ * Build the outgoing HTTP header map for an http connector, folding any OAuth
+ * bearer into `Authorization`.
+ *
+ * Precedence: an explicit `headers.Authorization` set by the operator ALWAYS
+ * wins (static-header connectors like Composio are never touched). Only when no
+ * Authorization header is present do we synthesise `Bearer <oauth.accessToken>`
+ * from the OAuth credential the client-side flow stored on the config.
+ *
+ * Returns `undefined` when there is nothing to send, so the transport is built
+ * without a `requestInit.headers` (unchanged from the pre-OAuth behaviour).
+ */
+export function buildHeaders(cfg: McpServerConfig): Record<string, string> | undefined {
+  const base: Record<string, string> = { ...(cfg.headers ?? {}) };
+
+  const token = cfg.oauth?.accessToken;
+  if (token) {
+    const hasAuth = Object.keys(base).some((k) => k.toLowerCase() === 'authorization');
+    if (!hasAuth) {
+      base.Authorization = `Bearer ${token}`;
+    }
+  }
+
+  return Object.keys(base).length > 0 ? base : undefined;
+}
+
+/**
  * Connect to the MCP server described by `cfg` and return the live client.
  *
  * - `transport === 'http'`  → builds a {@link StreamableHTTPClientTransport}
@@ -115,8 +141,15 @@ export async function connectMcp(
     throw new McpError('connect-failed', `invalid url "${cfg.url}"`, e);
   }
 
+  // Merge any OAuth bearer into the outgoing headers. The client-side OAuth
+  // flow (`lib/mcp/oauth.ts`) already mirrors `oauth.accessToken` into
+  // `headers.Authorization`, but we re-derive it here as defence-in-depth so a
+  // config carrying only `oauth` (no header) still authenticates. An explicit
+  // `Authorization` header always wins — never clobber what the caller set.
+  const headers = buildHeaders(cfg);
+
   const transport = new StreamableHTTPClientTransport(url, {
-    requestInit: cfg.headers ? { headers: cfg.headers } : undefined,
+    requestInit: headers ? { headers } : undefined,
   });
 
   const client = new Client(CLIENT_INFO, { capabilities: {} });

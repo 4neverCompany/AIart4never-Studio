@@ -80,10 +80,22 @@ let serversList: McpServerConfig[] = [];
 const setEnabledSpy = vi.fn(async () => SERVER_OK);
 const redactConfigSpy = vi.fn((cfg: McpServerConfig) => cfg);
 
+const beginConnectorOAuthSpy = vi.fn(async (_cfg: unknown) => ({ flowId: 'flow-test' }));
+
 vi.mock('@/lib/mcp', () => ({
   listServers: vi.fn(async () => serversList),
   setEnabled: (...a: unknown[]) => setEnabledSpy(...(a as [])),
   redactConfig: (cfg: McpServerConfig) => redactConfigSpy(cfg),
+  // OAuth surface AddConnectorForm now imports. `isUnauthorized` matches the
+  // real impl's auth-signal sniff; `beginConnectorOAuth` is a stub so no test
+  // hits the SDK or a real redirect.
+  beginConnectorOAuth: (cfg: unknown) => beginConnectorOAuthSpy(cfg),
+  isUnauthorized: (e: unknown) => {
+    if (!e) return false;
+    if ((e as { name?: string }).name === 'UnauthorizedError') return true;
+    const msg = String((e as { message?: unknown })?.message ?? e).toLowerCase();
+    return msg.includes('401') || msg.includes('unauthor');
+  },
 }));
 
 const proposeConnectorSpy = vi.fn((_input: unknown): ConnectorProposal => PROPOSAL);
@@ -259,6 +271,57 @@ describe('CustomizePanel — add connector (FR-22)', () => {
     expect(proposalArg).toBe(PROPOSAL);
     expect(tokenArg).toEqual(ACTIVATE_TOKEN);
     expect(depsArg).toBe(SERVER_PROBE_DEPS);
+  });
+});
+
+describe('CustomizePanel — OAuth connector (Higgsfield path)', () => {
+  it('the "uses OAuth" toggle reveals an Authorize button that runs beginConnectorOAuth', async () => {
+    render(<CustomizePanel />);
+    await screen.findAllByTestId('connector-row');
+
+    fireEvent.change(screen.getByPlaceholderText('e.g. My Notion MCP'), {
+      target: { value: 'Higgsfield' },
+    });
+    fireEvent.change(screen.getByLabelText('Server URL'), {
+      target: { value: 'https://mcp.higgsfield.ai/mcp' },
+    });
+    // Toggle OAuth on → the Propose button is replaced by Authorize.
+    fireEvent.click(screen.getByRole('checkbox', { name: /uses oauth/i }));
+
+    const authorizeBtn = screen.getByRole('button', { name: /authorize/i });
+    fireEvent.click(authorizeBtn);
+
+    await waitFor(() => expect(beginConnectorOAuthSpy).toHaveBeenCalled());
+    // beginConnectorOAuth gets the operator-built config (validated via propose).
+    const cfgArg = beginConnectorOAuthSpy.mock.calls[0][0] as McpServerConfig;
+    expect(cfgArg).toBeTruthy();
+  });
+
+  it('a 401 probe failure on Confirm reveals the Authorize button', async () => {
+    // The probe fails with an auth error → the form should offer Authorize.
+    confirmAndInstallSpy.mockResolvedValueOnce({
+      ok: false,
+      stage: 'probe',
+      error: Object.assign(new Error('HTTP 401 Unauthorized'), { name: 'UnauthorizedError' }),
+    } as unknown as Awaited<ReturnType<typeof confirmAndInstallSpy>>);
+
+    render(<CustomizePanel />);
+    await screen.findAllByTestId('connector-row');
+
+    fireEvent.change(screen.getByPlaceholderText('e.g. My Notion MCP'), {
+      target: { value: 'Higgsfield' },
+    });
+    fireEvent.change(screen.getByLabelText('Server URL'), {
+      target: { value: 'https://mcp.higgsfield.ai/mcp' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /propose/i }));
+    await screen.findByTestId('redacted-config');
+    fireEvent.click(screen.getByRole('button', { name: /confirm & install/i }));
+
+    await waitFor(() => expect(confirmAndInstallSpy).toHaveBeenCalled());
+    // After the 401 the Authorize button appears in the review panel.
+    const authorizeBtn = await screen.findByRole('button', { name: /authorize/i });
+    expect(authorizeBtn).toBeInTheDocument();
   });
 });
 

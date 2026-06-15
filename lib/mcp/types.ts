@@ -49,6 +49,42 @@ export interface McpServerConfig {
   /** Environment overrides for the subprocess. Values may be secret. */
   env?: Record<string, string>;
 
+  /**
+   * OAuth 2.1 credential material for OAuth-only MCP servers (e.g. Higgsfield).
+   *
+   * Filled in by the CLIENT-side OAuth flow (`lib/mcp/oauth.ts`) after the user
+   * completes the browser authorize → callback round-trip. The flow persists
+   * the SDK's `OAuthTokens` here AND mirrors `accessToken` into
+   * `headers.Authorization` as a `Bearer` so the EXISTING "client passes config
+   * → server connects with the header" path (`connectMcp` / the probe route)
+   * authenticates with zero server-side changes.
+   *
+   * `clientInformation` is the result of RFC 7591 Dynamic Client Registration
+   * (no pre-registered `client_id` needed) — stored so a later token refresh can
+   * reuse the same dynamically-registered client without re-registering.
+   *
+   * SECRET: every field is secret-equivalent. Never log a raw config — pipe
+   * through `redactConfig` first (it masks the whole `oauth` block).
+   */
+  oauth?: {
+    /** Current OAuth 2.1 access token. Mirrored into `headers.Authorization`. */
+    accessToken: string;
+    /** Refresh token, when the server issued one (used by the client refresh). */
+    refreshToken?: string;
+    /** Unix-ms expiry (derived from the token response's `expires_in`), if known. */
+    expiresAt?: number;
+    /** Granted scope string, when the server returned one. */
+    scope?: string;
+    /**
+     * The dynamically-registered (RFC 7591) client info — `client_id` and
+     * optionally `client_secret` — kept so a refresh reuses the same client.
+     */
+    clientInformation?: {
+      clientId: string;
+      clientSecret?: string;
+    };
+  };
+
   /** When false the connector is kept but never auto-connected. */
   enabled: boolean;
   /**

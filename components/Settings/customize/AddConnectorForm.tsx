@@ -29,9 +29,14 @@
  */
 
 import { useCallback, useRef, useState } from 'react';
-import { Loader2, Plus, ShieldCheck, AlertTriangle, X } from 'lucide-react';
+import { Loader2, Plus, ShieldCheck, AlertTriangle, X, KeyRound } from 'lucide-react';
 import { showToast } from '@/components/Toast';
-import { redactConfig, type McpServerConfig } from '@/lib/mcp';
+import {
+  redactConfig,
+  beginConnectorOAuth,
+  isUnauthorized,
+  type McpServerConfig,
+} from '@/lib/mcp';
 import {
   buildConnectorActivateRequest,
   type ConnectorProposal,
@@ -43,6 +48,13 @@ import { assertApproved, ApprovalDeniedError, type ApprovalToken } from '@/lib/a
 export interface AddConnectorFormProps {
   propose: (input: ProposeConnectorInput) => ConnectorProposal;
   install: (proposal: ConnectorProposal, token: ApprovalToken) => Promise<InstallOutcome>;
+  /**
+   * Kick off the browser OAuth authorize flow for an OAuth-only connector
+   * (defaults to `beginConnectorOAuth`). Navigates the page to the provider's
+   * authorize URL; completion lands on `/mcp/oauth/callback`. Injectable for
+   * tests so they never hit the SDK / a real redirect.
+   */
+  beginOAuth?: (config: McpServerConfig) => Promise<{ flowId: string }>;
 }
 
 /** Parse the headers textarea ("Key: value" per line) into a record. */
@@ -62,14 +74,20 @@ function parseHeaders(raw: string): Record<string, string> {
 
 type Stage = 'form' | 'review';
 
-export function AddConnectorForm({ propose, install }: AddConnectorFormProps) {
+export function AddConnectorForm({ propose, install, beginOAuth }: AddConnectorFormProps) {
   const [stage, setStage] = useState<Stage>('form');
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
   const [headersText, setHeadersText] = useState('');
+  const [useOAuth, setUseOAuth] = useState(false);
   const [proposal, setProposal] = useState<ConnectorProposal | null>(null);
   const [formError, setFormError] = useState('');
   const [installing, setInstalling] = useState(false);
+  const [authorizing, setAuthorizing] = useState(false);
+  // Set when a confirm-install probe failed on auth (401): offer to Authorize.
+  const [needsAuth, setNeedsAuth] = useState(false);
+
+  const begin = beginOAuth ?? beginConnectorOAuth;
 
   // The operator-confirm channel: `assertApproved`'s askOperator awaits this
   // Promise; the Confirm / Cancel buttons resolve it. A ref so the resolver
@@ -81,29 +99,62 @@ export function AddConnectorForm({ propose, install }: AddConnectorFormProps) {
     setName('');
     setUrl('');
     setHeadersText('');
+    setUseOAuth(false);
     setProposal(null);
     setFormError('');
+    setNeedsAuth(false);
     confirmResolverRef.current = null;
   }, []);
 
+  /**
+   * Build the operator form input → a propose input. Shared by the static path
+   * and the OAuth path. Headers are optional; OAuth fills `Authorization` later.
+   */
+  const buildInput = useCallback((): ProposeConnectorInput => {
+    const headers = parseHeaders(headersText);
+    return {
+      source: 'operator',
+      name: name.trim(),
+      transport: 'http',
+      url: url.trim(),
+      ...(Object.keys(headers).length > 0 ? { headers } : {}),
+    };
+  }, [name, url, headersText]);
+
+  /**
+   * The OAuth path: kick off `beginConnectorOAuth` with the operator's form
+   * config. This NAVIGATES the browser to the provider's authorize URL; the
+   * flow finishes on `/mcp/oauth/callback`, which installs the connector. We
+   * surface only a synchronous failure (e.g. bad url) — on success the page is
+   * already leaving.
+   */
+  const handleAuthorize = useCallback(async () => {
+    setFormError('');
+    setAuthorizing(true);
+    try {
+      // Validate the shape via propose first (throws on a bad url/name) so the
+      // operator sees form errors instead of a redirect dead-end.
+      const candidate = propose(buildInput());
+      await begin(candidate.config);
+      // If begin() resolved without navigating (test/stub), tell the operator.
+      showToast(`Redirecting to authorize "${name.trim()}"…`, 'info');
+    } catch (e) {
+      setAuthorizing(false);
+      setFormError(e instanceof Error ? e.message : 'Could not start the OAuth flow.');
+    }
+  }, [propose, buildInput, begin, name]);
+
   const handlePropose = useCallback(() => {
     setFormError('');
+    setNeedsAuth(false);
     try {
-      const headers = parseHeaders(headersText);
-      const input: ProposeConnectorInput = {
-        source: 'operator',
-        name: name.trim(),
-        transport: 'http',
-        url: url.trim(),
-        ...(Object.keys(headers).length > 0 ? { headers } : {}),
-      };
-      const next = propose(input);
+      const next = propose(buildInput());
       setProposal(next);
       setStage('review');
     } catch (e) {
       setFormError(e instanceof Error ? e.message : 'Could not build a proposal.');
     }
-  }, [name, url, headersText, propose]);
+  }, [propose, buildInput]);
 
   const handleConfirmInstall = useCallback(async () => {
     if (!proposal) return;
@@ -132,11 +183,19 @@ export function AddConnectorForm({ propose, install }: AddConnectorFormProps) {
         showToast(`Installed connector "${outcome.server.name}"`, 'success');
         reset();
       } else {
-        const detail =
-          outcome.stage === 'probe'
-            ? 'connected but the probe failed — left disabled'
-            : outcome.error.message;
-        showToast(`Install failed: ${detail}`, 'error');
+        // A probe failure on AUTH (401 / UnauthorizedError) means the server is
+        // OAuth-only — surface the Authorize button instead of a dead-end.
+        const authFailed = outcome.stage === 'probe' && isUnauthorized(outcome.error);
+        if (authFailed) {
+          setNeedsAuth(true);
+          showToast('This server requires authorization — click Authorize.', 'warning');
+        } else {
+          const detail =
+            outcome.stage === 'probe'
+              ? 'connected but the probe failed — left disabled'
+              : outcome.error.message;
+          showToast(`Install failed: ${detail}`, 'error');
+        }
         setInstalling(false);
       }
     } catch (e) {
@@ -183,20 +242,40 @@ export function AddConnectorForm({ propose, install }: AddConnectorFormProps) {
           </ul>
         )}
 
+        {needsAuth && (
+          <p className="flex items-start gap-1.5 rounded-lg border border-[#00e6ff]/25 bg-[#00e6ff]/5 p-2.5 text-[10.5px] leading-relaxed text-[#9beaff]">
+            <KeyRound className="mt-0.5 h-3 w-3 shrink-0" />
+            This server requires OAuth. Click Authorize to sign in — you&apos;ll be redirected to the
+            provider, then sent back here to finish installing.
+          </p>
+        )}
+
         <div className="flex items-center gap-2 pt-1">
-          <button
-            type="button"
-            onClick={() => void handleConfirmInstall()}
-            disabled={installing}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-[#ff7a18] px-4 py-2 text-xs font-semibold text-black transition-colors hover:bg-[#ff9d4d] active:bg-[#e8650a] disabled:opacity-50"
-          >
-            {installing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
-            Confirm &amp; install
-          </button>
+          {needsAuth ? (
+            <button
+              type="button"
+              onClick={() => void handleAuthorize()}
+              disabled={authorizing}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[#00e6ff] px-4 py-2 text-xs font-semibold text-black transition-colors hover:bg-[#5cefff] active:bg-[#00c4db] disabled:opacity-50"
+            >
+              {authorizing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />}
+              Authorize {proposal.config.name}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void handleConfirmInstall()}
+              disabled={installing}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[#ff7a18] px-4 py-2 text-xs font-semibold text-black transition-colors hover:bg-[#ff9d4d] active:bg-[#e8650a] disabled:opacity-50"
+            >
+              {installing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+              Confirm &amp; install
+            </button>
+          )}
           <button
             type="button"
             onClick={reset}
-            disabled={installing}
+            disabled={installing || authorizing}
             className="rounded-xl border border-zinc-700/60 px-4 py-2 text-xs font-medium text-zinc-300 transition-colors hover:text-white disabled:opacity-50"
           >
             Cancel
@@ -260,6 +339,19 @@ export function AddConnectorForm({ propose, install }: AddConnectorFormProps) {
         />
       </div>
 
+      <label className="flex cursor-pointer items-center gap-2 text-[11px] text-zinc-400">
+        <input
+          type="checkbox"
+          checked={useOAuth}
+          onChange={(e) => setUseOAuth(e.target.checked)}
+          className="h-3.5 w-3.5 rounded border-zinc-700 bg-[#050505] text-[#00e6ff] focus:ring-[#00e6ff]/40"
+        />
+        <span className="inline-flex items-center gap-1">
+          <KeyRound className="h-3 w-3 text-[#00e6ff]" />
+          This server uses OAuth (sign in via browser)
+        </span>
+      </label>
+
       {formError && (
         <p role="alert" className="flex items-start gap-1.5 text-[11px] text-red-300">
           <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
@@ -267,15 +359,27 @@ export function AddConnectorForm({ propose, install }: AddConnectorFormProps) {
         </p>
       )}
 
-      <button
-        type="button"
-        onClick={handlePropose}
-        disabled={name.trim() === '' || url.trim() === ''}
-        className="inline-flex items-center gap-1.5 rounded-xl bg-[#ff7a18] px-4 py-2 text-xs font-semibold text-black transition-colors hover:bg-[#ff9d4d] active:bg-[#e8650a] disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        <Plus className="h-3.5 w-3.5" />
-        Propose
-      </button>
+      {useOAuth ? (
+        <button
+          type="button"
+          onClick={() => void handleAuthorize()}
+          disabled={name.trim() === '' || url.trim() === '' || authorizing}
+          className="inline-flex items-center gap-1.5 rounded-xl bg-[#00e6ff] px-4 py-2 text-xs font-semibold text-black transition-colors hover:bg-[#5cefff] active:bg-[#00c4db] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {authorizing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />}
+          Authorize {name.trim() || 'connector'}
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={handlePropose}
+          disabled={name.trim() === '' || url.trim() === ''}
+          className="inline-flex items-center gap-1.5 rounded-xl bg-[#ff7a18] px-4 py-2 text-xs font-semibold text-black transition-colors hover:bg-[#ff9d4d] active:bg-[#e8650a] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Propose
+        </button>
+      )}
     </div>
   );
 }

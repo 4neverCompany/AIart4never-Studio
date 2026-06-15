@@ -176,6 +176,26 @@ export function redactConfig(cfg: McpServerConfig): McpServerConfig {
   const redacted: McpServerConfig = { ...cfg };
   if (cfg.headers) redacted.headers = redactRecord(cfg.headers);
   if (cfg.env) redacted.env = redactRecord(cfg.env);
+  // The whole OAuth block is secret-equivalent (access/refresh tokens, the DCR
+  // client secret). Mask each present field rather than dropping the block, so
+  // a log still shows THAT the connector is OAuth-backed without leaking it.
+  if (cfg.oauth) {
+    redacted.oauth = {
+      ...cfg.oauth,
+      accessToken: REDACT_PLACEHOLDER,
+      ...(cfg.oauth.refreshToken !== undefined ? { refreshToken: REDACT_PLACEHOLDER } : {}),
+      ...(cfg.oauth.clientInformation
+        ? {
+            clientInformation: {
+              clientId: cfg.oauth.clientInformation.clientId,
+              ...(cfg.oauth.clientInformation.clientSecret !== undefined
+                ? { clientSecret: REDACT_PLACEHOLDER }
+                : {}),
+            },
+          }
+        : {}),
+    };
+  }
   return redacted;
 }
 

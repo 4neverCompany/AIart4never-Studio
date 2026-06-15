@@ -31,5 +31,20 @@ export {
   connectMcp,
   listMcpTools,
   callMcpTool,
+  buildHeaders,
 } from './client';
 export type { McpErrorCode, McpConnection } from './client';
+
+export {
+  BrowserOAuthClientProvider,
+  OAuthFlowError,
+  beginConnectorOAuth,
+  completeConnectorOAuth,
+  refreshConnectorTokenIfNeeded,
+  applyTokensToConfig,
+  computeRedirectUrl,
+  getPendingFlowId,
+  isUnauthorized,
+  OAUTH_CALLBACK_PATH,
+} from './oauth';
+export type { BeginOAuthDeps, CompleteOAuthDeps } from './oauth';

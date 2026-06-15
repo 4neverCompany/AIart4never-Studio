@@ -233,4 +233,27 @@ describe('redactConfig', () => {
     const cfg = makeServer({ headers: undefined });
     expect(redactConfig(cfg)).toEqual(cfg);
   });
+
+  it('masks the OAuth credential block (tokens + DCR secret) but keeps client_id', () => {
+    const cfg = makeServer({
+      oauth: {
+        accessToken: 'access-secret',
+        refreshToken: 'refresh-secret',
+        expiresAt: 1234567890,
+        scope: 'read',
+        clientInformation: { clientId: 'public-client-id', clientSecret: 'dcr-secret' },
+      },
+    });
+    const r = redactConfig(cfg);
+    expect(r.oauth?.accessToken).toBe('***');
+    expect(r.oauth?.refreshToken).toBe('***');
+    expect(r.oauth?.clientInformation?.clientSecret).toBe('***');
+    // Non-secret fields are preserved so a log still shows the connector IS
+    // OAuth-backed and which client it registered.
+    expect(r.oauth?.clientInformation?.clientId).toBe('public-client-id');
+    expect(r.oauth?.expiresAt).toBe(1234567890);
+    expect(r.oauth?.scope).toBe('read');
+    // Original is not mutated.
+    expect(cfg.oauth?.accessToken).toBe('access-secret');
+  });
 });

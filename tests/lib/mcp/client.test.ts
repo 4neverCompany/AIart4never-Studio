@@ -52,6 +52,7 @@ import {
   connectMcp,
   listMcpTools,
   callMcpTool,
+  buildHeaders,
   McpError,
 } from '@/lib/mcp/client';
 import type { McpServerConfig } from '@/lib/mcp/types';
@@ -141,6 +142,54 @@ describe('connectMcp', () => {
     const { close } = await connectMcp(httpCfg());
     await close();
     expect(closeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends oauth.accessToken as an Authorization: Bearer header', async () => {
+    await connectMcp(
+      httpCfg({
+        headers: undefined,
+        oauth: { accessToken: 'oauth-access-token' },
+      }),
+    );
+    const [, optsArg] = transportCtorSpy.mock.calls[0]!;
+    expect(optsArg).toEqual({
+      requestInit: { headers: { Authorization: 'Bearer oauth-access-token' } },
+    });
+  });
+
+  it('keeps an explicit Authorization header over the oauth bearer (Composio path unchanged)', async () => {
+    await connectMcp(
+      httpCfg({
+        headers: { Authorization: 'Bearer static-key', 'x-api-key': 'composio' },
+        oauth: { accessToken: 'oauth-access-token' },
+      }),
+    );
+    const [, optsArg] = transportCtorSpy.mock.calls[0]! as [unknown, { requestInit: { headers: Record<string, string> } }];
+    expect(optsArg.requestInit.headers.Authorization).toBe('Bearer static-key');
+    expect(optsArg.requestInit.headers['x-api-key']).toBe('composio');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildHeaders (pure)
+// ---------------------------------------------------------------------------
+
+describe('buildHeaders', () => {
+  it('returns undefined when there are no headers and no oauth', () => {
+    expect(buildHeaders(httpCfg({ headers: undefined }))).toBeUndefined();
+  });
+
+  it('synthesises a Bearer from oauth.accessToken when no Authorization header exists', () => {
+    const h = buildHeaders(httpCfg({ headers: { Accept: 'application/json' }, oauth: { accessToken: 'tok' } }));
+    expect(h).toEqual({ Accept: 'application/json', Authorization: 'Bearer tok' });
+  });
+
+  it('never clobbers an existing Authorization header (case-insensitive)', () => {
+    const h = buildHeaders(httpCfg({ headers: { authorization: 'Bearer static' }, oauth: { accessToken: 'tok' } }));
+    // The lowercase static header is preserved; no second Authorization added.
+    const authKeys = Object.keys(h ?? {}).filter((k) => k.toLowerCase() === 'authorization');
+    expect(authKeys).toEqual(['authorization']);
+    expect(h?.authorization).toBe('Bearer static');
   });
 });
 
