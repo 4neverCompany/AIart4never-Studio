@@ -22,6 +22,7 @@
  */
 
 import type { CharacterId } from '@/lib/canon';
+import type { McpServerConfig } from '@/lib/mcp';
 
 export interface RunContext {
   /** Stable run id, prefixed with `run_` for log readability. */
@@ -38,6 +39,15 @@ export interface RunContext {
    *  facet tags (lib/canon/content-plan canonTags) onto saved assets so
    *  reuse-first can find them by character/reality later. */
   characterId?: CharacterId;
+  /**
+   * AGENTIC-CORE: the operator's resolved, enabled+trusted Higgsfield MCP
+   * connector. The chat CLIENT must include it in the `/api/ai/prompt` body
+   * (the MCP registry is client-side, so server code never reads it). The
+   * loop threads it here so `generate_image` can submit a canon-anchored
+   * generation through Higgsfield. Undefined → the tool errors with a clear
+   * "No Higgsfield connector configured" message.
+   */
+  higgsfieldConnector?: McpServerConfig;
 }
 
 let _current: RunContext | null = null;

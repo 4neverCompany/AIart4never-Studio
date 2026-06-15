@@ -67,6 +67,11 @@ import {
   getDefaultTextModelForProvider,
   type TextGenParams,
 } from '@/lib/text-model-catalog';
+// AGENTIC-CORE: the chat client supplies the operator's Higgsfield MCP
+// connector in the request body (the registry is client-side). We thread it
+// into the Director loop's RunContext so the generate_image tool can submit a
+// canon-anchored generation through Higgsfield.
+import type { McpServerConfig } from '@/lib/mcp';
 // V1.2.2-DIRECTOR: lazy-imported inside `handleDirectorMode`
 // so the streaming-mode tests (which mock `ai` with a
 // narrow `streamText` shape) don't transitively pull in
@@ -151,6 +156,43 @@ function resolveCharacterId(raw: unknown): CharacterId {
   if (typeof raw !== 'string') return fallback;
   const valid = listCharacters().some((c) => c.id === raw);
   return valid ? (raw as CharacterId) : fallback;
+}
+
+/**
+ * AGENTIC-CORE: extract the operator's Higgsfield MCP connector from the
+ * request body. The chat CLIENT must include the resolved, enabled+trusted
+ * connector under `higgsfieldConnector` (or, for forward-compat, the first
+ * Higgsfield-looking entry of a `connectors` array) — the MCP registry is
+ * client-side, so the server never reads it. We validate just enough shape to
+ * hand to `connectMcp` (deep validation is the registry's job, client-side).
+ * Returns undefined when absent/malformed; the tool then raises a clear typed
+ * error instead of the request failing.
+ */
+function isConnectorConfig(raw: unknown): raw is McpServerConfig {
+  if (!raw || typeof raw !== 'object') return false;
+  const c = raw as Record<string, unknown>;
+  return (
+    typeof c.id === 'string' &&
+    typeof c.name === 'string' &&
+    (c.transport === 'http' || c.transport === 'stdio')
+  );
+}
+
+function readHiggsfieldConnector(
+  body: Record<string, unknown>,
+): McpServerConfig | undefined {
+  // Preferred: a single resolved connector the client already picked.
+  const direct = body.higgsfieldConnector;
+  if (isConnectorConfig(direct)) return direct;
+  // Forward-compat: a `connectors` array — take the first valid Higgsfield-ish
+  // one (matched by name, since the registry id is opaque).
+  const list = body.connectors;
+  if (Array.isArray(list)) {
+    for (const c of list) {
+      if (isConnectorConfig(c) && /higgsfield/i.test(c.name)) return c;
+    }
+  }
+  return undefined;
 }
 
 // V080-DES-003: same focus-block helper as pi route; duplicated to avoid
@@ -664,6 +706,16 @@ async function handleDirectorMode(
     (body as { activeCharacterId?: unknown }).activeCharacterId,
   );
 
+  // AGENTIC-CORE: pull the operator's Higgsfield connector out of the request
+  // body. The MCP connector registry is CLIENT-side (browser storage), so the
+  // chat CLIENT must include the resolved, enabled+trusted Higgsfield connector
+  // here — the server never reads the registry. We thread it into the loop's
+  // RunContext so the `generate_image` tool can submit a canon-anchored
+  // generation. When absent, the tool raises a clear typed error mid-loop
+  // ("No Higgsfield connector configured — add one in Customize") rather than
+  // failing the whole request, so the Director can still produce a prompt.
+  const higgsfieldConnector = readHiggsfieldConnector(body);
+
   // Optional maxSteps / budgetUsd. Both are passed through
   // verbatim to the loop; its own Zod schema rejects
   // nonsense values.
@@ -697,6 +749,10 @@ async function handleDirectorMode(
       // M1 CANON-WIRING: the director persona + image-prompt lock are anchored
       // to this character's canon.
       characterId,
+      // AGENTIC-CORE: the operator's Higgsfield connector (client-supplied) so
+      // the generate_image tool can submit through Higgsfield. Omitted when the
+      // client didn't send one.
+      ...(higgsfieldConnector ? { higgsfieldConnector } : {}),
       userId: safeUserId,
       ...(modelOverride ? { modelId: modelOverride } : {}),
       ...(maxSteps !== undefined ? { maxSteps } : {}),

@@ -6,7 +6,19 @@
  * assert on the ToolNotAvailableError shape (the v1.2.3 PR
  * fleshes those out).
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// AGENTIC-CORE: the Higgsfield branch now routes through the shared
+// `lib/higgsfield/generate.ts` core (submit + poll). Mock it so the tool tests
+// never touch the network and we can assert WHAT the tool submits (incl. the
+// canon anchor for kael) and how it handles missing connectors / async jobs.
+const submitSpy = vi.fn();
+const pollSpy = vi.fn();
+vi.mock('@/lib/higgsfield/generate', () => ({
+  submitHiggsfieldGeneration: (...args: unknown[]) => submitSpy(...args),
+  pollHiggsfieldJob: (...args: unknown[]) => pollSpy(...args),
+}));
+
 import {
   executeGenerateImage,
   generateImageTool,
@@ -18,30 +30,54 @@ import {
   ToolNotAvailableError,
 } from '@/lib/agent-tools/errors';
 import { HIGGSFIELD_IMAGE_MODELS, getHiggsfieldImageModel } from '@/lib/higgsfield/models';
-import { __registerProvider, __resetRegistry } from '@/lib/providers/registry';
-import type { AssetRef, ProviderAdapter } from '@/lib/providers/interface';
+import {
+  __setCurrentRunContextForTests,
+  type RunContext,
+} from '@/lib/agent-loop/run-context';
+import { getElementRef } from '@/lib/canon';
+import type { McpServerConfig } from '@/lib/mcp';
 
 const validPrompt = 'A long enough prompt to satisfy the min-20 validation gate.';
 
+/** A stand-in Higgsfield connector (the client would supply the real one). */
+const CONNECTOR: McpServerConfig = {
+  id: 'hf-1',
+  name: 'Higgsfield',
+  transport: 'http',
+  url: 'https://higgsfield.example.com/mcp',
+  headers: { Authorization: 'Bearer secret' },
+  enabled: true,
+  trusted: true,
+  addedAt: 0,
+};
+
 /**
- * V1.5: deterministic Higgsfield adapter stand-in so the wired tests
- * don't depend on whether the real CLI binary is on the test machine's
- * PATH. `available:false` exercises the not-available path; `image`
- * sets the AssetRef the (available) generateImage returns.
+ * Set the RunContext the tool reads, with the Higgsfield connector present (so
+ * the generate_image tool can submit). NODE_ENV==='test' makes the HIL guard a
+ * no-op, so the context here only supplies the connector + characterId.
  */
-function mockHiggsfield(opts: { available: boolean; image?: Partial<AssetRef> }): ProviderAdapter {
-  return {
-    name: 'higgsfield',
-    label: 'Higgsfield (mock)',
-    isAvailable: async () => opts.available,
-    generateImage: async () =>
-      ({ kind: 'image', provider: 'higgsfield', ...opts.image }) as AssetRef,
-    generateVideo: async () => ({ kind: 'video', provider: 'higgsfield' }) as AssetRef,
-  };
+function enterCtxWithConnector(
+  connector: McpServerConfig | undefined,
+  characterId: RunContext['characterId'] = 'kael',
+): void {
+  __setCurrentRunContextForTests({
+    runId: 'run_test',
+    stepCounter: 0,
+    totalCostUsd: 0,
+    budgetUsd: 1,
+    ...(characterId ? { characterId } : {}),
+    ...(connector ? { higgsfieldConnector: connector } : {}),
+  });
 }
 
+beforeEach(() => {
+  submitSpy.mockReset();
+  pollSpy.mockReset();
+  __setCurrentRunContextForTests(null);
+});
+
 afterEach(() => {
-  __resetRegistry();
+  __setCurrentRunContextForTests(null);
 });
 
 describe('executeGenerateImage — input validation', () => {
@@ -82,41 +118,98 @@ describe('executeGenerateImage — provider dispatch', () => {
     }
   });
 
-  it('higgsfield provider throws ToolNotAvailableError when the CLI is unavailable', async () => {
-    __registerProvider('higgsfield', mockHiggsfield({ available: false }));
+  it('higgsfield throws ToolNotAvailableError when no connector is in the RunContext', async () => {
+    // No connector configured anywhere (no run context at all).
+    const r = await executeGenerateImage({
+      model: 'nano_banana_2',
+      prompt: validPrompt,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error).toBeInstanceOf(ToolNotAvailableError);
+      expect(r.error.message).toMatch(/No Higgsfield connector configured/i);
+    }
+    // Never submitted.
+    expect(submitSpy).not.toHaveBeenCalled();
+  });
+
+  it('higgsfield throws ToolNotAvailableError when a run context exists but carries no connector', async () => {
+    enterCtxWithConnector(undefined);
     const r = await executeGenerateImage({
       model: 'nano_banana_2',
       prompt: validPrompt,
     });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toBeInstanceOf(ToolNotAvailableError);
+    expect(submitSpy).not.toHaveBeenCalled();
   });
 
-  it('V1.5: higgsfield provider returns the AssetRef when the CLI is available', async () => {
-    __registerProvider(
-      'higgsfield',
-      mockHiggsfield({ available: true, image: { url: 'https://cdn.higgsfield.ai/img/abc.png', jobId: 'job-abc' } }),
-    );
-    const r = await executeGenerateImage({
+  it('AGENTIC-CORE: submits through Higgsfield with the canon anchor for kael and returns the completed rawUrl', async () => {
+    enterCtxWithConnector(CONNECTOR, 'kael');
+    const elementRef = getElementRef('kael') as string;
+    expect(elementRef).toBeTruthy();
+    submitSpy.mockResolvedValue({
+      jobId: 'job-abc',
+      prompt: `${elementRef} ${validPrompt}`,
+      anchored: true,
       model: 'nano_banana_2',
-      prompt: validPrompt,
+      characterId: 'kael',
     });
+    pollSpy.mockResolvedValue({
+      status: 'completed',
+      images: ['https://cdn.higgsfield.ai/out.jpeg', 'https://cdn.higgsfield.ai/out_min.webp'],
+    });
+
+    const r = await executeGenerateImage({ model: 'nano_banana_2', prompt: validPrompt });
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.value.assetRef.provider).toBe('higgsfield');
-      expect(r.value.assetRef.url).toBe('https://cdn.higgsfield.ai/img/abc.png');
+      // images[0] is the full-res rawUrl.
+      expect(r.value.assetRef.url).toBe('https://cdn.higgsfield.ai/out.jpeg');
       expect(r.value.assetRef.id).toBe('job-abc');
+    }
+
+    // The tool routed to the shared lib with: the connector, the agent's
+    // already-finalized prompt (enhance OFF), and the canon character so the
+    // <<<element>>> anchor is applied for kael.
+    expect(submitSpy).toHaveBeenCalledTimes(1);
+    const submitArgs = submitSpy.mock.calls[0][0] as Record<string, unknown>;
+    expect(submitArgs.connector).toEqual(CONNECTOR);
+    expect(submitArgs.prompt).toBe(validPrompt);
+    expect(submitArgs.enhance).toBe(false);
+    expect(submitArgs.characterId).toBe('kael');
+    expect(submitArgs.model).toBe('nano_banana_2');
+  });
+
+  it('AGENTIC-CORE: surfaces a retryable ToolExecutionError when the job never completes', async () => {
+    enterCtxWithConnector(CONNECTOR, 'kael');
+    submitSpy.mockResolvedValue({
+      jobId: 'job-xyz',
+      prompt: validPrompt,
+      anchored: true,
+      model: 'nano_banana_2',
+      characterId: 'kael',
+    });
+    // A terminal-failure status → pollToCompletion returns undefined.
+    pollSpy.mockResolvedValue({ status: 'failed', images: [] });
+
+    const r = await executeGenerateImage({ model: 'nano_banana_2', prompt: validPrompt });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error).toBeInstanceOf(ToolExecutionError);
+      expect((r.error as ToolExecutionError).retryable).toBe(true);
     }
   });
 
-  it('V1.5: higgsfield surfaces a retryable error when generation returns an async job (no url)', async () => {
-    __registerProvider(
-      'higgsfield',
-      mockHiggsfield({ available: true, image: { jobId: 'job-xyz' } }),
-    );
+  it('AGENTIC-CORE: maps a Higgsfield submit failure to a retryable ToolExecutionError', async () => {
+    enterCtxWithConnector(CONNECTOR, 'kael');
+    submitSpy.mockRejectedValue(new Error('Higgsfield returned no job id'));
     const r = await executeGenerateImage({ model: 'nano_banana_2', prompt: validPrompt });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error).toBeInstanceOf(ToolExecutionError);
+    if (!r.ok) {
+      expect(r.error).toBeInstanceOf(ToolExecutionError);
+      expect((r.error as ToolExecutionError).retryable).toBe(true);
+    }
   });
 
   it('minimax provider throws ToolNotAvailableError', async () => {
@@ -181,12 +274,10 @@ describe('executeGenerateImage — settings validation', () => {
     if (!r.ok) expect(r.error).toBeInstanceOf(ValidationError);
   });
 
-  it('routes an unknown higgsfield:* slug to the higgsfield provider (unavailable → ToolNotAvailableError)', async () => {
-    // The dispatcher routes any `higgsfield:*` slug to the
-    // Higgsfield provider. With the CLI unavailable, that surfaces
-    // ToolNotAvailableError — proving the routing without depending
-    // on the real binary.
-    __registerProvider('higgsfield', mockHiggsfield({ available: false }));
+  it('routes an unknown higgsfield:* slug to the higgsfield provider (no connector → ToolNotAvailableError)', async () => {
+    // The dispatcher routes any `higgsfield:*` slug to the Higgsfield
+    // provider. With no connector in context, that surfaces
+    // ToolNotAvailableError — proving the routing without a network call.
     const r = await executeGenerateImage({
       model: 'higgsfield:nonexistent',
       prompt: validPrompt,

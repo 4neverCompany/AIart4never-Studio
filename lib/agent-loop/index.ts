@@ -67,6 +67,11 @@ import { stripModelCommentary } from '@/lib/agent-tools/prompt-extract';
 // director's drafts. Threaded into the PlanContext (default 'kael').
 import type { CharacterId } from '@/lib/canon';
 import { checkCanonCompliance, type CanonCheck } from '@/lib/canon/guard';
+// AGENTIC-CORE: the operator's Higgsfield connector flows client → /api/ai/prompt
+// → RunContext → the generate_image tool, which submits a canon-anchored
+// generation through Higgsfield. The registry is client-side, so the connector
+// is passed IN (never read from storage by server code).
+import type { McpServerConfig } from '@/lib/mcp';
 
 import { StepLogger, truncateForLog, type Step } from './log';
 import { BudgetTracker, estimateStepCost } from './budget';
@@ -98,6 +103,15 @@ export interface RunDirectorLoopInput {
    * protagonist / narrator) when the caller omits it.
    */
   characterId?: CharacterId;
+  /**
+   * AGENTIC-CORE: the operator's resolved, enabled+trusted Higgsfield MCP
+   * connector. The chat CLIENT supplies it in the `/api/ai/prompt` body (the
+   * MCP registry is client-side); the route reads it and passes it here. Set
+   * into the RunContext so `generate_image` can submit a canon-anchored
+   * generation through Higgsfield. Omitted → the tool errors with a clear
+   * "No Higgsfield connector configured — add one in Customize" message.
+   */
+  higgsfieldConnector?: McpServerConfig;
   /** Storage partition key. Required for `persistence.listRunsForUser`. */
   userId: string;
   /** Optional: model id override (e.g. 'MiniMax-M3'). Falls back to env-driven default. */
@@ -445,6 +459,12 @@ export async function runDirectorLoop(
     totalCostUsd: 0,
     budgetUsd: budgetLimit,
     characterId: input.characterId ?? 'kael',
+    // AGENTIC-CORE: thread the operator's Higgsfield connector so the
+    // generate_image tool can submit a canon-anchored generation. Only set
+    // when the client supplied one; absent → the tool raises a typed error.
+    ...(input.higgsfieldConnector
+      ? { higgsfieldConnector: input.higgsfieldConnector }
+      : {}),
   });
 
   // -----------------------------------------------------------------------

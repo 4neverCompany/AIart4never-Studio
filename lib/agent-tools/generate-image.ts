@@ -40,9 +40,16 @@ import {
   getHiggsfieldImageModel,
   type HiggsfieldImageModelSlug,
 } from '@/lib/higgsfield/models';
-import { getProvider } from '@/lib/providers/registry';
 import { requireApproval } from '@/lib/agent-loop/hil';
 import { currentRunContext, bumpStepCounter } from '@/lib/agent-loop/run-context';
+// AGENTIC-CORE: image generation routes through Higgsfield (character-anchored
+// via the canon Element `<<<id>>>`). The shared, tested core lives here so the
+// tool and the `/api/higgsfield/image/*` routes share the exact behavior.
+// Leonardo is being removed — generation never routes to it.
+import {
+  submitHiggsfieldGeneration,
+  pollHiggsfieldJob,
+} from '@/lib/higgsfield/generate';
 
 // ---------------------------------------------------------------------------
 // Provider dispatcher
@@ -113,11 +120,25 @@ async function generateMock(
 }
 
 /**
- * V1.5: Higgsfield provider path — wired to the CLI adapter
- * (lib/providers/higgsfield/cli-adapter.ts) via the registry. Images
- * generate synchronously on Higgsfield, so a successful call returns
- * an AssetRef with a URL. The agent loop can now actually generate
- * images through Higgsfield's CLI (this was a `throw` stub before).
+ * AGENTIC-CORE: Higgsfield provider path — wired to the shared
+ * `lib/higgsfield/generate.ts` core (the same code the
+ * `/api/higgsfield/image/*` routes use). Image generation is
+ * character-anchored: the canon Element `<<<id>>>` for the active
+ * character (from the RunContext, default 'kael') is prepended so
+ * Higgsfield edits from the LOCKED reference.
+ *
+ * Flow: read the operator's Higgsfield connector from the RunContext →
+ * `submitHiggsfieldGeneration({ enhance:false })` (the agent loop already
+ * critiqued + finalized the prompt — we anchor it but DON'T re-enhance) →
+ * poll `job_display` to completion → return the produced `rawUrl` as the
+ * tool's AssetRef.
+ *
+ * No connector in context → a clear `ToolNotAvailableError` ("No Higgsfield
+ * connector configured — add one in Customize"). The chat CLIENT must include
+ * the operator's enabled+trusted Higgsfield connector in the `/api/ai/prompt`
+ * body (the MCP registry is client-side); the loop threads it into the
+ * RunContext. The `getProvider('higgsfield')` throw path is gone — Leonardo /
+ * the CLI adapter are no longer on the agent's image-generation path.
  */
 async function generateHiggsfield(
   input: GenerateImageInput,
@@ -130,52 +151,110 @@ async function generateHiggsfield(
     : input.model;
   const settings = { ...IMAGE_SETTINGS_DEFAULTS, ...(input.settings ?? {}) };
 
-  let adapter;
-  try {
-    adapter = getProvider('higgsfield');
-  } catch {
+  const ctx = currentRunContext();
+  const connector = ctx?.higgsfieldConnector;
+  if (!connector) {
     throw new ToolNotAvailableError(
       'generate_image',
-      'higgsfield provider is not registered — check lib/providers/registry.ts',
-    );
-  }
-  if (!(await adapter.isAvailable())) {
-    throw new ToolNotAvailableError(
-      'generate_image',
-      'Higgsfield CLI is not available (the higgsfield/higgs binary is missing or '
-        + 'not authenticated). Run `higgsfield auth login`, or paste a CLI token in '
-        + 'Settings → Higgsfield.',
+      'No Higgsfield connector configured — add one in Customize (the chat client '
+        + 'must include the operator\'s enabled+trusted Higgsfield connector in the '
+        + 'request).',
     );
   }
 
-  const ref = await adapter.generateImage({
-    prompt: input.prompt,
-    model,
-    aspectRatio: settings.aspectRatio,
+  // Submit a canon-anchored generation. `enhance:false` — the prompt the agent
+  // passes here is already the critiqued/finalized Director draft; the shared
+  // lib only prepends the character's `<<<element>>>` canon anchor and submits.
+  let submitted;
+  try {
+    submitted = await submitHiggsfieldGeneration({
+      connector,
+      model,
+      prompt: input.prompt,
+      aspectRatio: settings.aspectRatio,
+      enhance: false,
+      // The active canon character drives the anchor (default 'kael').
+      ...(ctx?.characterId ? { characterId: ctx.characterId } : {}),
+      ...(signal ? { signal } : {}),
+    });
+  } catch (e: unknown) {
+    throw new ToolExecutionError(
+      'generate_image',
+      `Higgsfield submit failed: ${e instanceof Error ? e.message : String(e)}`,
+      { retryable: true, cause: e },
+    );
+  }
+
+  // Poll job_display to completion. Bounded so a stuck job can't hang the loop;
+  // an abort (caller cancel) ends the wait early. On exhaustion we surface a
+  // retryable error carrying the jobId so the agent can poll via job_lookup.
+  const url = await pollToCompletion({
+    connector,
+    jobId: submitted.jobId,
     ...(signal ? { signal } : {}),
   });
-
-  // Images are synchronous — a successful call carries a URL. If we got
-  // an async job instead (no url), surface a retryable error so the
-  // agent polls via job_lookup rather than fabricating a URL to satisfy
-  // the schema.
-  const url = ref.url;
   if (!url) {
     throw new ToolExecutionError(
       'generate_image',
-      ref.jobId
-        ? `Higgsfield returned an async job (${ref.jobId}) instead of an image URL; poll it with job_lookup.`
-        : 'Higgsfield returned no image URL.',
-      { retryable: Boolean(ref.jobId) },
+      `Higgsfield job ${submitted.jobId} did not complete in time; poll it with job_lookup.`,
+      { retryable: true },
     );
   }
 
   return zGenerateImageOutput.parse({
     assetRef: {
       provider: 'higgsfield',
-      id: ref.jobId || ref.path || url,
+      id: submitted.jobId,
       url,
     },
+  });
+}
+
+/**
+ * Poll `job_display` until the job is `completed` (returns the full-res
+ * `rawUrl`), the deadline elapses (returns undefined → the caller surfaces a
+ * retryable error), or the signal aborts. Intervals/timeout are conservative —
+ * Higgsfield image jobs typically complete in well under a minute.
+ */
+async function pollToCompletion(args: {
+  connector: NonNullable<ReturnType<typeof currentRunContext>>['higgsfieldConnector'];
+  jobId: string;
+  signal?: AbortSignal;
+}): Promise<string | undefined> {
+  const connector = args.connector;
+  if (!connector) return undefined;
+  const POLL_INTERVAL_MS = 2_000;
+  const MAX_WAIT_MS = 120_000;
+  const deadline = Date.now() + MAX_WAIT_MS;
+
+  while (Date.now() < deadline) {
+    if (args.signal?.aborted) return undefined;
+    const { status, images } = await pollHiggsfieldJob({ connector, jobId: args.jobId });
+    if (status === 'completed' && images.length > 0) {
+      // images[0] is the full-res rawUrl (parseJobDisplay pushes rawUrl first).
+      return images[0];
+    }
+    // Terminal failure states from the backend — stop waiting.
+    if (status === 'failed' || status === 'error' || status === 'canceled') {
+      return undefined;
+    }
+    await sleep(POLL_INTERVAL_MS, args.signal);
+  }
+  return undefined;
+}
+
+/** Resolve after `ms`, or early when `signal` aborts. */
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    const t = setTimeout(resolve, ms);
+    if (signal) {
+      const onAbort = () => {
+        clearTimeout(t);
+        resolve();
+      };
+      if (signal.aborted) onAbort();
+      else signal.addEventListener('abort', onAbort, { once: true });
+    }
   });
 }
 
