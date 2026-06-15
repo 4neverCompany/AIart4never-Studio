@@ -33,3 +33,11 @@ export {
   SHRINKAGE_K,
   UNCERTAINTY_PENALTY,
 } from './self-tuning';
+
+export type {
+  AdaptedSlot,
+  AdaptiveInput,
+  AdaptiveResult,
+} from './adaptive-plan';
+
+export { adaptWeeklyTemplate, DEFAULT_EXPLORATION_RATE } from './adaptive-plan';
