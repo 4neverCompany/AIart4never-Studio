@@ -53,10 +53,10 @@ export function EmptyGalleryState({ firstRun, ideaCount, setView }: EmptyGallery
       </h2>
       <p className="text-sm max-w-md text-center text-zinc-500 mb-6">
         {firstRun
-          ? 'Drop in a few crossover ideas and let the pipeline turn them into post-ready images, captions, and a schedule — automatically.'
+          ? 'Drop in a few beat ideas and let the pipeline turn them into post-ready Master4never images, captions, and a schedule — automatically.'
           : ideaCount > 0
             ? `You have ${ideaCount} pending ${ideaCount === 1 ? 'idea' : 'ideas'} ready for the pipeline. Or save favorites from the Studio to build the gallery manually.`
-            : 'Save your favorite mashups from the Studio to build your collection — or kick off the pipeline to fill it automatically.'}
+            : 'Save your favorite beats from the Studio to build your collection — or kick off the pipeline to fill it automatically.'}
       </p>
 
       <div className="flex flex-wrap items-center justify-center gap-3">

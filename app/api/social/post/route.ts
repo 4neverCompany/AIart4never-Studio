@@ -503,7 +503,7 @@ export async function POST(req: Request) {
         }
       }
 
-      const firstLine = (caption || '').split('\n')[0] || 'Mashup';
+      const firstLine = (caption || '').split('\n')[0] || 'Master4never';
       const title = firstLine.length > 100 ? firstLine.slice(0, 97) + '…' : firstLine;
 
       const pinBody: Record<string, unknown> = {

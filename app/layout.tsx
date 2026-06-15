@@ -27,12 +27,12 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: 'AIart4never Studio',
-  description: 'Generate crossover images across multiple AI providers (Leonardo.ai, MiniMax, GPT Image, Nano Banana) and post to Instagram / Twitter via an autonomous pipeline.',
+  description: 'Generate on-canon Master4never beats from a locked character reference, then watermark, crop, and post them to Instagram and Pinterest behind a human approval gate.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Mashup Studio',
+    title: 'AIart4never Studio',
   },
 };
 

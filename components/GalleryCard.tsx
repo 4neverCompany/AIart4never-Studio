@@ -539,7 +539,7 @@ export const GalleryCard = memo(function GalleryCard({
                   const href = img.url || `data:image/jpeg;base64,${img.base64}`;
                   const a = document.createElement('a');
                   a.href = href;
-                  a.download = `mashup-${img.id}.jpg`;
+                  a.download = `aiart4never-beat-${img.id}.jpg`;
                   if (img.url) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
                   document.body.appendChild(a);
                   a.click();

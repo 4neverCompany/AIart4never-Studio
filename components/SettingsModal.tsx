@@ -702,7 +702,7 @@ export function SettingsModal({
                 type="text"
                 value={settings.channelName || ''}
                 onChange={(e) => updateSettings({ channelName: e.target.value })}
-                placeholder="e.g. MultiverseMashupAI"
+                placeholder="e.g. AIart4never"
                 className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30 transition-all"
               />
             </div>

@@ -1186,7 +1186,7 @@ export function MainContent() {
       let videoPrompt = style === 'Standard' ? img.prompt : `${img.prompt}. Motion style: ${style}`;
       try {
         const enhanced = await streamAIToString(
-          `The user wants to animate an image based on this prompt: "${img.prompt}". Enhance this prompt for a video animation. Focus heavily on "what if" scenarios, alternative universes, different timelines, and epic crossovers for Star Wars, Marvel, DC, and Warhammer 40k. Motion style: ${style}. Return ONLY the enhanced animation prompt as a single string.`,
+          `The user wants to animate an image based on this prompt: "${img.prompt}". Enhance this prompt for a video animation of a Master4never beat — keep the character on-model and cinematic, and lean into the multiverse / variant-reveal energy across realities (PRIME cyberpunk and the W40K-style variants). Motion style: ${style}. Return ONLY the enhanced animation prompt as a single string.`,
           { mode: 'enhance', provider: settings.activeAiAgent, model: settings.activeTextModel }
         );
         if (enhanced.trim()) videoPrompt = enhanced.trim();
@@ -1242,9 +1242,9 @@ export function MainContent() {
           );
           const parsed = extractJsonArrayFromLLM(text);
           const strTags = parsed.filter((t): t is string => typeof t === 'string');
-          return strTags.length > 0 ? strTags : ['Mashup'];
+          return strTags.length > 0 ? strTags : ['Master4never'];
         } catch {
-          return ['Mashup'];
+          return ['Master4never'];
         }
       };
 
@@ -1322,7 +1322,7 @@ export function MainContent() {
           <div className="w-8 h-8 rounded-xl bg-[#00e6ff]/15 border border-[#00e6ff]/25 hidden sm:flex items-center justify-center">
             <Sparkles className="w-4 h-4 text-[#00e6ff]" />
           </div>
-          <h1 className="text-base md:text-lg font-semibold tracking-tight text-white truncate max-w-[120px] sm:max-w-none">Mashup Studio</h1>
+          <h1 className="text-base md:text-lg font-semibold tracking-tight text-white truncate max-w-[120px] sm:max-w-none">AIart4never Studio</h1>
         </div>
         
         <div className="flex items-center gap-2 md:gap-4 overflow-hidden">
@@ -1491,8 +1491,8 @@ export function MainContent() {
                       <Sparkles className="w-5 h-5 text-[#00e6ff]" />
                     </div>
                     <div>
-                      <h2 className="type-title">Mashup Studio</h2>
-                      <p className="type-muted">Generate images with different AI models and artistic styles</p>
+                      <h2 className="type-title">AIart4never Studio</h2>
+                      <p className="type-muted">Generate on-canon Master4never beats across different AI models and looks</p>
                     </div>
                   </div>
 
@@ -1715,7 +1715,7 @@ export function MainContent() {
                         ) : (
                           <>
                             <Sparkles className="w-5 h-5" />
-                            Generate {comparisonModels.length} Images
+                            Generate Beat ({comparisonModels.length} models)
                           </>
                         )}
                       </button>
@@ -3377,9 +3377,9 @@ export function MainContent() {
                 <div className="w-24 h-24 mb-6 rounded-full bg-zinc-900/50 border border-zinc-800/60 flex items-center justify-center">
                   <ImageIcon className="w-10 h-10 text-zinc-700" />
                 </div>
-                <h2 className="text-xl font-medium text-zinc-300 mb-2">No Images Generated Yet</h2>
+                <h2 className="text-xl font-medium text-zinc-300 mb-2">No beats yet</h2>
                 <p className="text-sm max-w-md text-center text-zinc-500">
-                  Click &quot;Generate Mashup&quot; to create 4 unique crossover images from famous fantasy universes using Leonardo.AI.
+                  Hit &quot;Generate Beat&quot; to render on-canon Master4never beats — always edited from a locked character reference, never from scratch.
                 </p>
               </motion.div>
             )

@@ -40,12 +40,12 @@ export function Step2Niche({ universes, genres, onChangeUniverses, onChangeGenre
       <div>
         <h3 id="onboarding-title" className="text-xl font-bold text-white">What do you create?</h3>
         <p className="text-sm text-zinc-400 mt-1">
-          Pick the universes and genres you create in — up to {MAX_SELECTIONS} each. The agent uses these to brainstorm crossovers.
+          Pick the realities and styles you create in — up to {MAX_SELECTIONS} each. The agent uses these to brainstorm Master4never beats.
         </p>
       </div>
 
       <ChipRow
-        title="Universes"
+        title="Realities"
         curated={CURATED_UNIVERSES}
         selected={universes}
         onChange={onChangeUniverses}
@@ -161,10 +161,10 @@ function IdentityPreview({ universes, genres }: { universes: string[]; genres: s
         <div className="text-zinc-300 font-medium mb-0.5">Your agent identity</div>
         {hasBoth ? (
           <p className="text-zinc-400 italic">
-            &ldquo;You&rsquo;ll generate {universes.join(' × ')} crossovers in {genres.join(' and ')} styles.&rdquo;
+            &ldquo;You&rsquo;ll generate Master4never beats across {universes.join(' × ')} in {genres.join(' and ')} styles.&rdquo;
           </p>
         ) : (
-          <p className="text-zinc-500">Pick at least one universe and one genre to see your identity</p>
+          <p className="text-zinc-500">Pick at least one reality and one style to see your identity</p>
         )}
       </div>
     </div>

@@ -460,7 +460,7 @@ export function ImageDetailModal({
                 </button>
                 <a
                   href={image.url || `data:image/jpeg;base64,${image.base64}`}
-                  download={image.isVideo ? 'mashup-video.mp4' : 'mashup-detail.jpg'}
+                  download={image.isVideo ? 'aiart4never-beat.mp4' : 'aiart4never-beat.jpg'}
                   className="flex-1 py-4 bg-[#00e6ff] hover:bg-[#33eaff] active:bg-[#00b8cc] text-[#050505] rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#00e6ff]/20 uppercase tracking-widest text-xs"
                   target={image.url ? '_blank' : undefined}
                   rel={image.url ? 'noopener noreferrer' : undefined}

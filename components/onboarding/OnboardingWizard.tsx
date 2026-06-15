@@ -149,7 +149,7 @@ export function OnboardingWizard({ initialStep = 1, onComplete, onSkip }: Onboar
       >
         {/* Header */}
         <div className="px-6 py-4 flex items-center justify-between border-b border-zinc-900 flex-shrink-0">
-          <span className="text-sm font-bold tracking-wide text-[#ff7a18]">MASHUPFORGE</span>
+          <span className="text-sm font-bold tracking-wide text-[#ff7a18]">AIART4NEVER STUDIO</span>
           <button
             type="button"
             onClick={() => setSkipConfirming(true)}

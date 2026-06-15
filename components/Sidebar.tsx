@@ -181,8 +181,8 @@ export function Sidebar() {
         // Content Pillars / Style Tags vocabulary. Settings fallback
         // values stay as concrete examples so empty-configuration
         // users still see useful idea-gen output.
-        const pillars = settings.agentNiches?.join(', ') || 'Marvel, DC, Star Wars, Warhammer 40k';
-        const styles = settings.agentGenres?.join(', ') || 'Cinematic Crossovers, Epic Action, Visual Storytelling';
+        const pillars = settings.agentNiches?.join(', ') || 'Story-Beat, Variant Reveal, Same Soul Different Reality, Lore';
+        const styles = settings.agentGenres?.join(', ') || 'Cinematic, Epic Action, Visual Storytelling';
 
         const message = `${settings.agentPrompt || MASHUPFORGE_AI_PERSONA}
 
@@ -192,7 +192,7 @@ ${trendingBlock}
 
 Topic: ${userMsg}
 
-Generate 3-5 crossover content ideas that are SPECTACULAR, timely, and would go viral on Instagram. Each idea should be a visually stunning image concept.
+Generate 3-5 Master4never beat ideas that are SPECTACULAR, timely, and would go viral on Instagram. Each idea should be a visually stunning, on-canon image concept (Kael across realities — PRIME cyberpunk or a W40K-style variant).
 Return them as a JSON array. Each object has "context" (short catchy title) and "concept" (detailed image generation prompt, vivid and cinematic).
 Return ONLY the JSON array, no prose.`;
 
@@ -388,10 +388,10 @@ Return ONLY the JSON array, no prose.`;
         {messages.length === 0 && (
           <div className="text-center text-zinc-500 text-sm mt-10 flex flex-col items-center gap-4">
             {activeTab === 'chat' ? (
-              <p>Ask me anything about fantasy universes or brainstorm crossover ideas!</p>
+              <p>Ask me anything about the Master4never multiverse or brainstorm new beat ideas!</p>
             ) : (
               <>
-                <p>Generate peak content, what-if scenarios, and crossovers for Star Wars, Marvel, DC, and Warhammer 40k.</p>
+                <p>Generate peak content and variant reveals for Master4never (Kael) across realities — PRIME cyberpunk and the W40K-style variants.</p>
                 <button
                   onClick={() => {
                     handleSend(`Autonomous Content Generation: Research current trends and generate a viral concept with 3 image prompts based on my personality settings.`);
