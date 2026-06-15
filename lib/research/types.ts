@@ -2,7 +2,7 @@
  * 4NE-16 — Web-research module types.
  *
  * The SENSE-step research source: niche/trend suggestions that feed the weekly
- * plan. Replaces MashupForge's broken homegrown web-search with a reliable
+ * plan. Replaces the legacy broken homegrown web-search with a reliable
  * MCP-connector dispatch (Exa primary + Tavily fallback). These types are the
  * shared vocabulary across `providers.ts` (pure mapping) and `research.ts`
  * (the live, fallback-aware dispatcher).

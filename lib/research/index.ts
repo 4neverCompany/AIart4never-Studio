@@ -1,7 +1,7 @@
 /**
  * 4NE-16 — Web-research module: public surface.
  *
- * The SENSE-step research source that replaces MashupForge's broken homegrown
+ * The SENSE-step research source that replaces the legacy broken homegrown
  * web-search. `providers.ts` is PURE (tool slugs + defensive result mappers);
  * `research.ts` is the live, fallback-aware dispatcher (Exa primary + Tavily
  * fallback) that runs through `lib/mcp` like `lib/publish` / `lib/analytics`.

@@ -15,3 +15,8 @@
 # (an IDB store name, not a secret) on the baseline-import commit. gitleaks-action
 # matches .gitleaksignore by the FULL fingerprint (commit:file:rule:line).
 021d8e0189f7b3884532366b88e8f69068187f78:lib/trademark-outcomes.ts:generic-api-key:44
+
+# Persistence key string in lib/connectors/skills.ts:20. The generic-api-key
+# heuristic flags the `aiart4never_skills` literal (an idb-keyval store-key
+# constant, not a secret) on the M2 connectors commit. Full-fingerprint match.
+5ac0f04ec3d371e6fe221ef9a29d6f971b4346c8:lib/connectors/skills.ts:generic-api-key:20

@@ -2,7 +2,7 @@
  * 4NE-16 — Reliable web-research dispatcher (Exa primary + Tavily fallback).
  *
  * The SENSE step's research source: it produces niche/trend suggestions that
- * feed into the weekly plan. This REPLACES MashupForge's broken homegrown
+ * feed into the weekly plan. This REPLACES the legacy broken homegrown
  * web-search — instead of scraping ourselves, we dispatch through the operator's
  * Exa (primary) / Tavily (fallback) MCP connectors, exactly like `lib/publish`
  * and `lib/analytics` dispatch their connectors: resolve the tool slug, connect
