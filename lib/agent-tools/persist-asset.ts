@@ -28,6 +28,8 @@ import {
 import { get, set } from '@/lib/persistence';
 import { AssetPersistError, safeExecute, type ToolResult } from './errors';
 import type { GeneratedImage } from '@/types/mashup';
+import { currentRunContext } from '@/lib/agent-loop/run-context';
+import { canonTags } from '@/lib/canon/content-plan';
 
 // ---------------------------------------------------------------------------
 // Pure helpers (exported for unit tests)
@@ -147,6 +149,15 @@ export async function executePersistAsset(
     const assetId = makeAssetId(input);
     const persistedAt = Date.now();
     const next = toGeneratedImage(input, assetId, persistedAt);
+
+    // 4NE-24: deterministically stamp the active canon character's facet tags
+    // (character:<id>, reality:<id>) onto the asset — regardless of what the
+    // model put in metadata.tags — so reuse-first (lib/canon/content-plan) can
+    // find it by character/reality later. No-op outside a director run.
+    const cid = currentRunContext()?.characterId;
+    if (cid) {
+      next.tags = Array.from(new Set([...(next.tags ?? []), ...canonTags(cid)]));
+    }
 
     // Read-modify-write. The atomicity window is small (~few ms
     // in IDB / tauri-plugin-store), but the Director loop

@@ -21,6 +21,8 @@
  * clears the slot at the end of a test.
  */
 
+import type { CharacterId } from '@/lib/canon';
+
 export interface RunContext {
   /** Stable run id, prefixed with `run_` for log readability. */
   runId: string;
@@ -32,6 +34,10 @@ export interface RunContext {
   budgetUsd: number;
   /** HIL auto-approve threshold override (USD). */
   autoApproveBelowUsd?: number;
+  /** 4NE-24: the active canon character for this run. persist_asset stamps its
+   *  facet tags (lib/canon/content-plan canonTags) onto saved assets so
+   *  reuse-first can find them by character/reality later. */
+  characterId?: CharacterId;
 }
 
 let _current: RunContext | null = null;

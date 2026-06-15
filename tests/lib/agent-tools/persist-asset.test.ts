@@ -6,7 +6,7 @@
  * `vi.mock('@/lib/persistence', ...)` so the tests don't touch
  * idb-keyval / tauri-plugin-store.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Persistence is mocked so the tests don't touch idb-keyval /
 // tauri-plugin-store. We use a factory (allowed by vitest) so the
@@ -28,6 +28,7 @@ import {
 import { ValidationError, AssetPersistError } from '@/lib/agent-tools/errors';
 import type { GeneratedImage } from '@/types/mashup';
 import * as persistenceModule from '@/lib/persistence';
+import { __setCurrentRunContextForTests } from '@/lib/agent-loop/run-context';
 
 const persistenceMock = {
   get: persistenceModule.get as ReturnType<typeof vi.fn>,
@@ -44,6 +45,34 @@ beforeEach(() => {
   vi.clearAllMocks();
   persistenceMock.get.mockResolvedValue([]);
   persistenceMock.set.mockResolvedValue(undefined);
+});
+
+// ---------------------------------------------------------------------------
+// 4NE-24: deterministic canon tagging from the run context
+// ---------------------------------------------------------------------------
+
+describe('canon tagging (4NE-24)', () => {
+  afterEach(() => __setCurrentRunContextForTests(null));
+
+  it('stamps the active character facet tags onto the persisted asset', async () => {
+    __setCurrentRunContextForTests({ runId: 'run_x', stepCounter: 0, totalCostUsd: 0, budgetUsd: 1, characterId: 'kael' });
+    await executePersistAsset(sampleInput);
+    const calls = persistenceMock.set.mock.calls;
+    const last = calls[calls.length - 1] as [string, GeneratedImage[]];
+    expect(last[0]).toBe('mashup_saved_images');
+    const saved = last[1][0];
+    expect(saved.tags).toContain('character:kael');
+    expect(saved.tags).toContain('reality:prime');
+    expect(saved.tags).toContain('Marvel'); // original model tags preserved
+  });
+
+  it('is a no-op outside a director run', async () => {
+    __setCurrentRunContextForTests(null);
+    await executePersistAsset(sampleInput);
+    const calls = persistenceMock.set.mock.calls;
+    const last = calls[calls.length - 1] as [string, GeneratedImage[]];
+    expect(last[1][0].tags).toEqual(['Marvel', 'Star Wars']);
+  });
 });
 
 // ---------------------------------------------------------------------------

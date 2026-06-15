@@ -444,6 +444,7 @@ export async function runDirectorLoop(
     stepCounter: 0,
     totalCostUsd: 0,
     budgetUsd: budgetLimit,
+    characterId: input.characterId ?? 'kael',
   });
 
   // -----------------------------------------------------------------------
