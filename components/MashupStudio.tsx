@@ -8,7 +8,7 @@ import { DesktopLoadingScreen } from './DesktopLoadingScreen';
 import { PipelineResumePrompt } from './PipelineResumePrompt';
 import { OnboardingWizard } from './onboarding/OnboardingWizard';
 import { SetupUnfinishedPill } from './onboarding/SetupUnfinishedPill';
-import { ShieldAlert } from 'lucide-react';
+import { ShieldAlert, Cpu, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { CreditBudgetBanner } from './CreditBudgetBanner';
 import { MinimaxQuotaBanner } from './MinimaxQuotaBanner';
@@ -31,6 +31,24 @@ const MmxStudioPanel = dynamic(
   () => import('./mmx/MmxStudioPanel').then((m) => m.MmxStudioPanel),
   { ssr: false },
 );
+
+// AGENTIC-CORE / PHASE 1: the new character-faithful agentic chat console,
+// wired to the tool-loop agent (the ToolLoopAgent / Director loop). Mounted
+// ADDITIVELY behind an "Agent" view toggle below — the legacy Sidebar +
+// MainContent stay reachable via the "Studio" toggle. ssr:false because the
+// console reads client-only registries (connectors / skills / settings).
+const AgentConsole = dynamic(
+  () => import('./agent/AgentConsole').then((m) => m.AgentConsole),
+  { ssr: false },
+);
+
+/**
+ * AGENTIC-CORE / PHASE 1: which primary surface the studio shows. 'studio' is
+ * the existing Sidebar + MainContent (unchanged); 'agent' is the new
+ * Cyberforge agent console. Default stays 'studio' so nothing about the
+ * existing first-run experience changes.
+ */
+type PrimarySurface = 'studio' | 'agent';
 
 /** V050-DES-002 — first-run + pill state machine.
  *  Reads localStorage flags only (schema field is PROP). */
@@ -110,6 +128,10 @@ function MashupApp() {
   const { isLoaded } = useMashup();
   const { isAuthenticated } = useAuth();
   const [onboarding, setOnboarding] = useOnboardingState();
+  // AGENTIC-CORE / PHASE 1: primary-surface toggle. Defaults to 'studio' so
+  // the existing UI is exactly what loads; the operator opts into the new
+  // agent console via the floating switcher.
+  const [surface, setSurface] = useState<PrimarySurface>('studio');
   useFirstLaunchAutostart();
 
   // V1.2.3: gate ONLY on auth. The 4 hook-level isLoaded flags
@@ -153,12 +175,27 @@ function MashupApp() {
           mount. Sits above the Sidebar so it never gets covered by
           the floating panels. */}
       <StudioCreditStrip />
-      <ErrorBoundary section="Sidebar">
-        <Sidebar />
-      </ErrorBoundary>
-      <ErrorBoundary section="MainContent">
-        <MainContent />
-      </ErrorBoundary>
+
+      {/* AGENTIC-CORE / PHASE 1: primary-surface switcher. Floating, top-
+          centre, above both surfaces. Lets the operator flip between the
+          existing Studio (Sidebar + MainContent) and the new agentic
+          Cyberforge console without removing either. */}
+      <SurfaceSwitcher surface={surface} onChange={setSurface} />
+
+      {surface === 'agent' ? (
+        <ErrorBoundary section="AgentConsole">
+          <AgentConsole />
+        </ErrorBoundary>
+      ) : (
+        <>
+          <ErrorBoundary section="Sidebar">
+            <Sidebar />
+          </ErrorBoundary>
+          <ErrorBoundary section="MainContent">
+            <MainContent />
+          </ErrorBoundary>
+        </>
+      )}
       <ErrorBoundary section="MmxStudioPanel">
         <MmxStudioPanel />
       </ErrorBoundary>
@@ -216,6 +253,55 @@ export function MashupStudio() {
  * never covers it. Sits at the top of the flex column with the rest
  * of the studio below — no z-index gymnastics required.
  */
+/**
+ * AGENTIC-CORE / PHASE 1: floating switcher between the existing Studio
+ * surface and the new agentic Cyberforge console. Centre-top, pointer-events
+ * isolated so it never blocks the surfaces behind it. Orange = active (the
+ * AIART4NEVER primary); ashen = inactive.
+ */
+function SurfaceSwitcher({
+  surface,
+  onChange,
+}: {
+  surface: PrimarySurface;
+  onChange: (s: PrimarySurface) => void;
+}) {
+  const items: Array<{ id: PrimarySurface; label: string; Icon: typeof Cpu }> = [
+    { id: 'studio', label: 'Studio', Icon: LayoutDashboard },
+    { id: 'agent', label: 'Agent', Icon: Cpu },
+  ];
+  return (
+    <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
+      <div
+        role="tablist"
+        aria-label="Primary surface"
+        className="pointer-events-auto flex items-center gap-1 p-1 rounded-xl bg-[#0a0b0d]/90 backdrop-blur-xl border border-[#ff7a18]/25 shadow-xl"
+      >
+        {items.map(({ id, label, Icon }) => {
+          const active = surface === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => onChange(id)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                active
+                  ? 'bg-[#ff7a18]/15 text-[#ff9d4d] border border-[#ff7a18]/40'
+                  : 'text-[#8a97a6] hover:text-zinc-200 border border-transparent'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function StudioCreditStrip() {
   const { settings } = useSettings();
   // Bumping the tick after every successful generation is the

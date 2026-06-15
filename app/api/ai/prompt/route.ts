@@ -72,6 +72,11 @@ import {
 // into the Director loop's RunContext so the generate_image tool can submit a
 // canon-anchored generation through Higgsfield.
 import type { McpServerConfig } from '@/lib/mcp';
+// AGENTIC-CORE: the streaming director path maps each `Step` from the agent
+// loop's log into a client SSE event. Type-only import — no runtime cost, and
+// it does NOT transitively pull `lib/agent-loop` into the streaming-mode test
+// mocks (which only stub `streamText`).
+import type { Step } from '@/lib/agent-loop/log';
 // V1.2.2-DIRECTOR: lazy-imported inside `handleDirectorMode`
 // so the streaming-mode tests (which mock `ai` with a
 // narrow `streamText` shape) don't transitively pull in
@@ -641,6 +646,16 @@ async function handleDirectorMode(
   body: Record<string, unknown>,
   clientSignal?: AbortSignal,
 ): Promise<Response> {
+  // AGENTIC-CORE: the agentic CHAT CONSOLE asks for a live step stream by
+  // setting `stream: true`. Unlike the default JSON-envelope path (which the
+  // director-pipeline / Replay callers consume), the stream path surfaces the
+  // loop's `onStep` events as SSE — assistant text + tool-call name/args +
+  // tool results / produced AssetRef — so the console can render the agent
+  // planning, calling generate_image → Higgsfield, etc. in real time. The
+  // JSON path below is unchanged; existing callers never set `stream`.
+  if (body.stream === true) {
+    return handleDirectorStream(body, clientSignal);
+  }
   const { ideaConcept, niches, genres, skillContext, userId, model } = body;
 
   if (typeof ideaConcept !== 'string' || !ideaConcept.trim()) {
@@ -877,4 +892,266 @@ async function handleDirectorMode(
       { status: 500, headers: { 'Content-Type': 'application/json' } },
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// AGENTIC-CORE: Director mode STREAMING handler.
+//
+// Drives the SAME `runDirectorLoop` as `handleDirectorMode` but, instead of
+// buffering the whole run into one JSON envelope, forwards the loop's
+// `onStep` events to the client as Server-Sent Events so the agentic chat
+// console can render the agent's reasoning + tool-calls + produced beats as
+// they happen. This is the path that FINALLY lets the in-app agent use tools
+// visibly — the console wires its send button to this stream.
+//
+// Wire shape (one JSON object per SSE `data:` line, terminated by [DONE]):
+//   data: {"type":"text","text":"<assistant reasoning delta>"}\n\n
+//   data: {"type":"tool-call","tool":"generate_image","args":{...}}\n\n
+//   data: {"type":"tool-result","tool":"generate_image","assetRef":{...},"output":{...}}\n\n
+//   data: {"type":"done","prompt":"...","cost":0.02,"runId":"run_...", "truncatedBy":"natural","canon":{...}}\n\n
+//   data: {"type":"error","error":"..."}\n\n   (on failure)
+//   data: [DONE]\n\n
+//
+// Step → event mapping (see lib/agent-loop/log.ts `Step`):
+//   - 'plan'          → {type:'text'}        (the initial rationale)
+//   - 'tool_call'     → {type:'tool-call'}   (tool + args)
+//   - 'tool_result'   → {type:'tool-result'} (+ assetRef extracted from
+//                                              generate_image / generate_video output)
+//   - 'final'         → {type:'text'}        (terminal reasoning)
+//   - 'error'         → {type:'text'}        (error reasoning; the terminal
+//                                              {type:'error'} below carries the
+//                                              hard failure)
+//
+// Validation + 503/no-provider semantics mirror `handleDirectorMode`: a
+// missing field yields a one-shot SSE error event then [DONE]; the loop's
+// own truncatedBy/provider drive the terminal `done`/`error` event.
+// ---------------------------------------------------------------------------
+async function handleDirectorStream(
+  body: Record<string, unknown>,
+  clientSignal?: AbortSignal,
+): Promise<Response> {
+  const encoder = new TextEncoder();
+  const send = (
+    controller: ReadableStreamDefaultController<Uint8Array>,
+    event: Record<string, unknown>,
+  ): void => {
+    controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+  };
+
+  // --- Validate the request (same rules as handleDirectorMode) ---
+  const { ideaConcept, niches, genres, skillContext, userId, model } = body;
+  const validationError =
+    typeof ideaConcept !== 'string' || !ideaConcept.trim()
+      ? 'ideaConcept is required for director mode'
+      : !Array.isArray(niches) || niches.length === 0
+        ? 'niches is required for director mode (1-6 items)'
+        : null;
+
+  // A validation failure still returns a 200 SSE stream carrying a single
+  // error event — the console reads the stream uniformly and renders the
+  // message in the thread, rather than special-casing a non-stream 400.
+  if (validationError) {
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        send(controller, { type: 'error', error: validationError });
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+        controller.close();
+      },
+    });
+    return new Response(stream, { headers: sseHeaders() });
+  }
+
+  const cleanNiches = sanitizeStringArray(niches).map((s) => s.slice(0, 80));
+  const cleanGenres = sanitizeStringArray(genres).map((s) => s.slice(0, 80));
+
+  let safeSkillContext: { name: string; version?: string }[] | undefined;
+  if (Array.isArray(skillContext)) {
+    safeSkillContext = skillContext
+      .filter(
+        (s): s is { name: string; version?: string } =>
+          typeof s === 'object'
+          && s !== null
+          && typeof (s as { name?: unknown }).name === 'string'
+          && ((s as { name: string }).name.length > 0),
+      )
+      .map((s) => {
+        const v = (s as { version?: unknown }).version;
+        return {
+          name: (s as { name: string }).name,
+          ...(typeof v === 'string' && v.length > 0 ? { version: v } : {}),
+        };
+      });
+  }
+
+  const safeUserId =
+    typeof userId === 'string' && userId.length > 0 ? userId.slice(0, 120) : 'ai-route';
+  const modelOverride = typeof model === 'string' && model.length > 0 ? model : undefined;
+  const characterId = resolveCharacterId(
+    (body as { activeCharacterId?: unknown }).activeCharacterId,
+  );
+  const higgsfieldConnector = readHiggsfieldConnector(body);
+
+  let maxSteps: number | undefined;
+  if (typeof body.maxSteps === 'number' && Number.isFinite(body.maxSteps)) maxSteps = body.maxSteps;
+  let budgetUsd: number | undefined;
+  if (typeof body.budgetUsd === 'number' && Number.isFinite(body.budgetUsd)) budgetUsd = body.budgetUsd;
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      // Each onStep callback runs synchronously inside the loop; we enqueue
+      // directly. The loop awaits the model between steps, so backpressure is
+      // naturally bounded by the provider.
+      const onStep = (step: Step): void => {
+        try {
+          send(controller, stepToEvent(step));
+        } catch {
+          // A closed controller (client disconnected) — swallow; the loop's
+          // abort signal will stop the paid work shortly after.
+        }
+      };
+
+      try {
+        const { runDirectorLoop } = await import('@/lib/agent-loop');
+        const timeoutSignal = AbortSignal.timeout(DIRECTOR_SERVER_TIMEOUT_MS);
+        const loopSignal = clientSignal
+          ? AbortSignal.any([clientSignal, timeoutSignal])
+          : timeoutSignal;
+
+        const result = await runDirectorLoop({
+          niches: cleanNiches,
+          genres: cleanGenres,
+          ideaConcept: (ideaConcept as string).trim(),
+          ...(safeSkillContext ? { skillContext: safeSkillContext } : {}),
+          characterId,
+          ...(higgsfieldConnector ? { higgsfieldConnector } : {}),
+          userId: safeUserId,
+          ...(modelOverride ? { modelId: modelOverride } : {}),
+          ...(maxSteps !== undefined ? { maxSteps } : {}),
+          ...(budgetUsd !== undefined ? { budgetUsd } : {}),
+          signal: loopSignal,
+          onStep,
+        });
+
+        // Map "no provider configured" to a clear error event (the JSON path
+        // returns 503; the stream surfaces the same message in-thread).
+        if (result.provider === 'unknown' && result.truncatedBy === 'error') {
+          send(controller, {
+            type: 'error',
+            error: 'No AI provider configured. Set MINIMAX_API_KEY.',
+          });
+        } else if (result.truncatedBy === 'error' && !result.finalPrompt.trim()) {
+          const lastError = [...result.steps]
+            .reverse()
+            .find(
+              (s) =>
+                s.type === 'error'
+                && typeof s.reasoning === 'string'
+                && s.reasoning.trim().length > 0,
+            );
+          const detail = lastError?.reasoning?.trim() || 'the Director loop produced no prompt';
+          send(controller, { type: 'error', error: `Director failed: ${detail}` });
+        } else if (/^DIRECTOR_FAILED\b/i.test(result.finalPrompt.trim())) {
+          send(controller, {
+            type: 'error',
+            error: `Director failed: ${result.finalPrompt.trim().slice(0, 300)}`,
+          });
+        } else {
+          // Terminal success event — the final prompt + run telemetry the
+          // console pins to the assistant's final bubble.
+          send(controller, {
+            type: 'done',
+            prompt: result.finalPrompt,
+            cost: result.totalCost,
+            tokensUsed: { input: result.tokensUsed.input, output: result.tokensUsed.output },
+            runId: result.runId,
+            modelId: result.modelId,
+            provider: result.provider,
+            truncatedBy: result.truncatedBy,
+            ...(result.canon ? { canon: result.canon } : {}),
+          });
+        }
+      } catch (e: unknown) {
+        send(controller, { type: 'error', error: getErrorMessage(e) || 'Director loop error' });
+      } finally {
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, { headers: sseHeaders() });
+}
+
+/** SSE response headers shared by the streaming director path. */
+function sseHeaders(): Record<string, string> {
+  return {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-AI-Provider': 'minimax',
+  };
+}
+
+/**
+ * Translate one `Step` from the agent loop's log into the client-facing SSE
+ * event. The `tool_result` case extracts the produced `AssetRef` from a
+ * generate_image / generate_video output so the console can render the beat
+ * thumbnail without re-parsing the raw tool output.
+ */
+function stepToEvent(step: Step): Record<string, unknown> {
+  switch (step.type) {
+    case 'tool_call':
+      return {
+        type: 'tool-call',
+        tool: step.tool ?? 'unknown',
+        ...(step.input !== undefined ? { args: step.input } : {}),
+        idx: step.idx,
+        cost: step.cost,
+      };
+    case 'tool_result': {
+      const out = step.output;
+      const assetRef = extractAssetRef(out);
+      return {
+        type: 'tool-result',
+        tool: step.tool ?? 'unknown',
+        ...(assetRef ? { assetRef } : {}),
+        output: out,
+        idx: step.idx,
+      };
+    }
+    case 'plan':
+    case 'final':
+    case 'error':
+    default:
+      return {
+        type: 'text',
+        text: step.reasoning ?? '',
+        stepType: step.type,
+        idx: step.idx,
+      };
+  }
+}
+
+/**
+ * Best-effort extraction of a generated `{ provider, id, url }` AssetRef from
+ * a tool result. generate_image / generate_video wrap it under `assetRef`;
+ * we tolerate the raw shape too. Returns undefined for non-asset tools.
+ */
+function extractAssetRef(
+  out: unknown,
+): { provider: string; id: string; url: string } | undefined {
+  if (!out || typeof out !== 'object') return undefined;
+  const o = out as Record<string, unknown>;
+  const candidate = (o.assetRef && typeof o.assetRef === 'object' ? o.assetRef : o) as Record<
+    string,
+    unknown
+  >;
+  if (
+    typeof candidate.provider === 'string'
+    && typeof candidate.id === 'string'
+    && typeof candidate.url === 'string'
+  ) {
+    return { provider: candidate.provider, id: candidate.id, url: candidate.url };
+  }
+  return undefined;
 }

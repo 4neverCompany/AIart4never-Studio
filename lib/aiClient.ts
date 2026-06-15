@@ -46,6 +46,10 @@
 // stream (see the try/catch around the call below).
 import { recordTokens } from '@/lib/minimax-quota';
 import type { CharacterId } from '@/lib/canon';
+// AGENTIC-CORE: the agentic chat console resolves the operator's Higgsfield
+// MCP connector client-side and threads it into `streamAgent` (the registry is
+// browser-side; the route reads it from the body). Type-only import.
+import type { McpServerConfig } from '@/lib/mcp';
 
 export type PiMode =
   | 'chat'
@@ -269,6 +273,161 @@ export async function* streamAI(
           if (e instanceof Error && e.message && !e.message.startsWith('Unexpected')) {
             throw e;
           }
+          // Ignore malformed lines — keepalives or partial frames.
+        }
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// AGENTIC-CORE: the agentic chat console's client entry.
+//
+// `streamAgent` is the sibling of `streamAI` for the TOOL-USING director path.
+// Where `streamAI` POSTs `mode:'chat'|'idea'|…` and yields plain text deltas
+// (the legacy tool-less MiniMax stream), `streamAgent` POSTs
+// `mode:'director', stream:true` and yields TYPED events so the console can
+// render the agent's reasoning, its tool-calls (generate_image → Higgsfield,
+// trending_search, …) as chips, and the produced beat thumbnails.
+//
+// The MCP connector registry + skills + active character all live CLIENT-side
+// (browser storage), so the caller resolves them (useConnectors / useSkills /
+// useSettings) and threads them in here; the route reads them out of the body
+// — exactly the pattern the generate route uses.
+// ---------------------------------------------------------------------------
+
+/** One produced asset reference surfaced by a generate_image/video tool. */
+export interface AgentAssetRef {
+  provider: string;
+  id: string;
+  url: string;
+}
+
+/**
+ * A typed event yielded by `streamAgent`. Mirrors the SSE shape emitted by
+ * `/api/ai/prompt`'s streaming director path (`handleDirectorStream`).
+ */
+export type AgentEvent =
+  | { type: 'text'; text: string; stepType?: string; idx?: number }
+  | { type: 'tool-call'; tool: string; args?: unknown; idx?: number; cost?: number }
+  | {
+      type: 'tool-result';
+      tool: string;
+      assetRef?: AgentAssetRef;
+      output?: unknown;
+      idx?: number;
+    }
+  | {
+      type: 'done';
+      prompt: string;
+      cost?: number;
+      tokensUsed?: { input: number; output: number };
+      runId?: string;
+      modelId?: string;
+      provider?: string;
+      truncatedBy?: string;
+      canon?: unknown;
+    }
+  | { type: 'error'; error: string };
+
+export interface StreamAgentOptions {
+  /** 1-6 content pillars (Director requires at least one). */
+  niches: string[];
+  /** 0-10 style tags. */
+  genres?: string[];
+  /** The active Master4never character whose canon anchors the run. */
+  characterId?: CharacterId;
+  /**
+   * The operator's resolved, enabled+trusted Higgsfield MCP connector. The
+   * registry is client-side, so the console resolves it (useConnectors) and
+   * passes it here; the route threads it into the loop so generate_image can
+   * submit through Higgsfield. Omit → the tool raises a clear in-loop error.
+   */
+  higgsfieldConnector?: McpServerConfig;
+  /** Active skill names (useSkills/useSettings). Folded into the prompt. */
+  skills?: { name: string; version?: string }[];
+  /** Optional per-call text-model override (settings.activeTextModel). */
+  model?: string;
+  /** Optional Higgsfield CLI token (settings.higgsfieldCliToken). */
+  higgsfieldCliToken?: string;
+  /** Storage partition key for the run log. */
+  userId?: string;
+  /** Optional hard step cap / USD budget for this run. */
+  maxSteps?: number;
+  budgetUsd?: number;
+  signal?: AbortSignal;
+}
+
+/**
+ * Stream the Director agent loop. POSTs `mode:'director', stream:true` to
+ * `/api/ai/prompt` and yields typed `AgentEvent`s as the loop plans, calls
+ * tools, and produces assets. The generator ends when the server emits
+ * `[DONE]`. A server-side failure arrives as a terminal `{type:'error'}`
+ * event (not a throw) so the console can render it in-thread; a transport /
+ * network failure (the fetch itself) still throws.
+ */
+export async function* streamAgent(
+  message: string,
+  options: StreamAgentOptions,
+): AsyncGenerator<AgentEvent, void, void> {
+  const res = await fetch('/api/ai/prompt', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+    body: JSON.stringify({
+      mode: 'director',
+      stream: true,
+      // The Director loop reads the concept from `ideaConcept` (not `message`).
+      ideaConcept: message,
+      niches: options.niches,
+      genres: options.genres ?? [],
+      activeCharacterId: options.characterId,
+      higgsfieldConnector: options.higgsfieldConnector,
+      skillContext: options.skills,
+      model: options.model,
+      higgsfieldCliToken: options.higgsfieldCliToken,
+      userId: options.userId,
+      maxSteps: options.maxSteps,
+      budgetUsd: options.budgetUsd,
+    }),
+    signal: options.signal,
+  });
+
+  if (!res.ok || !res.body) {
+    let errMsg = `agent request failed (${res.status})`;
+    try {
+      const err = (await res.json()) as Record<string, unknown>;
+      if (typeof err?.error === 'string') errMsg = err.error;
+    } catch {
+      // ignore — non-JSON error body
+    }
+    throw new Error(errMsg);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let sepIndex: number;
+    while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
+      const rawEvent = buffer.slice(0, sepIndex);
+      buffer = buffer.slice(sepIndex + 2);
+
+      for (const line of rawEvent.split('\n')) {
+        if (!line.startsWith('data:')) continue;
+        const data = line.slice(5).trim();
+        if (!data) continue;
+        if (data === '[DONE]') return;
+        try {
+          const parsed = JSON.parse(data) as AgentEvent;
+          if (parsed && typeof (parsed as { type?: unknown }).type === 'string') {
+            yield parsed;
+          }
+        } catch {
           // Ignore malformed lines — keepalives or partial frames.
         }
       }
