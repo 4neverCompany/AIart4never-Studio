@@ -67,3 +67,37 @@ describe('buildWeeklyContentPlan', () => {
     expect(plan.slots.every((s) => s.characterId === 'kael')).toBe(true);
   });
 });
+
+describe('buildWeeklyContentPlan — adapted-template loop close (M3)', () => {
+  it('plans against an injected baseTemplate and carries growth annotations', async () => {
+    const { adaptWeeklyTemplate } = await import('@/lib/growth');
+    // Cold start returns the canon template unchanged → the plan must match the
+    // default-template plan exactly (backward compatible).
+    const cold = adaptWeeklyTemplate();
+    const adaptedPlan = buildWeeklyContentPlan({ baseTemplate: cold.slots });
+    const defaultPlan = buildWeeklyContentPlan();
+    expect(adaptedPlan.slots.map((s) => `${s.day}:${s.pillarId}:${s.decision}`)).toEqual(
+      defaultPlan.slots.map((s) => `${s.day}:${s.pillarId}:${s.decision}`),
+    );
+    expect(adaptedPlan.newGenCount).toBe(defaultPlan.newGenCount);
+  });
+
+  it('carries recommendedHour/hookId from an enriched slot onto the PlannedSlot', () => {
+    // A hand-built adapted slot (superset of WeeklySlot) proves the passthrough.
+    const enriched = [
+      {
+        day: 'fri' as const,
+        pillarId: 'story-beat',
+        format: 'carousel' as const,
+        guaranteesNewGen: true,
+        recommendedHour: 18,
+        hookId: 'hook-cliffhanger',
+      },
+    ];
+    const plan = buildWeeklyContentPlan({ baseTemplate: enriched });
+    const fri = plan.slots.find((s) => s.day === 'fri');
+    expect(fri?.recommendedHour).toBe(18);
+    expect(fri?.hookId).toBe('hook-cliffhanger');
+    expect(fri?.decision).toBe('generate'); // guaranteesNewGen still honored
+  });
+});

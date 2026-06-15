@@ -56,6 +56,10 @@ export interface PlannedSlot {
   decision: PlanDecision;
   /** Why this slot reuses or generates. */
   reason: string;
+  /** Growth-tuned posting hour (UTC), when the adapted template carried one. */
+  recommendedHour?: number;
+  /** Growth-recommended hook formula for this slot, when available. */
+  hookId?: string;
 }
 
 export interface WeeklyPlanInput {
@@ -63,6 +67,14 @@ export interface WeeklyPlanInput {
   featuredCharacterId?: CharacterId;
   /** The asset library to reuse from (each item is any tag-bearing record). */
   library?: ReadonlyArray<TaggedAsset>;
+  /**
+   * The slot template to plan against. Defaults to the canon WEEKLY_TEMPLATE.
+   * The growth-brain's `adaptWeeklyTemplate` (M3) returns an enriched superset
+   * (AdaptedSlot[] — WeeklySlot + recommendedHour/hookId), so feeding its output
+   * here closes the LEARN->plan loop without restructuring the planner. Any
+   * `recommendedHour`/`hookId` on a slot is carried onto the PlannedSlot.
+   */
+  baseTemplate?: ReadonlyArray<WeeklySlot>;
 }
 
 export interface WeeklyPlan {
@@ -89,8 +101,12 @@ export function buildWeeklyContentPlan(input: WeeklyPlanInput = {}): WeeklyPlan 
   const featured = input.featuredCharacterId ?? 'kael';
   const realityId = getCharacter(featured).reality;
   const library = input.library ?? [];
+  const template = input.baseTemplate ?? WEEKLY_TEMPLATE;
 
-  const slots: PlannedSlot[] = WEEKLY_TEMPLATE.map((slot) => {
+  const slots: PlannedSlot[] = template.map((slot) => {
+    // The adapted template (AdaptedSlot) is a superset of WeeklySlot; read the
+    // growth annotations defensively so a plain WeeklySlot still works.
+    const tuned = slot as WeeklySlot & { recommendedHour?: number; hookId?: string };
     const hasReusable = library.some((a) =>
       assetMatchesCanon(a, { characterId: featured, pillarId: slot.pillarId }),
     );
@@ -117,6 +133,8 @@ export function buildWeeklyContentPlan(input: WeeklyPlanInput = {}): WeeklyPlan 
       realityId,
       decision,
       reason,
+      ...(tuned.recommendedHour !== undefined ? { recommendedHour: tuned.recommendedHour } : {}),
+      ...(tuned.hookId !== undefined ? { hookId: tuned.hookId } : {}),
     };
   });
 
