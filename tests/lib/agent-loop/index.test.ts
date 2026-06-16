@@ -605,14 +605,15 @@ describe('runDirectorLoop — final prompt extraction (report scaffolding)', () 
 });
 
 // ---------------------------------------------------------------------------
-// AGENT.md REWIRE: the CHAT/STREAM path (`conversational: true`) is an
-// AGENT.md-driven intelligent agent. Its system prompt = AGENT.md identity +
-// the STRUCTURED canon block, with NO rigid 6-step scaffold; its user turn is
-// the operator's RAW message (not "Beat: … Execute the director plan"); and it
-// does NOT emit a plan-step scaffold on the stream.
+// AGENT.md REWIRE: `runDirectorLoop` is an AGENT.md-driven intelligent agent.
+// Its system prompt = AGENT.md identity + the STRUCTURED canon block, with NO
+// rigid 6-step scaffold; its user turn is the operator's RAW message (not
+// "Beat: … Execute the director plan"); and it does NOT emit a plan-step
+// scaffold on the stream. (The legacy `conversational` flag — which no longer
+// branched anything — has been retired.)
 // ---------------------------------------------------------------------------
 
-describe('runDirectorLoop — conversational (AGENT.md) chat path plumbing', () => {
+describe('runDirectorLoop — AGENT.md chat-path plumbing', () => {
   /** Capture the `system` + `prompt` the loop hands to the agent. */
   function captureGenerateArgs(): { current: { system?: string; prompt?: string } } {
     const holder: { current: { system?: string; prompt?: string } } = { current: {} };
@@ -636,7 +637,7 @@ describe('runDirectorLoop — conversational (AGENT.md) chat path plumbing', () 
 
   it('builds the system prompt from AGENT.md + the canon block (no rigid scaffold)', async () => {
     const captured = captureGenerateArgs();
-    await runDirectorLoop({ ...baseInput, conversational: true, ideaConcept: 'hey' });
+    await runDirectorLoop({ ...baseInput, ideaConcept: 'hey' });
 
     const system = captured.current.system ?? '';
     // AGENT.md identity is present.
@@ -655,7 +656,7 @@ describe('runDirectorLoop — conversational (AGENT.md) chat path plumbing', () 
 
   it('uses the operator RAW message as the user turn (no Beat: wrapper)', async () => {
     const captured = captureGenerateArgs();
-    await runDirectorLoop({ ...baseInput, conversational: true, ideaConcept: 'hey' });
+    await runDirectorLoop({ ...baseInput, ideaConcept: 'hey' });
     expect(captured.current.prompt).toBe('hey');
     expect(captured.current.prompt).not.toMatch(/^Beat:/);
     expect(captured.current.prompt).not.toMatch(/Execute the director plan/i);
@@ -666,7 +667,6 @@ describe('runDirectorLoop — conversational (AGENT.md) chat path plumbing', () 
     const seen: string[] = [];
     await runDirectorLoop({
       ...baseInput,
-      conversational: true,
       ideaConcept: 'hey',
       onStep: (s) => seen.push(s.type),
     });
@@ -700,7 +700,6 @@ describe('runDirectorLoop — conversational (AGENT.md) chat path plumbing', () 
     const steps: Array<{ type: string; reasoning?: string }> = [];
     await runDirectorLoop({
       ...baseInput,
-      conversational: true,
       ideaConcept: 'hey',
       onStep: (s) => steps.push(s as unknown as { type: string; reasoning?: string }),
     });

@@ -123,19 +123,6 @@ export interface RunDirectorLoopInput {
   maxSteps?: number;
   /** Optional: USD cap for this run. Default $0.50 (configurable per request). */
   budgetUsd?: number;
-  /**
-   * CHAT-PATH FLAG (retained for back-compat).
-   *
-   * MASHUPFORGE-RIP: the loop now ALWAYS runs the AGENT.md-driven chat path —
-   * the conversational system prompt (`buildDirectorChatSystemPrompt`) + the
-   * raw operator message as the user turn (`buildChatUserTurn`), so the model
-   * decides converse-vs-generate instead of being forced into a full beat run.
-   * The legacy one-shot pipeline scaffold has been removed, so this flag no
-   * longer branches behaviour; callers (the streaming chat path + the JSON
-   * envelope route) still pass `conversational: true` and it remains a valid,
-   * documented input.
-   */
-  conversational?: boolean;
   /** Optional: abort signal forwarded to the SDK and the model. */
   signal?: AbortSignal;
   /** Optional: per-step callback. Useful for streaming the log to the client. */
@@ -382,6 +369,13 @@ function makeBudgetStopCondition(
 /**
  * Pull the final prompt text out of the SDK's `GenerateTextResult`.
  *
+ * AGENTIC-HARNESS note: this is now a BACK-COMPAT prompt surfacer for the
+ * legacy `runDirectorLoop` brief frame (the headless CLI + direct-API brief
+ * endpoints). The in-app chat console has moved to the conversational
+ * `lib/agent-core` `runAgent`, which surfaces the last generate_prompt draft on
+ * the `done` event directly (see `extractPromptDraft` in the route) rather than
+ * through this loop helper. Kept for the brief frame's `finalPrompt`.
+ *
  * V1.7.0-DIRECTOR-PROMPT-FIX: the LAST `generate_prompt` tool draft is
  * now the canonical source — NOT `result.text`. The draft is the clean,
  * <think>-stripped, length-validated prompt that critique scored and the
@@ -542,9 +536,15 @@ export async function runDirectorLoop(
   //    (buildInitialPlanStep plan step + buildDirectorSystemPrompt +
   //    buildUserPrompt) has been removed. There is no pre-baked plan step
   //    on frame 1 anymore — the agent decides what to do from AGENT.md +
-  //    the structured canon + the operator's raw message. The
-  //    `conversational` input flag is retained for back-compat (callers
-  //    still pass it) but no longer branches behaviour.
+  //    the structured canon + the operator's raw message.
+  //
+  //    AGENTIC-HARNESS: this `runDirectorLoop` is the LEGACY brief frame —
+  //    the in-app chat console has cut over to the clean conversational
+  //    `lib/agent-core` `runAgent` (messages-in). `runDirectorLoop` is kept
+  //    because the headless CLI (`bin/aiart4never.ts` → `runDirector`) still
+  //    drives it with a niches/genres/ideaConcept brief. The retired
+  //    `conversational` flag (which no longer branched anything) has been
+  //    dropped.
   // -----------------------------------------------------------------------
   const planContext: PlanContext = {
     niches: input.niches,

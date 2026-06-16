@@ -136,8 +136,8 @@ describe('AgentConsole — intro + connector resolution', () => {
 });
 
 describe('AgentConsole — send drives the tool-loop agent', () => {
-  it('sending a message calls streamAgent with the connector + character', async () => {
-    eventScript = [{ type: 'done', prompt: 'A forged beat.', cost: 0.01 }];
+  it('sending a message calls streamAgent on the agent-core path (messages-in + connector + character)', async () => {
+    eventScript = [{ type: 'done', prompt: 'A forged beat.', text: 'A forged beat.', cost: 0.01 }];
     render(<AgentConsole />);
 
     const textarea = await screen.findByLabelText('Message the agent');
@@ -147,15 +147,48 @@ describe('AgentConsole — send drives the tool-loop agent', () => {
     await waitFor(() => expect(streamAgentSpy).toHaveBeenCalled());
     const [msg, opts] = streamAgentSpy.mock.calls[0] as [
       string,
-      { higgsfieldConnector?: McpServerConfig; characterId?: string; niches?: string[] },
+      {
+        agentCore?: boolean;
+        messages?: Array<{ role: string; content: string }>;
+        higgsfieldConnector?: McpServerConfig;
+        characterId?: string;
+      },
     ];
     expect(msg).toBe('Forge a Kael reveal');
+    // AGENTIC-HARNESS: the clean conversational path — messages-in, no brief.
+    expect(opts.agentCore).toBe(true);
+    expect(opts.messages).toEqual([{ role: 'user', content: 'Forge a Kael reveal' }]);
     expect(opts.higgsfieldConnector).toEqual(HIGGSFIELD_CONNECTOR);
     expect(opts.characterId).toBe('kael');
-    expect(opts.niches).toEqual(['Variant Reveal']);
 
     // The operator's message renders in the thread.
     expect(await screen.findByText('Forge a Kael reveal')).toBeInTheDocument();
+  });
+
+  it('builds the messages array from prior turns (operator→user, agent→assistant), excluding the in-flight turn', async () => {
+    // First turn: a complete exchange.
+    eventScript = [{ type: 'text', text: 'Sure — what beat?' }, { type: 'done', prompt: '', text: 'Sure — what beat?', cost: 0 }];
+    render(<AgentConsole />);
+    const textarea = await screen.findByLabelText('Message the agent');
+    fireEvent.change(textarea, { target: { value: 'hello' } });
+    fireEvent.click(screen.getByLabelText('Send to agent'));
+    await screen.findByText('Sure — what beat?');
+
+    // Second turn: the prior exchange must be replayed as messages.
+    eventScript = [{ type: 'done', prompt: '', text: 'ok', cost: 0 }];
+    fireEvent.change(textarea, { target: { value: 'a Kael reveal' } });
+    fireEvent.click(screen.getByLabelText('Send to agent'));
+    await waitFor(() => expect(streamAgentSpy).toHaveBeenCalledTimes(2));
+
+    const [, opts] = streamAgentSpy.mock.calls[1] as [
+      string,
+      { messages?: Array<{ role: string; content: string }> },
+    ];
+    expect(opts.messages).toEqual([
+      { role: 'user', content: 'hello' },
+      { role: 'assistant', content: 'Sure — what beat?' },
+      { role: 'user', content: 'a Kael reveal' },
+    ]);
   });
 
   it('renders a tool-call chip + an assistant message from the streamed events', async () => {

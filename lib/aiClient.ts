@@ -50,6 +50,10 @@ import type { CharacterId } from '@/lib/canon';
 // MCP connector client-side and threads it into `streamAgent` (the registry is
 // browser-side; the route reads it from the body). Type-only import.
 import type { McpServerConfig } from '@/lib/mcp';
+// AGENTIC-HARNESS: the agent-core path sends the conversation as
+// `ModelMessage[]` (messages-in) instead of a niches/genres/ideaConcept brief.
+// Type-only import — the shape is forwarded verbatim to `/api/ai/prompt`.
+import type { ModelMessage } from 'ai';
 
 export type PiMode =
   | 'chat'
@@ -325,6 +329,12 @@ export type AgentEvent =
   | {
       type: 'done';
       prompt: string;
+      /**
+       * AGENTIC-HARNESS: the accumulated visible answer for this turn (the
+       * agent-core path streams token-level deltas and sums them here). Absent
+       * on the legacy brief path, which only carries `prompt`.
+       */
+      text?: string;
       cost?: number;
       tokensUsed?: { input: number; output: number };
       runId?: string;
@@ -336,8 +346,22 @@ export type AgentEvent =
   | { type: 'error'; error: string };
 
 export interface StreamAgentOptions {
-  /** 1-6 content pillars (Director requires at least one). */
-  niches: string[];
+  /**
+   * AGENTIC-HARNESS: opt into the clean conversational agent-core path
+   * (`runAgent`, behind `body.agentCore`) instead of the legacy brief frame
+   * (`runDirectorLoop`). When true, `messages` is the input (the niches /
+   * genres / ideaConcept brief is NOT required, and `message` is ignored).
+   */
+  agentCore?: boolean;
+  /**
+   * AGENTIC-HARNESS: the conversation so far, as Vercel AI SDK
+   * `ModelMessage[]`. Only used (and required) on the `agentCore` path — the
+   * console builds it from its turns list (operator→user, agent→assistant),
+   * excluding the in-flight turn, with the new operator message last.
+   */
+  messages?: ModelMessage[];
+  /** 1-6 content pillars (Director requires at least one — legacy brief path). */
+  niches?: string[];
   /** 0-10 style tags. */
   genres?: string[];
   /** The active Master4never character whose canon anchors the run. */
@@ -375,27 +399,52 @@ export async function* streamAgent(
   message: string,
   options: StreamAgentOptions,
 ): AsyncGenerator<AgentEvent, void, void> {
+  // AGENTIC-HARNESS: the agent-core path sends the conversation as
+  // `messages` (ModelMessage[]) and sets `agentCore: true`, hitting
+  // `handleAgentStream`. There is NO niches/genres/ideaConcept brief and NO
+  // message-length cap. The legacy brief path (below) is preserved for
+  // back-compat — it POSTs ideaConcept + clamped niches/genres to
+  // `handleDirectorStream`.
+  const body: Record<string, unknown> = options.agentCore
+    ? {
+        mode: 'director',
+        stream: true,
+        agentCore: true,
+        // messages-in. The route's readModelMessages validates the shape.
+        messages: options.messages ?? [],
+        activeCharacterId: options.characterId,
+        higgsfieldConnector: options.higgsfieldConnector,
+        skillContext: options.skills,
+        model: options.model,
+        higgsfieldCliToken: options.higgsfieldCliToken,
+        userId: options.userId,
+        // Optional soft-budget / runaway-net knobs (no required caps).
+        maxSteps: options.maxSteps,
+        budgetUsd: options.budgetUsd,
+      }
+    : {
+        mode: 'director',
+        stream: true,
+        // The Director loop reads the concept from `ideaConcept` (not `message`).
+        ideaConcept: message,
+        // Clamp to the director input schema (niches <=6, genres <=10) so the
+        // operator's full Settings lists never trip runDirectorLoop validation.
+        niches: (options.niches ?? []).slice(0, 6),
+        genres: (options.genres ?? []).slice(0, 10),
+        activeCharacterId: options.characterId,
+        higgsfieldConnector: options.higgsfieldConnector,
+        skillContext: options.skills,
+        model: options.model,
+        higgsfieldCliToken: options.higgsfieldCliToken,
+        userId: options.userId,
+        maxSteps: options.maxSteps,
+        budgetUsd: options.budgetUsd,
+      };
+
   const res = await fetch('/api/ai/prompt', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-    body: JSON.stringify({
-      mode: 'director',
-      stream: true,
-      // The Director loop reads the concept from `ideaConcept` (not `message`).
-      ideaConcept: message,
-      // Clamp to the director input schema (niches <=6, genres <=10) so the
-      // operator's full Settings lists never trip runDirectorLoop validation.
-      niches: (options.niches ?? []).slice(0, 6),
-      genres: (options.genres ?? []).slice(0, 10),
-      activeCharacterId: options.characterId,
-      higgsfieldConnector: options.higgsfieldConnector,
-      skillContext: options.skills,
-      model: options.model,
-      higgsfieldCliToken: options.higgsfieldCliToken,
-      userId: options.userId,
-      maxSteps: options.maxSteps,
-      budgetUsd: options.budgetUsd,
-    }),
+    body: JSON.stringify(body),
     signal: options.signal,
   });
 

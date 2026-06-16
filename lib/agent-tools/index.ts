@@ -20,7 +20,7 @@
  *     prompt: 'Plan beat → draft scene → critique → generate → persist',
  *   });
  */
-import type { Tool } from 'ai';
+import type { Tool, ToolSet } from 'ai';
 
 import { generatePromptTool, executeGeneratePrompt } from './generate-prompt';
 import { critiquePromptTool, executeCritiquePrompt, heuristicJudge } from './critique-prompt';
@@ -211,6 +211,42 @@ export const AGENT_TOOLS = [
   reframeImageTool,
   jobLookupTool,
 ] as unknown as Tool[];
+
+// ---------------------------------------------------------------------------
+// AGENT_TOOLS_MAP — the NAME-KEYED object form for the conversational agent.
+//
+// AGENTIC-HARNESS: the new `runAgent` (lib/agent-core) drives a token-level
+// `streamText` turn, which requires a `ToolSet` — an object keyed by the tool
+// NAME the model emits in its tool calls. The keys here MUST match the names
+// AGENT.md references and the names `describeAgentTools()` reports (the unit
+// test asserts the two stay in lock-step), so the SDK can route a model
+// `tool-call` for e.g. `generate_image` to the right `execute()`.
+//
+// The legacy `AGENT_TOOLS` array (above) is kept for the existing
+// `ToolLoopAgent` path + the barrel self-check test; this map is purely
+// additive. When the array form is cast `as unknown as ToolSet` the SDK
+// derives the names from the tool objects' internal metadata, which is fragile
+// for MiniMax tool-calling — the explicit name-keyed map removes that ambiguity.
+// ---------------------------------------------------------------------------
+
+/**
+ * The full agent-toolkit as a name-keyed `ToolSet`. Keys are the canonical
+ * tool names the model emits (and that AGENT.md references); values are the
+ * same `Tool` objects the `AGENT_TOOLS` array carries. Drop this straight into
+ * `streamText({ tools: AGENT_TOOLS_MAP })`.
+ */
+export const AGENT_TOOLS_MAP = {
+  generate_prompt: generatePromptTool,
+  critique_prompt: critiquePromptTool,
+  generate_image: generateImageTool,
+  generate_video: generateVideoTool,
+  persist_asset: persistAssetTool,
+  m3_vision_describe: m3VisionDescribeTool,
+  virality_predict: viralityPredictTool,
+  cost_estimate: costEstimateTool,
+  reframe_image: reframeImageTool,
+  job_lookup: jobLookupTool,
+} as unknown as ToolSet;
 
 // ---------------------------------------------------------------------------
 // Self-check helpers (used by the unit test for the barrel itself)

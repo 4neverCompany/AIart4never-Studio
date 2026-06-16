@@ -77,6 +77,12 @@ import type { McpServerConfig } from '@/lib/mcp';
 // it does NOT transitively pull `lib/agent-loop` into the streaming-mode test
 // mocks (which only stub `streamText`).
 import type { Step } from '@/lib/agent-loop/log';
+// AGENTIC-HARNESS: the conversational agent core (`runAgent`) — type-only
+// import here (the value is lazy-imported inside `handleAgentStream` so the
+// streaming-mode test mocks, which only stub `streamText`, don't transitively
+// pull `lib/agent-core`). The new agent-core SSE path maps the token-level
+// `streamText` `fullStream` to the SAME typed SSE events AgentConsole consumes.
+import type { ModelMessage } from 'ai';
 // V1.2.2-DIRECTOR: lazy-imported inside `handleDirectorMode`
 // so the streaming-mode tests (which mock `ai` with a
 // narrow `streamText` shape) don't transitively pull in
@@ -654,6 +660,14 @@ async function handleDirectorMode(
   // planning, calling generate_image → Higgsfield, etc. in real time. The
   // JSON path below is unchanged; existing callers never set `stream`.
   if (body.stream === true) {
+    // AGENTIC-HARNESS: the new conversational agent-core path. Behind an
+    // explicit `agentCore: true` body flag so the legacy `handleDirectorStream`
+    // (rigid brief → runDirectorLoop) still serves any caller that hasn't
+    // migrated. The client (lib/aiClient streamAgent) sets `agentCore: true`
+    // and sends `messages` (ModelMessage[]) instead of a niches/genres brief.
+    if (body.agentCore === true) {
+      return handleAgentStream(body, clientSignal);
+    }
     return handleDirectorStream(body, clientSignal);
   }
   const { ideaConcept, niches, genres, skillContext, userId, model } = body;
@@ -772,17 +786,12 @@ async function handleDirectorMode(
       ...(modelOverride ? { modelId: modelOverride } : {}),
       ...(maxSteps !== undefined ? { maxSteps } : {}),
       ...(budgetUsd !== undefined ? { budgetUsd } : {}),
-      // MASHUPFORGE-RIP: the legacy one-shot pipeline scaffold
-      // (buildDirectorSystemPrompt / buildUserPrompt / buildInitialPlanStep)
-      // has been removed from lib/agent-loop. The loop now ALWAYS runs the
-      // AGENT.md-driven conversational path; this JSON-envelope endpoint runs
-      // it conversationally too so no caller needs the deleted pipeline
-      // symbols. The returned RunDirectorLoopResult shape is identical to the
-      // non-conversational path (finalPrompt / steps / totalCost / runId /
-      // modelId / provider / truncatedBy / tokensUsed / canon), so the JSON
-      // envelope below is unchanged. The only remaining caller of this half is
-      // the deferred daemon-web client (lib/director-pipeline.ts).
-      conversational: true,
+      // AGENTIC-HARNESS: this JSON-envelope endpoint is the LEGACY brief path
+      // (runDirectorLoop). The in-app chat console has cut over to the clean
+      // agent-core stream (`handleAgentStream`); this half is kept for any
+      // direct API caller that POSTs a niches/genres/ideaConcept brief. The
+      // loop ALWAYS runs the AGENT.md-driven path now — the retired
+      // `conversational` flag (which no longer branched anything) is gone.
       signal: loopSignal,
     });
 
@@ -1039,12 +1048,10 @@ async function handleDirectorStream(
           ...(modelOverride ? { modelId: modelOverride } : {}),
           ...(maxSteps !== undefined ? { maxSteps } : {}),
           ...(budgetUsd !== undefined ? { budgetUsd } : {}),
-          // CHAT-PATH: this is the LIVE chat console stream. Run the loop
-          // conversationally so the model replies to greetings/chat and only
-          // runs the generate flow on a real brief — instead of forcing a beat
-          // run on every message (the old one-shot pipeline behaviour, which
-          // `handleDirectorMode` below keeps unchanged).
-          conversational: true,
+          // AGENTIC-HARNESS: the LEGACY brief-frame stream (handleDirectorStream),
+          // kept behind the absence of the `agentCore` flag for back-compat. The
+          // live console now uses `handleAgentStream`. The loop ALWAYS runs the
+          // AGENT.md-driven path; the retired `conversational` flag is gone.
           signal: loopSignal,
           onStep,
         });
@@ -1097,6 +1104,304 @@ async function handleDirectorStream(
   });
 
   return new Response(stream, { headers: sseHeaders() });
+}
+
+// ---------------------------------------------------------------------------
+// AGENTIC-HARNESS: conversational agent-core STREAMING handler.
+//
+// The clean replacement for `handleDirectorStream`. Where that path forces a
+// niches/genres/ideaConcept brief through `runDirectorLoop` (the rigid frame),
+// this path runs the REAL conversational agent (`lib/agent-core` `runAgent`):
+// messages-in (`ModelMessage[]`), open-ended tool use, natural turn-end, a soft
+// (never-throwing) budget meter, and a generous `stepCountIs(256)` runaway net.
+//
+// It maps the token-level `streamText` `fullStream` parts to the EXACT SAME SSE
+// events AgentConsole already consumes (so the console barely changes):
+//   - text-delta  → {type:'text', text:<delta>}                 (token-level)
+//   - tool-call   → {type:'tool-call', tool, args, idx}
+//   - tool-result → {type:'tool-result', tool, output, assetRef?, idx}
+//   - tool-error  → {type:'tool-result', tool, output:{error}, idx}  (chip resolves)
+//   - finish      → {type:'done', prompt, text, cost, tokensUsed, runId, modelId,
+//                    provider, truncatedBy:<rich stopReason>, canon?}
+//   - error       → {type:'error', error}
+//   terminated by `data: [DONE]`.
+//
+// NO plan event is emitted (the agent has no rigid scaffold). The `done` event
+// carries BOTH `prompt` (the last generate_prompt draft, for back-compat with
+// the console's "surface the prompt if the bubble is empty" path) AND `text`
+// (the accumulated visible answer).
+// ---------------------------------------------------------------------------
+async function handleAgentStream(
+  body: Record<string, unknown>,
+  clientSignal?: AbortSignal,
+): Promise<Response> {
+  const encoder = new TextEncoder();
+  const send = (
+    controller: ReadableStreamDefaultController<Uint8Array>,
+    event: Record<string, unknown>,
+  ): void => {
+    controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+  };
+
+  // --- Read the conversation (messages-in). No niches/genres/ideaConcept
+  //     brief on this path; the agent reads the messages directly. ----------
+  const messages = readModelMessages(body);
+  if (messages.length === 0) {
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        send(controller, { type: 'error', error: 'messages is required for the agent-core path' });
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+        controller.close();
+      },
+    });
+    return new Response(stream, { headers: sseHeaders() });
+  }
+
+  const characterId = resolveCharacterId(
+    (body as { activeCharacterId?: unknown }).activeCharacterId,
+  );
+  const higgsfieldConnector = readHiggsfieldConnector(body);
+  const safeUserId =
+    typeof body.userId === 'string' && body.userId.length > 0
+      ? body.userId.slice(0, 120)
+      : 'agent-console';
+  const modelOverride =
+    typeof body.model === 'string' && body.model.length > 0 ? body.model : undefined;
+
+  // Optional active skills (forward-compat with the brief path's skillContext).
+  let safeSkillContext: { name: string; version?: string }[] | undefined;
+  const rawSkills = body.skillContext;
+  if (Array.isArray(rawSkills)) {
+    safeSkillContext = rawSkills
+      .filter(
+        (s): s is { name: string; version?: string } =>
+          typeof s === 'object'
+          && s !== null
+          && typeof (s as { name?: unknown }).name === 'string'
+          && (s as { name: string }).name.length > 0,
+      )
+      .map((s) => {
+        const v = (s as { version?: unknown }).version;
+        return {
+          name: (s as { name: string }).name,
+          ...(typeof v === 'string' && v.length > 0 ? { version: v } : {}),
+        };
+      });
+  }
+
+  // SOFT budget meter (USD). Visible, never a mid-step throw. The console can
+  // pass `budgetUsd`; absent → the meter just totals.
+  let softBudgetUsd: number | undefined;
+  if (typeof body.budgetUsd === 'number' && Number.isFinite(body.budgetUsd) && body.budgetUsd > 0) {
+    softBudgetUsd = body.budgetUsd;
+  }
+  // Optional runaway-net override (the agent normally stops naturally first).
+  let safetyMaxSteps: number | undefined;
+  if (typeof body.maxSteps === 'number' && Number.isFinite(body.maxSteps) && body.maxSteps > 0) {
+    safetyMaxSteps = body.maxSteps;
+  }
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      // Lazy import keeps the streaming-mode test mocks (which stub `streamText`)
+      // from transitively failing on the agent-core module graph.
+      const { runAgent } = await import('@/lib/agent-core');
+
+      // V1.6 parity: bound the run in wall-clock time AND honour a client abort.
+      // The wall-clock guard is reported as a rich stopReason on the done event.
+      const timeoutSignal = AbortSignal.timeout(DIRECTOR_SERVER_TIMEOUT_MS);
+      const runSignal = clientSignal
+        ? AbortSignal.any([clientSignal, timeoutSignal])
+        : timeoutSignal;
+
+      let handle: Awaited<ReturnType<typeof runAgent>> | null = null;
+      try {
+        handle = await runAgent({
+          messages,
+          characterId,
+          ...(safeSkillContext ? { skillContext: safeSkillContext } : {}),
+          ...(higgsfieldConnector ? { higgsfieldConnector } : {}),
+          userId: safeUserId,
+          ...(modelOverride ? { modelId: modelOverride } : {}),
+          ...(softBudgetUsd !== undefined ? { softBudgetUsd } : {}),
+          ...(safetyMaxSteps !== undefined ? { safetyMaxSteps } : {}),
+          signal: runSignal,
+        });
+
+        // No provider configured → a single error event, then [DONE].
+        if (!isAgentHandle(handle)) {
+          send(controller, {
+            type: 'error',
+            error: 'No AI provider configured. Set MINIMAX_API_KEY.',
+          });
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          controller.close();
+          return;
+        }
+
+        // A live handle (narrowed by `isAgentHandle`).
+        const live = handle;
+
+        // Stream the token-level fullStream → SSE events the console consumes.
+        let idx = 0;
+        let accumulatedText = '';
+        // Back-compat: the LAST generate_prompt draft becomes the done `prompt`.
+        let lastPromptDraft = '';
+        let errored = false;
+        let aborted = false;
+
+        for await (const part of live.stream) {
+          switch (part.type) {
+            case 'text-delta': {
+              // Token-level visible answer delta. Already <think>-stripped by
+              // the stateful transform inside runAgent.
+              const text = part.text;
+              if (text.length > 0) {
+                accumulatedText += text;
+                send(controller, { type: 'text', text });
+              }
+              break;
+            }
+            case 'tool-call': {
+              send(controller, {
+                type: 'tool-call',
+                tool: part.toolName,
+                ...(part.input !== undefined ? { args: part.input } : {}),
+                idx: idx++,
+              });
+              break;
+            }
+            case 'tool-result': {
+              const out = part.output;
+              const assetRef = extractAssetRef(out);
+              const draft = extractPromptDraft(part.toolName, out);
+              if (draft) lastPromptDraft = draft;
+              send(controller, {
+                type: 'tool-result',
+                tool: part.toolName,
+                ...(assetRef ? { assetRef } : {}),
+                output: out,
+                idx: idx++,
+              });
+              break;
+            }
+            case 'tool-error': {
+              // Surface the error as a resolved tool-result so the console's
+              // chip leaves its spinner; the message lands in `output.error`.
+              send(controller, {
+                type: 'tool-result',
+                tool: part.toolName,
+                output: { error: getErrorMessage(part.error) || 'tool error' },
+                idx: idx++,
+              });
+              break;
+            }
+            case 'abort': {
+              aborted = true;
+              break;
+            }
+            case 'error': {
+              errored = true;
+              send(controller, {
+                type: 'error',
+                error: getErrorMessage(part.error) || 'Agent stream error',
+              });
+              break;
+            }
+            // text-start/end, reasoning-*, tool-input-*, step markers, raw,
+            // finish/finish-step are not surfaced individually — the terminal
+            // `done` below carries the run telemetry.
+            default:
+              break;
+          }
+        }
+
+        // Terminal telemetry, read AFTER the stream drains.
+        if (!errored) {
+          // Rich stop reason: a crossed soft budget or a tripped wall-clock /
+          // abort guard, else the natural turn-end. Soft budget NEVER stops the
+          // run mid-step (it's a meter) — this is purely the reported reason.
+          const truncatedBy = aborted
+            ? (runSignal.aborted && timeoutSignal.aborted ? 'wall_clock' : 'aborted')
+            : live.budgetCrossed()
+              ? 'soft_budget'
+              : 'natural';
+          send(controller, {
+            type: 'done',
+            // Back-compat: the last generate_prompt draft (the console surfaces
+            // it when the agent produced no visible text).
+            prompt: lastPromptDraft,
+            // The accumulated visible answer for this turn.
+            text: accumulatedText,
+            cost: live.cost(),
+            tokensUsed: live.tokensUsed(),
+            runId: live.runId,
+            modelId: live.modelId,
+            provider: live.provider,
+            truncatedBy,
+          });
+        }
+      } catch (e: unknown) {
+        send(controller, { type: 'error', error: getErrorMessage(e) || 'Agent stream error' });
+      } finally {
+        // Tear down the run context (HIL-gated tools) regardless of outcome.
+        if (handle && 'dispose' in handle) handle.dispose();
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, { headers: sseHeaders() });
+}
+
+/**
+ * AGENTIC-HARNESS: narrow a `runAgent` result to a live handle. The other
+ * branch is the `{ noProvider: true }` shape (no model configured). A live
+ * handle always carries the `stream` accessor; the no-provider shape never
+ * does — so a `'stream' in` probe is the discriminant TS respects on a const.
+ */
+function isAgentHandle(
+  r: Awaited<ReturnType<typeof import('@/lib/agent-core')['runAgent']>>,
+): r is Extract<typeof r, { stream: unknown }> {
+  return 'stream' in r;
+}
+
+/**
+ * AGENTIC-HARNESS: read the conversation (`ModelMessage[]`) off the request
+ * body for the agent-core path. The chat client builds it from its turns list
+ * (operator→user, agent→assistant). We validate just enough shape to hand to
+ * `runAgent` — each entry must have a string `role` and a `content` field
+ * (string or array, the two shapes the SDK accepts). Drops malformed entries
+ * rather than failing the whole request.
+ */
+function readModelMessages(body: Record<string, unknown>): ModelMessage[] {
+  const raw = body.messages;
+  if (!Array.isArray(raw)) return [];
+  const out: ModelMessage[] = [];
+  for (const m of raw) {
+    if (!m || typeof m !== 'object') continue;
+    const rec = m as Record<string, unknown>;
+    const role = rec.role;
+    const content = rec.content;
+    if (typeof role !== 'string') continue;
+    const validContent =
+      typeof content === 'string' || Array.isArray(content);
+    if (!validContent) continue;
+    out.push({ role, content } as ModelMessage);
+  }
+  return out;
+}
+
+/**
+ * AGENTIC-HARNESS: pull a prompt draft out of a `generate_prompt` tool result,
+ * for the back-compat `done.prompt`. Other tools return undefined.
+ */
+function extractPromptDraft(toolName: string, out: unknown): string | undefined {
+  if (toolName !== 'generate_prompt') return undefined;
+  if (!out || typeof out !== 'object') return undefined;
+  const draft = (out as { draft?: unknown }).draft;
+  return typeof draft === 'string' && draft.trim().length > 0 ? draft.trim() : undefined;
 }
 
 /** SSE response headers shared by the streaming director path. */

@@ -71,10 +71,11 @@ export interface PlanContext {
 // from AGENT.md + the operator's raw message, the way Claude Code decides what
 // to do from its instructions + the user's turn.
 //
-// These builders are used ONLY by `handleDirectorStream` →
-// `runDirectorLoop({ conversational: true })`; the one-shot pipeline path keeps
-// `buildDirectorSystemPrompt` + `buildUserPrompt` (the rigid scaffold) unchanged
-// for `handleDirectorMode`, which is being ripped in a later step.
+// These builders are used by `runDirectorLoop` (the LEGACY brief frame, still
+// driven by the headless CLI and the direct-API brief endpoints) AND, via
+// `buildSystem` in `lib/agent-core`, by the clean conversational `runAgent`
+// that the in-app chat console now uses. The rigid one-shot scaffold
+// (`buildDirectorSystemPrompt` / `buildUserPrompt`) was removed in MASHUPFORGE-RIP.
 // ---------------------------------------------------------------------------
 
 /**

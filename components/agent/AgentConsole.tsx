@@ -94,6 +94,31 @@ export function pickHiggsfieldConnector(
   );
 }
 
+/**
+ * AGENTIC-HARNESS: convert the console's turns list into the agent-core
+ * `messages` input (Vercel AI SDK `ModelMessage[]`). operator→`user`,
+ * agent→`assistant`; the agent's accumulated visible `text` is the assistant
+ * content. Turns with empty text (e.g. an agent turn that only ran tools and
+ * produced no prose, or a still-streaming/error turn) are skipped so the model
+ * never sees blank assistant messages. The CALLER excludes the in-flight turn
+ * by building this from `turns` BEFORE appending the new pair.
+ */
+export function turnsToMessages(turns: AgentTurn[]): AgentMessage[] {
+  const out: AgentMessage[] = [];
+  for (const t of turns) {
+    const content = t.text.trim();
+    if (!content) continue;
+    out.push({ role: t.role === 'operator' ? 'user' : 'assistant', content });
+  }
+  return out;
+}
+
+/** A minimal `ModelMessage`-compatible shape the console emits to `streamAgent`. */
+interface AgentMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────
 
 export function AgentConsole() {
@@ -132,10 +157,9 @@ export function AgentConsole() {
     return (settings.activeSkills ?? []).map((name) => ({ name }));
   }, [skills, settings.activeSkills]);
 
-  const niches = settings.agentNiches?.length
-    ? settings.agentNiches
-    : ['Story-Beat'];
-  const genres = settings.agentGenres ?? [];
+  // AGENTIC-HARNESS: the agent-core path is messages-in — it does NOT take a
+  // niches/genres brief. The operator's Settings pillars/styles no longer gate
+  // a chat turn; the agent decides what to do from AGENT.md + the conversation.
 
   const scrollToBottom = useCallback(() => {
     threadEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -153,6 +177,14 @@ export function AgentConsole() {
       if (!text || isRunning) return;
       if (!override) setInput('');
       setIsRunning(true);
+
+      // AGENTIC-HARNESS: build the conversation (ModelMessage[]) from the
+      // existing turns BEFORE we append the new pair. operator→user,
+      // agent→assistant; the in-flight agent turn doesn't exist yet, so it's
+      // naturally excluded. The new operator message is appended last. This is
+      // the messages-in input for the clean agent-core path.
+      const priorMessages = turnsToMessages(turns);
+      const messages = [...priorMessages, { role: 'user' as const, content: text }];
 
       const operatorId = `op_${Date.now()}`;
       const agentId = `ag_${Date.now() + 1}`;
@@ -177,8 +209,10 @@ export function AgentConsole() {
 
       try {
         for await (const ev of streamAgent(text, {
-          niches,
-          genres,
+          // AGENTIC-HARNESS: the clean conversational path — messages-in, no
+          // niches/genres/ideaConcept brief, token-level deltas.
+          agentCore: true,
+          messages,
           characterId,
           higgsfieldConnector,
           skills: activeSkillRefs,
@@ -194,17 +228,17 @@ export function AgentConsole() {
             // {type:'plan'} marker); we simply ignore it here. The bubble stays
             // in its "Planning…" state until real assistant text arrives.
           } else if (ev.type === 'text') {
-            // Append the reasoning delta (final / error-step text). Defense in
-            // depth: drop any stray plan-step text so the scaffold can never
-            // leak into the thread even if an upstream layer changes.
-            if (
-              ev.stepType !== 'plan' &&
-              ev.text &&
-              ev.text.trim().length > 0
-            ) {
+            // AGENTIC-HARNESS: token-level deltas on the agent-core path —
+            // accumulate by plain CONCATENATION (NOT the old blank-line join,
+            // which garbled token-by-token output by inserting `\n\n` between
+            // every delta). The deltas are already <think>-stripped server-side.
+            // Defense in depth: still drop any stray plan-step text (the
+            // agent-core path emits none, but an upstream change must never leak
+            // the legacy scaffold into the thread).
+            if (ev.stepType !== 'plan' && ev.text && ev.text.length > 0) {
               patchAgent((t) => ({
                 ...t,
-                text: t.text ? `${t.text}\n\n${ev.text}` : ev.text,
+                text: t.text + ev.text,
               }));
             }
           } else if (ev.type === 'tool-call') {
@@ -269,8 +303,7 @@ export function AgentConsole() {
     [
       input,
       isRunning,
-      niches,
-      genres,
+      turns,
       characterId,
       higgsfieldConnector,
       activeSkillRefs,
