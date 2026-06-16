@@ -423,16 +423,29 @@ function extractFinalPrompt(args: {
  * `lib/agent-tools/prompt-extract.ts` so the two callers stay in
  * lock-step.
  */
-function stripDirectorReasoning(raw: string): string {
+/**
+ * Strip `<think>…</think>` reasoning — both terminated blocks and a
+ * truncated leading open-tag with no close — from a model text response.
+ * Used for BOTH the live chat reasoning bubble (so a reasoning model's raw
+ * chain-of-thought never reaches the operator) and, composed with
+ * `stripModelCommentary` in `stripDirectorReasoning` below, the fallback
+ * image-prompt extraction. Deliberately does NOT strip commentary: the
+ * chat bubble should still show the agent's natural reply.
+ */
+export function stripThinkBlocks(raw: string): string {
   let out = raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
   const openIdx = out.indexOf('<think>');
   if (openIdx !== -1 && !out.slice(openIdx).includes('</think>')) {
     out = out.slice(0, openIdx).trim();
   }
-  // V1.7.0-PRE-PROD-FIX: without this, the model output's commentary
-  // ("Let me build a final draft…", "Niches anchored. Ready to feed
+  return out;
+}
+
+function stripDirectorReasoning(raw: string): string {
+  // V1.7.0-PRE-PROD-FIX: without the commentary strip, the model output's
+  // commentary ("Let me build a final draft…", "Niches anchored. Ready to feed
   // to generate_image…") leaked into the image prompt verbatim.
-  return stripModelCommentary(out);
+  return stripModelCommentary(stripThinkBlocks(raw));
 }
 
 // ---------------------------------------------------------------------------
@@ -640,9 +653,12 @@ export async function runDirectorLoop(
           ...(stepResult.toolCalls[0]?.input !== undefined
             ? { input: truncateForLog(stepResult.toolCalls[0].input) }
             : {}),
-          ...(stepResult.text && stepResult.text.trim().length > 0
-            ? { reasoning: stepResult.text.trim().slice(0, 1000) }
-            : {}),
+          // Strip the model's raw <think>…</think> chain-of-thought before it
+          // reaches the operator's chat bubble — only the natural reply shows.
+          ...((): { reasoning: string } | Record<string, never> => {
+            const cleaned = stripThinkBlocks(stepResult.text ?? '');
+            return cleaned.length > 0 ? { reasoning: cleaned.slice(0, 1000) } : {};
+          })(),
           cost: stepCost,
           timestamp: clock(),
         });

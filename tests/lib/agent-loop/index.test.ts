@@ -80,6 +80,7 @@ import * as aiMock from 'ai';
 import {
   runDirectorLoop,
   resolveDirectorModel,
+  stripThinkBlocks,
   type RunDirectorLoopResult,
   type RunDirectorLoopInput,
 } from '@/lib/agent-loop';
@@ -674,6 +675,42 @@ describe('runDirectorLoop — conversational (AGENT.md) chat path plumbing', () 
     expect(seen[0]).not.toBe('plan');
   });
 
+  it('strips the model <think> chain-of-thought from the streamed reasoning bubble', async () => {
+    // THINK-LEAK FIX: on a greeting the model emits a <think> reasoning block
+    // before its actual reply. The per-step `reasoning` that feeds the chat
+    // bubble must carry ONLY the natural reply, never the chain-of-thought.
+    const reply = 'Hey! 👋 What beat do you want to forge?';
+    const withThink =
+      '<think>\nThe user just said "hey" — a casual greeting. Keep it short and inviting.\n</think>\n\n' +
+      reply;
+    generateTextMock.mockImplementation(
+      async (opts: { onStepFinish?: (s: unknown) => Promise<void> | void }) => {
+        const s = makeStepResult({
+          stepNumber: 0,
+          text: withThink,
+          toolCalls: [],
+          toolResults: [],
+          usage: { inputTokens: 5, outputTokens: 5 },
+          finishReason: 'stop',
+        });
+        await opts.onStepFinish?.(s);
+        return { text: withThink, steps: [s], finishReason: 'stop' };
+      },
+    );
+    const steps: Array<{ type: string; reasoning?: string }> = [];
+    await runDirectorLoop({
+      ...baseInput,
+      conversational: true,
+      ideaConcept: 'hey',
+      onStep: (s) => steps.push(s as unknown as { type: string; reasoning?: string }),
+    });
+    const finalStep = steps.find((s) => s.type === 'final');
+    expect(finalStep).toBeDefined();
+    expect(finalStep?.reasoning).toBe(reply);
+    expect(finalStep?.reasoning).not.toContain('<think>');
+    expect(finalStep?.reasoning).not.toContain('casual greeting');
+  });
+
   it('MASHUPFORGE-RIP: a call WITHOUT conversational behaves identically (no plan scaffold, no Beat: turn)', async () => {
     // The one-shot pipeline scaffold has been removed: the `conversational`
     // flag no longer branches behaviour, so a call that omits it resolves the
@@ -697,5 +734,37 @@ describe('runDirectorLoop — conversational (AGENT.md) chat path plumbing', () 
     // AGENT.md chat system prompt — NOT the rigid director scaffold.
     expect(holder.current.system).not.toMatch(/Director plan \(executed in this order/i);
     expect(holder.current.system).toMatch(/AIart4never Studio agent/i);
+  });
+});
+
+describe('stripThinkBlocks', () => {
+  it('removes a terminated <think>…</think> block and keeps the reply', () => {
+    expect(stripThinkBlocks('<think>reasoning here</think>\n\nThe reply.')).toBe('The reply.');
+  });
+
+  it('removes a multiline <think> block', () => {
+    expect(stripThinkBlocks('<think>\nline one\nline two\n</think>\nReply.')).toBe('Reply.');
+  });
+
+  it('removes multiple <think> blocks', () => {
+    expect(stripThinkBlocks('<think>a</think>X<think>b</think>Y')).toBe('XY');
+  });
+
+  it('drops a truncated leading <think> with no close (cut-off reasoning)', () => {
+    expect(stripThinkBlocks('<think>still reasoning, never closed')).toBe('');
+  });
+
+  it('keeps text before a truncated <think>', () => {
+    expect(stripThinkBlocks('A reply.\n<think>then it started thinking')).toBe('A reply.');
+  });
+
+  it('passes through text with no think tags unchanged', () => {
+    expect(stripThinkBlocks('Just a normal reply with <brackets> and 1 < 2.')).toBe(
+      'Just a normal reply with <brackets> and 1 < 2.',
+    );
+  });
+
+  it('returns empty for empty input', () => {
+    expect(stripThinkBlocks('')).toBe('');
   });
 });
