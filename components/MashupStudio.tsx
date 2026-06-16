@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react';
 import { MashupProvider, useMashup } from './MashupContext';
 import { ErrorBoundary } from './ErrorBoundary';
 import { DesktopLoadingScreen } from './DesktopLoadingScreen';
-import { PipelineResumePrompt } from './PipelineResumePrompt';
 import { OnboardingWizard } from './onboarding/OnboardingWizard';
 import { SetupUnfinishedPill } from './onboarding/SetupUnfinishedPill';
 import { ShieldAlert, Cpu, LayoutDashboard } from 'lucide-react';
@@ -14,11 +13,6 @@ import { CreditBudgetBanner } from './CreditBudgetBanner';
 import { MinimaxQuotaBanner } from './MinimaxQuotaBanner';
 import { resolveAllowance } from '@/lib/minimax-quota';
 import { useSettings } from '@/hooks/useSettings';
-
-const Sidebar = dynamic(
-  () => import('./Sidebar').then((m) => m.Sidebar),
-  { ssr: false },
-);
 
 const MainContent = dynamic(
   () => import('./MainContent').then((m) => m.MainContent),
@@ -54,7 +48,7 @@ type PrimarySurface = 'studio' | 'agent';
  *  Reads localStorage flags only (schema field is PROP). */
 type OnboardingState =
   | { kind: 'loading' }
-  | { kind: 'show-wizard'; initialStep: 1 | 2 | 3 }
+  | { kind: 'show-wizard'; initialStep: 1 | 2 }
   | { kind: 'show-pill'; lastCompletedStep: number }
   | { kind: 'hidden' };
 
@@ -75,12 +69,15 @@ function useOnboardingState(): [OnboardingState, (s: OnboardingState) => void] {
 
         const skippedAt = localStorage.getItem('mashup.onboardingSkippedAt');
         const progressRaw = localStorage.getItem('mashup.onboardingProgress');
-        const progress = progressRaw ? JSON.parse(progressRaw) as { step?: 1 | 2 | 3; lastCompleted?: number } : null;
+        const progress = progressRaw ? JSON.parse(progressRaw) as { step?: number; lastCompleted?: number } : null;
 
         if (skippedAt) {
           setState({ kind: 'show-pill', lastCompletedStep: progress?.lastCompleted ?? 0 });
         } else {
-          setState({ kind: 'show-wizard', initialStep: progress?.step ?? 1 });
+          // Clamp any stale persisted step (the old 3-step pipeline flow could
+          // have written step: 3) down to the 2-step range.
+          const initialStep = progress?.step === 2 ? 2 : 1;
+          setState({ kind: 'show-wizard', initialStep });
         }
       } catch {
         setState({ kind: 'show-wizard', initialStep: 1 });
@@ -187,19 +184,13 @@ function MashupApp() {
           <AgentConsole />
         </ErrorBoundary>
       ) : (
-        <>
-          <ErrorBoundary section="Sidebar">
-            <Sidebar />
-          </ErrorBoundary>
-          <ErrorBoundary section="MainContent">
-            <MainContent />
-          </ErrorBoundary>
-        </>
+        <ErrorBoundary section="MainContent">
+          <MainContent />
+        </ErrorBoundary>
       )}
       <ErrorBoundary section="MmxStudioPanel">
         <MmxStudioPanel />
       </ErrorBoundary>
-      <PipelineResumePrompt />
 
       {onboarding.kind === 'show-wizard' && (
         <OnboardingWizard
@@ -215,8 +206,9 @@ function MashupApp() {
           onResume={() => {
             try {
               const raw = localStorage.getItem('mashup.onboardingProgress');
-              const progress = raw ? JSON.parse(raw) as { step?: 1 | 2 | 3 } : null;
-              const initialStep = (progress?.step ?? Math.min(3, onboarding.lastCompletedStep + 1)) as 1 | 2 | 3;
+              const progress = raw ? JSON.parse(raw) as { step?: number } : null;
+              const resolved = progress?.step ?? onboarding.lastCompletedStep + 1;
+              const initialStep: 1 | 2 = resolved >= 2 ? 2 : 1;
               localStorage.removeItem('mashup.onboardingSkippedAt');
               setOnboarding({ kind: 'show-wizard', initialStep });
             } catch {

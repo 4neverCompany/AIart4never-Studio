@@ -250,7 +250,12 @@ describe('POST /api/ai/prompt — director mode', () => {
     expect(res.headers.get('X-AI-Model')).toBe('MiniMax-M3');
   });
 
-  it('records the plan step as the first entry in the step log', async () => {
+  it('MASHUPFORGE-RIP: does NOT prepend a plan-scaffold step (loop runs conversationally)', async () => {
+    // The legacy one-shot pipeline scaffold has been removed. The director
+    // JSON endpoint now runs runDirectorLoop({ conversational: true }), so the
+    // pre-baked `plan` step at idx 0 no longer exists — the step log carries
+    // only the model's recorded events. With a mock that records no steps, the
+    // log is empty rather than `[{ type: 'plan', idx: 0 }]`.
     generateTextMock.mockImplementation(async () => {
       return { text: 'final', steps: [], finishReason: 'stop' };
     });
@@ -262,8 +267,7 @@ describe('POST /api/ai/prompt — director mode', () => {
       }),
     );
     const body = (await res.json()) as { steps: Array<{ idx: number; type: string }> };
-    expect(body.steps[0]?.type).toBe('plan');
-    expect(body.steps[0]?.idx).toBe(0);
+    expect(body.steps.some((s) => s.type === 'plan')).toBe(false);
   });
 });
 

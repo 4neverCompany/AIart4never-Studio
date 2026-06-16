@@ -772,6 +772,17 @@ async function handleDirectorMode(
       ...(modelOverride ? { modelId: modelOverride } : {}),
       ...(maxSteps !== undefined ? { maxSteps } : {}),
       ...(budgetUsd !== undefined ? { budgetUsd } : {}),
+      // MASHUPFORGE-RIP: the legacy one-shot pipeline scaffold
+      // (buildDirectorSystemPrompt / buildUserPrompt / buildInitialPlanStep)
+      // has been removed from lib/agent-loop. The loop now ALWAYS runs the
+      // AGENT.md-driven conversational path; this JSON-envelope endpoint runs
+      // it conversationally too so no caller needs the deleted pipeline
+      // symbols. The returned RunDirectorLoopResult shape is identical to the
+      // non-conversational path (finalPrompt / steps / totalCost / runId /
+      // modelId / provider / truncatedBy / tokensUsed / canon), so the JSON
+      // envelope below is unchanged. The only remaining caller of this half is
+      // the deferred daemon-web client (lib/director-pipeline.ts).
+      conversational: true,
       signal: loopSignal,
     });
 

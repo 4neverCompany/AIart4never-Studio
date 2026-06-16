@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 
 interface SetupUnfinishedPillProps {
-  /** Last completed step (0–3). 3 means done; pill should not render. */
+  /** Last completed step (0–2). 2 means done; pill should not render. */
   lastCompletedStep: number;
   onResume: () => void;
   onDismissForever: () => void;
@@ -12,13 +12,13 @@ interface SetupUnfinishedPillProps {
 
 /**
  * Tiny amber pill mounted near the top-right of the app. Visible
- * whenever the user skipped onboarding without completing all 3 steps.
+ * whenever the user skipped onboarding without completing both steps.
  * Click to resume; the X dismisses with a confirmation.
  */
 export function SetupUnfinishedPill({ lastCompletedStep, onResume, onDismissForever }: SetupUnfinishedPillProps) {
   const [confirming, setConfirming] = useState(false);
 
-  if (lastCompletedStep >= 3) return null;
+  if (lastCompletedStep >= 2) return null;
 
   return (
     <div className="fixed top-4 right-4 z-[80] flex items-center gap-2">
@@ -31,7 +31,7 @@ export function SetupUnfinishedPill({ lastCompletedStep, onResume, onDismissFore
           <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
           <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400" />
         </span>
-        Finish setup ({lastCompletedStep} of 3) →
+        Finish setup ({lastCompletedStep} of 2) →
       </button>
       {!confirming ? (
         <button

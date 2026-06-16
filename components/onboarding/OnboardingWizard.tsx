@@ -1,16 +1,15 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, X } from 'lucide-react';
 import { useMashup } from '../MashupContext';
 import { StepStepper } from './StepStepper';
 import { Step1Platform, type OnboardingPlatform } from './steps/Step1Platform';
 import { Step2Niche } from './steps/Step2Niche';
-import { Step3Pipeline, type PipelineOnceProgress } from './steps/Step3Pipeline';
 
 interface OnboardingWizardProps {
-  /** Step (1–3) to open at; defaults to 1 or to last incomplete from progress. */
-  initialStep?: 1 | 2 | 3;
+  /** Step (1–2) to open at; defaults to 1 or to last incomplete from progress. */
+  initialStep?: 1 | 2;
   onComplete: () => void;
   onSkip: (lastCompletedStep: number) => void;
 }
@@ -23,8 +22,8 @@ interface OnboardingWizardProps {
  * based on the flag.
  */
 export function OnboardingWizard({ initialStep = 1, onComplete, onSkip }: OnboardingWizardProps) {
-  const { settings, updateSettings, setView } = useMashup();
-  const [step, setStep] = useState<1 | 2 | 3>(initialStep);
+  const { settings, updateSettings } = useMashup();
+  const [step, setStep] = useState<1 | 2>(initialStep);
 
   // Step 1 state — selected platform + saved-credentials flag
   const [platform, setPlatform] = useState<OnboardingPlatform | null>(null);
@@ -35,9 +34,6 @@ export function OnboardingWizard({ initialStep = 1, onComplete, onSkip }: Onboar
   const [universes, setUniverses] = useState<string[]>(settings.agentNiches || []);
   const [genres, setGenres] = useState<string[]>(settings.agentGenres || []);
 
-  // Step 3 state — pipeline-once progress
-  const [progress, setProgress] = useState<PipelineOnceProgress>({ kind: 'idle' });
-
   // Skip-confirmation overlay
   const [skipConfirming, setSkipConfirming] = useState(false);
 
@@ -45,7 +41,7 @@ export function OnboardingWizard({ initialStep = 1, onComplete, onSkip }: Onboar
   // at the last-completed step instead of resetting to 1.
   useEffect(() => {
     try {
-      const lastCompleted = step === 1 ? 0 : step === 2 ? 1 : 2;
+      const lastCompleted = step === 1 ? 0 : 1;
       localStorage.setItem(
         'mashup.onboardingProgress',
         JSON.stringify({ step, lastCompleted, platformPicked: !!platform, nichesChosen: universes.length > 0 }),
@@ -96,40 +92,33 @@ export function OnboardingWizard({ initialStep = 1, onComplete, onSkip }: Onboar
   function handleNext() {
     if (step === 1 && canAdvanceFromStep1()) setStep(2);
     else if (step === 2 && canAdvanceFromStep2()) {
-      // Persist niches into settings on step 2 → 3 transition
+      // Persist niches into settings, then complete: write flag, close,
+      // and hand back to the host (which routes into the app).
       updateSettings({ agentNiches: universes, agentGenres: genres });
-      setStep(3);
-    } else if (step === 3 && progress.kind === 'done') {
-      // Complete: write flag, close, route into the app
       try { localStorage.setItem('mashup.onboarded', '1'); } catch { /* silent */ }
       try { localStorage.removeItem('mashup.onboardingProgress'); } catch { /* silent */ }
-      setView('pipeline');
       onComplete();
     }
   }
 
   function handleBack() {
     if (step === 2) setStep(1);
-    else if (step === 3) setStep(2);
   }
 
   function confirmSkip() {
     try {
-      const lastCompleted = step === 1 ? 0 : step === 2 ? 1 : 2;
+      const lastCompleted = step === 1 ? 0 : 1;
       localStorage.setItem('mashup.onboardingSkippedAt', String(Date.now()));
       localStorage.setItem('mashup.onboardingProgress', JSON.stringify({ step, lastCompleted }));
     } catch { /* silent */ }
-    onSkip(step === 1 ? 0 : step === 2 ? 1 : 2);
+    onSkip(step === 1 ? 0 : 1);
   }
 
-  const nextLabel = step === 3
-    ? (progress.kind === 'done' ? 'Review your first post' : 'Run pipeline')
-    : 'Next';
+  const nextLabel = step === 2 ? 'Finish setup' : 'Next';
 
   const nextDisabled =
     (step === 1 && !canAdvanceFromStep1()) ||
-    (step === 2 && !canAdvanceFromStep2()) ||
-    (step === 3 && progress.kind !== 'done');
+    (step === 2 && !canAdvanceFromStep2());
 
   return (
     <div
@@ -149,7 +138,7 @@ export function OnboardingWizard({ initialStep = 1, onComplete, onSkip }: Onboar
       >
         {/* Header */}
         <div className="px-6 py-4 flex items-center justify-between border-b border-zinc-900 flex-shrink-0">
-          <span className="text-sm font-bold tracking-wide text-[#ff7a18]">AIART4NEVER STUDIO</span>
+          <span id="onboarding-title" className="text-sm font-bold tracking-wide text-[#ff7a18]">AIART4NEVER STUDIO</span>
           <button
             type="button"
             onClick={() => setSkipConfirming(true)}
@@ -161,7 +150,7 @@ export function OnboardingWizard({ initialStep = 1, onComplete, onSkip }: Onboar
 
         {/* Stepper */}
         <div className="px-6 py-4 border-b border-zinc-900 flex-shrink-0">
-          <StepStepper current={step} />
+          <StepStepper current={step} total={2} />
         </div>
 
         {/* Body */}
@@ -183,16 +172,6 @@ export function OnboardingWizard({ initialStep = 1, onComplete, onSkip }: Onboar
               onChangeGenres={setGenres}
             />
           )}
-          {step === 3 && progress.kind === 'done' ? (
-            <SuccessState onReview={() => {
-              try { localStorage.setItem('mashup.onboarded', '1'); } catch { /* silent */ }
-              try { localStorage.removeItem('mashup.onboardingProgress'); } catch { /* silent */ }
-              setView('pipeline');
-              onComplete();
-            }} />
-          ) : step === 3 ? (
-            <Step3Pipeline universes={universes} genres={genres} progress={progress} setProgress={setProgress} />
-          ) : null}
         </div>
 
         {/* Footer */}
@@ -242,24 +221,3 @@ export function OnboardingWizard({ initialStep = 1, onComplete, onSkip }: Onboar
   );
 }
 
-function SuccessState({ onReview }: { onReview: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center text-center py-12 space-y-5">
-      <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
-        <Check className="w-8 h-8 text-emerald-400" />
-      </div>
-      <div className="space-y-2 max-w-sm">
-        <h3 id="onboarding-title" className="text-2xl font-bold text-white">You&rsquo;re set up.</h3>
-        <p className="text-sm text-zinc-400">
-          Your first post is in the approval queue. We&rsquo;ve also enabled the pipeline so it&rsquo;ll keep generating.
-        </p>
-      </div>
-      <button
-        onClick={onReview}
-        className="px-4 py-2 text-sm bg-[#ff7a18] hover:bg-[#ff9d4d] text-zinc-950 font-medium rounded-lg inline-flex items-center gap-2"
-      >
-        Review your first post <ArrowRight className="w-3 h-3" />
-      </button>
-    </div>
-  );
-}

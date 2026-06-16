@@ -8,7 +8,7 @@ import { usePersistentStore } from './usePersistentStore';
 // folder moves. `get`/`set` are used inside the bespoke `hydrate` load below.
 import { get, set } from '@/lib/persistence';
 import { type UserSettings, type WatermarkSettings, defaultSettings } from '../types/mashup';
-import { applySettingsMigrations } from '../lib/pipeline-daemon-utils';
+import { applySettingsMigrations } from '../lib/settings-migrations';
 import {
   shouldMigrateWatermark,
   migrateWatermarkToDisk,

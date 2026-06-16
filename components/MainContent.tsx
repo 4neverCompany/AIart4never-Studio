@@ -73,24 +73,7 @@ import { suggestParametersAI, type ParamSuggestion, type PerModelSuggestion } fr
 import { pushIdeaToStudio } from '@/lib/push-idea-to-studio';
 import { ParamSuggestionCard } from './ParamSuggestionCard';
 import { KebabMenu, type KebabMenuItem } from './KebabMenu';
-import { PipelineStatusStrip } from './PipelineStatusStrip';
-import { DailyDigest } from './ideas/DailyDigest';
 import { GalleryFilterBar } from './GalleryFilterBar';
-// Lazy-loaded — the Pipeline tab pulls in smart-scheduler logic +
-// its own local state tree and isn't needed on first paint. ssr:false
-// because it reads localStorage during initial render.
-const PipelinePanel = dynamic(
-  () => import('./PipelinePanel').then((m) => m.PipelinePanel),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex items-center justify-center py-20 text-zinc-500 text-sm">
-        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-        Loading pipeline…
-      </div>
-    ),
-  }
-);
 import { streamAIToString, extractJsonArrayFromLLM, extractJsonObjectFromLLM } from '@/lib/aiClient';
 import { submitAndPollVideo } from '@/lib/video-providers';
 import { enhancePromptForModel } from '@/lib/modelOptimizer';
@@ -140,8 +123,6 @@ import { GalleryCard } from './GalleryCard';
 // extracts the two simplest views (Ideas, Pipeline) as a proof of the
 // presentational/props-bag pattern. Phase 2 (post-ready, captioning,
 // gallery, studio/compare) is tracked in docs/bmad/reviews/V050-002.md.
-import { IdeasView } from './views/IdeasView';
-import { PipelineView } from './views/PipelineView';
 // TECHDEBT-001: ui tokens are imported aliased to `ui*` to avoid
 // collision with `status` field names that local handlers iterate over.
 import { status as uiStatus, gold as uiGold, surface as uiSurface } from '@/lib/ui-tokens';
@@ -340,8 +321,6 @@ export function MainContent() {
     if (view === 'gallery') {
       requestImagesLoad();
       requestCollectionsLoad();
-    } else if (view === 'ideas') {
-      requestIdeasLoad();
     } else if (view === 'compare') {
       requestComparisonLoad();
     }
@@ -1328,7 +1307,7 @@ export function MainContent() {
         <div className="flex items-center gap-2 md:gap-4 overflow-hidden">
           <div className="relative hidden md:block">
             <div className="flex bg-zinc-900/60 rounded-xl p-1 border border-[#ff7a18]/15 overflow-x-auto hide-scrollbar snap-x">
-              {['ideas', 'compare', 'gallery', 'captioning', 'post-ready', 'pipeline'].map((v) => (
+              {['compare', 'gallery', 'captioning', 'post-ready'].map((v) => (
                 <button
                   key={v}
                   onClick={() => setView(v as ViewType)}
@@ -1342,12 +1321,10 @@ export function MainContent() {
                     />
                   )}
                   <span className="relative z-10 flex items-center gap-2">
-                    {v === 'ideas' && <Lightbulb className="w-4 h-4 hidden sm:block" />}
                     {v === 'compare' && <Sparkles className="w-4 h-4 hidden sm:block" />}
                     {v === 'gallery' && <LayoutGrid className="w-4 h-4 hidden sm:block" />}
                     {v === 'captioning' && <Edit3 className="w-4 h-4 hidden sm:block" />}
                     {v === 'post-ready' && <Save className="w-4 h-4 hidden sm:block" />}
-                    {v === 'pipeline' && <Zap className="w-4 h-4 hidden sm:block" />}
                     {v === 'compare'
                       ? 'Studio'
                       : v.charAt(0).toUpperCase() + v.slice(1).replace('-', ' ')}
@@ -1358,8 +1335,6 @@ export function MainContent() {
             {/* Scroll affordance — fades right edge when tabs overflow at tablet width */}
             <div className="pointer-events-none absolute right-0 inset-y-0 w-8 rounded-r-xl bg-gradient-to-l from-[#050505] to-transparent" />
           </div>
-
-          <PipelineStatusStrip setView={setView} />
 
           <button
             onClick={logout}
@@ -1397,12 +1372,10 @@ export function MainContent() {
       >
         <div className="flex justify-around items-stretch px-1 py-1">
           {([
-            { key: 'ideas', icon: Lightbulb, label: 'Ideas' },
             { key: 'compare', icon: Sparkles, label: 'Studio' },
             { key: 'gallery', icon: LayoutGrid, label: 'Gallery' },
             { key: 'captioning', icon: Edit3, label: 'Caption' },
             { key: 'post-ready', icon: Save, label: 'Post' },
-            { key: 'pipeline', icon: Zap, label: 'Pipeline' },
           ] as const).map(({ key, icon: Icon, label }) => {
             const active = view === key;
             return (
@@ -1468,18 +1441,6 @@ export function MainContent() {
                   onSelectApproved={handleSelectApprovedBound}
                   onSelectInCollection={handleSelectInCollectionBound}
                   onInvertSelection={handleInvertSelectionBound}
-                />
-              )}
-
-              {view === 'ideas' && (
-                <IdeasView
-                  ideas={ideas}
-                  isPushing={isPushing}
-                  setView={setView}
-                  clearIdeas={clearIdeas}
-                  updateIdeaStatus={updateIdeaStatus}
-                  deleteIdea={deleteIdea}
-                  handlePushIdeaToCompare={handlePushIdeaToCompare}
                 />
               )}
 
@@ -3336,7 +3297,6 @@ export function MainContent() {
                   </div>
                 );
               })()}
-              {view === 'pipeline' && <PipelineView panel={<PipelinePanel />} />}
 
               {/* Carousel multi-source picker modal — lifted out of the
                   Captioning view so Post-Ready (and any other tab) can

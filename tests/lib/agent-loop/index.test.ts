@@ -254,7 +254,7 @@ describe('runDirectorLoop — happy path', () => {
     expect(result.steps.length).toBeGreaterThan(0);
   });
 
-  it('produces the canonical step sequence: plan → tool_call → tool_result', async () => {
+  it('produces the canonical step sequence: tool_call → tool_result (no plan scaffold step)', async () => {
     generateTextMock.mockImplementation(async (opts: { onStepFinish?: (s: unknown) => Promise<void> | void }) => {
       const step0 = makeStepResult({
         stepNumber: 0,
@@ -278,7 +278,11 @@ describe('runDirectorLoop — happy path', () => {
 
     const result = await runDirectorLoop(baseInput);
     const types = result.steps.map((s) => s.type);
-    expect(types[0]).toBe('plan');
+    // MASHUPFORGE-RIP: the rigid pre-baked plan-scaffold step is gone — the
+    // loop is always the AGENT.md-driven agent. The first recorded step is the
+    // model's first tool call, not a 'plan' step.
+    expect(types[0]).not.toBe('plan');
+    expect(types).not.toContain('plan');
     expect(types).toContain('tool_call');
     expect(types).toContain('tool_result');
     // The last step is the `tool_result` for the final
@@ -369,7 +373,9 @@ describe('runDirectorLoop — happy path', () => {
 
     const seen: string[] = [];
     await runDirectorLoop({ ...baseInput, onStep: (s) => seen.push(s.type) });
-    expect(seen[0]).toBe('plan');
+    // MASHUPFORGE-RIP: no pre-baked 'plan' scaffold step — onStep now fires
+    // only for the model's recorded events (here, the terminal 'final' text).
+    expect(seen).not.toContain('plan');
     expect(seen).toContain('final');
   });
 });
@@ -668,8 +674,10 @@ describe('runDirectorLoop — conversational (AGENT.md) chat path plumbing', () 
     expect(seen[0]).not.toBe('plan');
   });
 
-  it('the one-shot pipeline path STILL emits the plan scaffold + Beat: user turn', async () => {
-    // Contrast: the non-conversational pipeline path is unchanged.
+  it('MASHUPFORGE-RIP: a call WITHOUT conversational behaves identically (no plan scaffold, no Beat: turn)', async () => {
+    // The one-shot pipeline scaffold has been removed: the `conversational`
+    // flag no longer branches behaviour, so a call that omits it resolves the
+    // SAME AGENT.md chat prompt + raw user turn and emits NO plan step.
     const holder: { current: { system?: string; prompt?: string } } = { current: {} };
     generateTextMock.mockImplementation(
       async (opts: { system?: string; prompt?: string; onStepFinish?: (s: unknown) => Promise<void> | void }) => {
@@ -680,9 +688,14 @@ describe('runDirectorLoop — conversational (AGENT.md) chat path plumbing', () 
       },
     );
     const seen: string[] = [];
-    await runDirectorLoop({ ...baseInput, onStep: (s) => seen.push(s.type) });
-    expect(seen[0]).toBe('plan');
-    expect(holder.current.prompt).toMatch(/^Beat:/);
-    expect(holder.current.system).toMatch(/Director plan/);
+    await runDirectorLoop({ ...baseInput, ideaConcept: 'hey', onStep: (s) => seen.push(s.type) });
+    // No pre-baked plan scaffold step.
+    expect(seen).not.toContain('plan');
+    // Raw operator message as the user turn — no "Beat:" wrapper.
+    expect(holder.current.prompt).toBe('hey');
+    expect(holder.current.prompt).not.toMatch(/^Beat:/);
+    // AGENT.md chat system prompt — NOT the rigid director scaffold.
+    expect(holder.current.system).not.toMatch(/Director plan \(executed in this order/i);
+    expect(holder.current.system).toMatch(/AIart4never Studio agent/i);
   });
 });

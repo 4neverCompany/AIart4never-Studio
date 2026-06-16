@@ -76,10 +76,7 @@ import type { McpServerConfig } from '@/lib/mcp';
 import { StepLogger, truncateForLog, type Step } from './log';
 import { BudgetTracker, estimateStepCost } from './budget';
 import {
-  buildDirectorSystemPrompt,
   buildDirectorChatSystemPrompt,
-  buildInitialPlanStep,
-  buildUserPrompt,
   buildChatUserTurn,
   type PlanContext,
 } from './plan';
@@ -127,13 +124,16 @@ export interface RunDirectorLoopInput {
   /** Optional: USD cap for this run. Default $0.50 (configurable per request). */
   budgetUsd?: number;
   /**
-   * CHAT-PATH FLAG. When true, the loop runs in LIVE-CHAT mode: it uses the
-   * conversational system prompt (`buildDirectorChatSystemPrompt`) + the raw
-   * operator message as the user turn (`buildChatUserTurn`), so the model
+   * CHAT-PATH FLAG (retained for back-compat).
+   *
+   * MASHUPFORGE-RIP: the loop now ALWAYS runs the AGENT.md-driven chat path —
+   * the conversational system prompt (`buildDirectorChatSystemPrompt`) + the
+   * raw operator message as the user turn (`buildChatUserTurn`), so the model
    * decides converse-vs-generate instead of being forced into a full beat run.
-   * Set by the streaming chat path (`handleDirectorStream`). The default
-   * (false / unset) keeps the one-shot pipeline behaviour
-   * (`buildDirectorSystemPrompt` + `buildUserPrompt`) for `handleDirectorMode`.
+   * The legacy one-shot pipeline scaffold has been removed, so this flag no
+   * longer branches behaviour; callers (the streaming chat path + the JSON
+   * envelope route) still pass `conversational: true` and it remains a valid,
+   * documented input.
    */
   conversational?: boolean;
   /** Optional: abort signal forwarded to the SDK and the model. */
@@ -522,64 +522,41 @@ export async function runDirectorLoop(
   }
 
   // -----------------------------------------------------------------------
-  // 2. Plan step — recorded BEFORE the model runs so the Replay UI
-  //    has the rationale on frame 1.
+  // 2. Build the system + user prompts.
   //
-  //    AGENT.md REWIRE: ONLY the one-shot pipeline path records the rigid
-  //    `buildInitialPlanStep` scaffold (the "Director plan (executed in this
-  //    order)… Beat: …" text). The LIVE CHAT path (`conversational: true`) is an
-  //    AGENT.md-driven intelligent agent — there is NO pre-baked plan scaffold
-  //    on the chat stream; the agent decides what to do from AGENT.md + the raw
-  //    message. So we skip the plan step entirely when conversational.
-  // -----------------------------------------------------------------------
-  if (!input.conversational) {
-    const planStep: Step = logger.append({
-      ...buildInitialPlanStep(
-        {
-          niches: input.niches,
-          genres: input.genres,
-          ideaConcept: input.ideaConcept,
-          skillContext: input.skillContext ?? [],
-          // M1 CANON-WIRING: default to 'kael' so the plan/system prompt always
-          // carries a canon character.
-          characterId: input.characterId ?? 'kael',
-        },
-        { clock },
-      ),
-    });
-    input.onStep?.(planStep);
-  }
-
-  // -----------------------------------------------------------------------
-  // 3. Build the system + user prompts.
+  //    MASHUPFORGE-RIP: the loop is now ALWAYS the AGENT.md-driven
+  //    intelligent agent. The rigid one-shot pipeline scaffold
+  //    (buildInitialPlanStep plan step + buildDirectorSystemPrompt +
+  //    buildUserPrompt) has been removed. There is no pre-baked plan step
+  //    on frame 1 anymore — the agent decides what to do from AGENT.md +
+  //    the structured canon + the operator's raw message. The
+  //    `conversational` input flag is retained for back-compat (callers
+  //    still pass it) but no longer branches behaviour.
   // -----------------------------------------------------------------------
   const planContext: PlanContext = {
     niches: input.niches,
     genres: input.genres,
     ideaConcept: input.ideaConcept,
     skillContext: input.skillContext ?? [],
-    // M1 CANON-WIRING: default to 'kael' so the director system prompt always
+    // M1 CANON-WIRING: default to 'kael' so the chat system prompt always
     // injects a canon block.
     characterId: input.characterId ?? 'kael',
   };
-  // CHAT-PATH: the live chat console runs the loop conversationally — it is an
-  // AGENT.md-driven intelligent agent. Its system prompt = the AGENT.md file
-  // contents (loaded server-side) + the STRUCTURED canon block + the character
-  // lock; the agent decides converse-vs-generate from AGENT.md + the operator's
-  // RAW message, with NO rigid plan scaffold. The one-shot pipeline path leaves
-  // `conversational` unset and keeps the beat-generator system + user prompt
-  // (the rigid scaffold) for `handleDirectorMode`.
-  const baseSystem = input.conversational
-    ? buildDirectorChatSystemPrompt(planContext, await loadAgentInstructions())
-    : buildDirectorSystemPrompt(planContext);
+  // CHAT-PATH: the loop runs as an AGENT.md-driven intelligent agent. Its
+  // system prompt = the AGENT.md file contents (loaded server-side) + the
+  // STRUCTURED canon block + the character lock; the agent decides
+  // converse-vs-generate from AGENT.md + the operator's RAW message, with NO
+  // rigid plan scaffold.
+  const baseSystem = buildDirectorChatSystemPrompt(
+    planContext,
+    await loadAgentInstructions(),
+  );
   // Skill block is appended to the system stack (mirrors the
   // existing route's behaviour).
   const skillNames = (input.skillContext ?? []).map((s) => s.name);
   const skillBlock = await buildSkillSystemBlock(skillNames);
   const system = [baseSystem, skillBlock].filter(Boolean).join('\n\n') || undefined;
-  const userPrompt = input.conversational
-    ? buildChatUserTurn(planContext)
-    : buildUserPrompt(planContext);
+  const userPrompt = buildChatUserTurn(planContext);
 
   // -----------------------------------------------------------------------
   // 4. Run the SDK loop. We capture `onStepFinish` events into
@@ -926,12 +903,8 @@ export {
   MODEL_PRICING,
 } from './budget';
 export {
-  buildDirectorPlan,
-  buildDirectorSystemPrompt,
   buildDirectorChatSystemPrompt,
-  buildUserPrompt,
   buildChatUserTurn,
-  buildInitialPlanStep,
 } from './plan';
 export type { PlanContext } from './plan';
 export {
