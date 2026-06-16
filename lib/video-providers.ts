@@ -9,9 +9,7 @@
  * parallel via `Promise.allSettled`. Each successful result is
  * saved to the gallery with the right `modelInfo.provider` badge.
  *
- * Provider endpoints + status shapes:
- *   - leonardo:  POST /api/leonardo-video -> { generationId }
- *                GET  /api/leonardo/<id>   -> { status: 'PENDING'|'COMPLETE'|'FAILED', url? }
+ * Provider endpoints + status shapes (Leonardo OUT — MashupForge rip):
  *   - minimax:   POST /api/minimax-video  -> { taskId, status: 'pending' }
  *                GET  /api/minimax-video/<taskId> -> { status, videoUrl? }
  *   - higgsfield:POST /api/higgsfield/video -> { completed, videoUrl?, requestId? }
@@ -20,7 +18,7 @@
  *                dashboard. For studio use we treat it as fire-and-
  *                forget when requestId-only (the gallery gets a
  *                "generating" badge and the URL is filled in by
- *                a follow-up poll, same pattern as leonardo).
+ *                a follow-up poll).
  *   - mmx:       POST /api/mmx/video      -> { taskId }
  *                (Status polling is handled by the mmx CLI's
  *                own async tracking; we surface a "generating"
@@ -32,7 +30,7 @@
  * UI concerns (tag generation, gallery save, toasts).
  */
 
-export type VideoProviderId = 'leonardo' | 'minimax' | 'higgsfield' | 'mmx';
+export type VideoProviderId = 'minimax' | 'higgsfield' | 'mmx';
 
 export interface VideoProviderOptions {
   prompt: string;
@@ -40,26 +38,17 @@ export interface VideoProviderOptions {
   model: string;
   /** Duration in seconds. Defaults vary by provider. */
   duration?: number;
-  /** Leonardo image id from the source GeneratedImage (when
-   *  the caller is animating an existing image). Used by the
-   *  leonardo route's `imageId` field. */
-  leonardoImageId?: string;
   /** Public URL of the source image. Used by minimax
    *  (`first_frame_url`), higgsfield (`startImageUrl`), and mmx
    *  (`firstFrame`). */
   firstFrameUrl?: string;
-  /** Leonardo API key from the user's settings (server-side env
-   *  is the canonical source; the request body key is the
-   *  user-override for the Studio's per-account support). */
-  leonardoApiKey?: string;
   /** Abort signal for the caller's request cancellation. */
   signal?: AbortSignal;
   /** How long to keep polling before giving up. Defaults to
-   *  5 minutes (matches the v1.1.0 leonardo behavior). */
+   *  5 minutes. */
   timeoutMs?: number;
-  /** How long to wait between poll requests. Defaults to 5s
-   *  (matches the v1.1.0 leonardo behavior). Test code can
-   *  crank this down to 10ms to keep the suite fast. */
+  /** How long to wait between poll requests. Defaults to 5s.
+   *  Test code can crank this down to 10ms to keep the suite fast. */
   pollIntervalMs?: number;
 }
 
@@ -94,8 +83,6 @@ export async function submitAndPollVideo(
   opts: VideoProviderOptions,
 ): Promise<VideoResult> {
   switch (provider) {
-    case 'leonardo':
-      return await submitAndPollLeonardo(opts);
     case 'minimax':
       return await submitAndPollMinimax(opts);
     case 'higgsfield':
@@ -108,98 +95,6 @@ export async function submitAndPollVideo(
       const _exhaustive: never = provider;
       throw new Error(`unknown video provider: ${String(_exhaustive)}`);
     }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Leonardo
-// ---------------------------------------------------------------------------
-
-async function submitAndPollLeonardo(opts: VideoProviderOptions): Promise<VideoResult> {
-  const res = await fetch('/api/leonardo-video', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      prompt: opts.prompt,
-      imageId: opts.leonardoImageId,
-      duration: opts.duration ?? 5,
-      model: opts.model,
-      apiKey: opts.leonardoApiKey,
-    }),
-    signal: opts.signal,
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Leonardo submit failed (${res.status}): ${text.slice(0, 200)}`);
-  }
-  const data = (await res.json()) as { generationId?: string; error?: string };
-  if (!data.generationId) {
-    throw new Error(data.error || 'Leonardo returned no generationId');
-  }
-
-  // Poll the status route. The route returns
-  // { status: 'PENDING' | 'PROCESSING' | 'COMPLETE' | 'FAILED', url?, error? }
-  // — same vocabulary v1.1.0 used.
-  const start = Date.now();
-  const timeout = opts.timeoutMs ?? VIDEO_DEFAULT_TIMEOUT_MS;
-  for (let i = 0; i < MAX_POLL_ATTEMPTS; i++) {
-    if (Date.now() - start > timeout) {
-      throw new Error('Leonardo video generation timed out');
-    }
-    await sleep(opts.pollIntervalMs ?? POLL_INTERVAL_MS, opts.signal);
-    const statusRes = await fetch(`/api/leonardo/${data.generationId}`, {
-      signal: opts.signal,
-    });
-    if (!statusRes.ok) {
-      const text = await statusRes.text().catch(() => '');
-      throw new Error(`Leonardo status check failed (${statusRes.status}): ${text.slice(0, 200)}`);
-    }
-    const status = (await statusRes.json()) as {
-      status?: string;
-      url?: string;
-      error?: string;
-    };
-    if (status.status === 'COMPLETE') {
-      if (!status.url) {
-        throw new Error('Leonardo reported COMPLETE but no url');
-      }
-      return {
-        provider: 'leonardo',
-        modelId: opts.model,
-        modelName: leonardoModelName(opts.model),
-        videoUrl: status.url,
-        externalId: data.generationId,
-      };
-    }
-    if (status.status === 'FAILED') {
-      throw new Error(status.error || 'Leonardo video generation failed');
-    }
-    // PENDING / PROCESSING -> loop
-  }
-  throw new Error('Leonardo video generation timed out (max attempts)');
-}
-
-function leonardoModelName(slug: string): string {
-  switch (slug) {
-    case 'kling-video-o-3':
-      return 'Kling O3 Omni';
-    case 'kling-3.0':
-      return 'Kling 3.0';
-    case 'ray-v2':
-      return 'Ray V2';
-    case 'ray-v1':
-      return 'Ray V1';
-    case 'seedance-2.0':
-      return 'Seedance 2.0';
-    case 'seedance-2.0-fast':
-      return 'Seedance 2.0 Fast';
-    case 'veo-3.1':
-    case 'VEO3_1':
-      return 'Veo 3.1';
-    case 'VEO3_1FAST':
-      return 'Veo 3.1 Fast';
-    default:
-      return slug;
   }
 }
 

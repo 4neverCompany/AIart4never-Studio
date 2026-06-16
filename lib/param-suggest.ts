@@ -141,9 +141,9 @@ export interface SuggestParametersInput {
   /**
    * P2 of PROV-AGNOSTIC-PARAMS — when set, narrow the candidate pool to
    * models whose `LeonardoModelConfig.provider` matches. Undefined leaves
-   * the engine in its historical Leonardo-only behaviour (every model
-   * shipped before MXIMG-001 has no provider field; treated as
-   * `'leonardo'` by the filter). When set to `'minimax'`, only
+   * the engine in its all-providers behaviour (a model with no provider
+   * field is treated as `'minimax'` by the filter now that the Leonardo
+   * engine has been removed). When set to `'minimax'`, only
    * `minimax-image-01` survives the filter today; future MiniMax image
    * models drop in without engine changes.
    */
@@ -533,13 +533,12 @@ export function suggestParameters(input: SuggestParametersInput): ParamSuggestio
   const excluded = new Set(excludedModelIds);
   // P2 of PROV-AGNOSTIC-PARAMS: when the caller passes a provider, drop
   // models whose `LeonardoModelConfig.provider` doesn't match. Undefined
-  // provider on the model is treated as `'leonardo'` for back-compat —
-  // every spec shipped before MXIMG-001 omits the field and is implicitly
-  // Leonardo. When `provider` is undefined on the input, the filter is a
-  // no-op and the engine keeps its prior all-providers behaviour.
+  // provider on the model is treated as `'minimax'` now that the Leonardo
+  // engine has been removed. When `provider` is undefined on the input,
+  // the filter is a no-op and the engine keeps its all-providers behaviour.
   const eligible = availableModels.filter(m => {
     if (excluded.has(m.id)) return false;
-    if (provider !== undefined && (m.provider ?? 'leonardo') !== provider) return false;
+    if (provider !== undefined && (m.provider ?? 'minimax') !== provider) return false;
     return true;
   });
   const hints = deriveHints(prompt);

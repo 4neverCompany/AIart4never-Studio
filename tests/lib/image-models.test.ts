@@ -25,20 +25,21 @@ describe('lib/image-models', () => {
       expect(hf.some((m) => m.id === 'higgsfield:nano_banana_2')).toBe(true)
     })
 
-    it('includes Leonardo models', () => {
-      const leo = IMAGE_MODELS.filter((m) => m.provider === 'leonardo')
-      expect(leo.length).toBeGreaterThan(0)
+    it('includes the kept MiniMax image model (Leonardo engine removed)', () => {
+      const minimax = IMAGE_MODELS.filter((m) => m.provider === 'minimax')
+      expect(minimax.length).toBeGreaterThan(0)
+      expect(minimax.some((m) => m.id === 'minimax-image-01')).toBe(true)
     })
 
     it('puts Higgsfield models first (so they win the default)', () => {
       expect(IMAGE_MODELS[0].provider).toBe('higgsfield')
     })
 
-    it('preserves the legacy LeonardoModelConfig on Leonardo entries', () => {
-      const phoenix = getImageModel('nano-banana-2')
-      expect(phoenix).toBeDefined()
-      expect(phoenix?.leonardoConfig).toBeDefined()
-      expect(phoenix?.leonardoConfig?.id).toBe('nano-banana-2')
+    it('preserves the legacy LeonardoModelConfig on the MiniMax entry', () => {
+      const minimax = getImageModel('minimax-image-01')
+      expect(minimax).toBeDefined()
+      expect(minimax?.leonardoConfig).toBeDefined()
+      expect(minimax?.leonardoConfig?.id).toBe('minimax-image-01')
     })
 
     it('preserves the HiggsfieldModelMeta on Higgsfield entries', () => {
@@ -52,11 +53,11 @@ describe('lib/image-models', () => {
   describe('pickDefaultImageModel (V1.4.0 auto-pick)', () => {
     it("returns the user's explicit default when set", () => {
       const result = pickDefaultImageModel({
-        defaultImageModel: 'nano-banana-2',
+        defaultImageModel: 'minimax-image-01',
         higgsfieldEnabled: true,
       })
-      expect(result.id).toBe('nano-banana-2')
-      expect(result.provider).toBe('leonardo')
+      expect(result.id).toBe('minimax-image-01')
+      expect(result.provider).toBe('minimax')
     })
 
     it('prefers Higgsfield flagship when user enabled Higgsfield and no override', () => {
@@ -84,16 +85,16 @@ describe('lib/image-models', () => {
       expect(result.id).toBe('higgsfield:flux_2')
     })
 
-    it('keeps Leonardo default when user has NOT enabled Higgsfield (regression)', () => {
+    it('keeps the legacy defaultLeonardoModel pick when Higgsfield is NOT enabled (regression)', () => {
       const result = pickDefaultImageModel({
         higgsfieldEnabled: false,
-        defaultLeonardoModel: 'nano-banana-2',
+        defaultLeonardoModel: 'minimax-image-01',
       })
-      expect(result.id).toBe('nano-banana-2')
-      expect(result.provider).toBe('leonardo')
+      expect(result.id).toBe('minimax-image-01')
+      expect(result.provider).toBe('minimax')
     })
 
-    it('keeps Leonardo default when settings are absent (existing workflow)', () => {
+    it('falls back to a model when settings are absent (existing workflow)', () => {
       const result = pickDefaultImageModel({})
       expect(result).toBeDefined()
       expect(result.id).toBeTruthy()
@@ -103,9 +104,9 @@ describe('lib/image-models', () => {
       const result = pickDefaultImageModel({
         defaultHiggsfieldImageModel: 'flux_2',
         higgsfieldEnabled: false,
-        defaultLeonardoModel: 'nano-banana-2',
+        defaultLeonardoModel: 'minimax-image-01',
       })
-      expect(result.id).toBe('nano-banana-2')
+      expect(result.id).toBe('minimax-image-01')
     })
   })
 

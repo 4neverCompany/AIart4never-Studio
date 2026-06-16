@@ -23,9 +23,9 @@ const EMPTY_DESKTOP: DesktopCredentialFlags = {
 
 function mkSettings(apiKeys: UserSettings['apiKeys']): UserSettings {
   return {
-    enabledProviders: ['leonardo'],
+    enabledProviders: ['minimax'],
     apiKeys,
-    defaultLeonardoModel: 'phoenix',
+    defaultLeonardoModel: 'minimax-image-01',
   };
 }
 

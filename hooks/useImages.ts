@@ -10,15 +10,27 @@ import { usePersistentStore } from './usePersistentStore'
 import { autoBackupImages } from '@/lib/backup/images'
 import { hasEmbeddedPixels, isAssetUrl, slimImageRecord } from '@/lib/images/slim'
 import { displayUrlAsync } from '@/lib/images/storage'
+import { rewriteLegacyLeonardoImageProvider } from '@/lib/settings-migrations'
 import { type GeneratedImage } from '../types/mashup'
 
-// Normalize images on load: rewrite legacy tag spelling and reset any
+// Normalize images on load: rewrite legacy tag spelling, reset any
 // transient pipeline status that was persisted mid-flight (the work itself
-// did not survive the reload, so the status would otherwise be stuck).
+// did not survive the reload, so the status would otherwise be stuck), and
+// rewrite the legacy MashupForge `modelInfo.provider === 'leonardo'` badge
+// to 'higgsfield' so the narrowed provider union stays valid and
+// persist-asset never sees a stale Leonardo ref (Leonardo engine removed).
 function normalizeOnLoad(img: GeneratedImage): GeneratedImage {
   const tags = img.tags?.map(t => t === 'Warhammer 40,000' ? 'Warhammer 40k' : t);
   const status = img.status === 'generating' || img.status === 'animating' ? 'ready' : img.status;
-  return { ...img, tags, status };
+  const modelInfo = img.modelInfo
+    ? {
+        ...img.modelInfo,
+        provider: rewriteLegacyLeonardoImageProvider(
+          img.modelInfo.provider as string | undefined,
+        ) as NonNullable<GeneratedImage['modelInfo']>['provider'],
+      }
+    : img.modelInfo;
+  return { ...img, tags, status, modelInfo };
 }
 
 // V1.4.5-DATALOSS-ROOTCAUSE: id-union merge, `patch` wins on collisions.

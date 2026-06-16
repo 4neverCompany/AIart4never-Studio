@@ -100,16 +100,14 @@ export function useComparison({ settings, saveImage, applyWatermark }: UseCompar
 
     const placeholders: GeneratedImage[] = modelIds.map((modelId, idx) => {
       // Resolve the placeholder's modelInfo.provider from the model
-      // registry rather than hardcoding 'leonardo' — minimax-image-01
-      // is the first non-Leonardo entry in LEONARDO_MODELS and the
-      // gallery / filters key off this field. Pre-MXIMG-001 models
-      // omit `provider` and fall back to 'leonardo' for back-compat.
-      const cfg = LEONARDO_MODELS.find(m => m.id === modelId);
+      // registry. minimax-image-01 is the kept default entry in
+      // LEONARDO_MODELS; the gallery / filters key off this field.
+      // Models without an explicit higgsfield provider fall back to
+      // 'minimax' now that the Leonardo engine has been removed.
       // V1.7.0-PIPELINE-HIGGSFIELD: higgsfield ids resolve via the unified
       // registry so the placeholder badge shows the right provider too.
-      const provider: 'leonardo' | 'minimax' | 'higgsfield' =
-        getImageModel(modelId)?.provider === 'higgsfield' ? 'higgsfield'
-        : (cfg?.provider ?? 'leonardo');
+      const provider: 'minimax' | 'higgsfield' =
+        getImageModel(modelId)?.provider === 'higgsfield' ? 'higgsfield' : 'minimax';
       return {
         id: `comp-placeholder-${Date.now()}-${idx}`,
         comparisonId,
@@ -195,42 +193,24 @@ export function useComparison({ settings, saveImage, applyWatermark }: UseCompar
 
           const dimsFallback = getLeonardoDimensions(modelId, modelRatio);
 
-          // Map art style name → Leonardo UUID. buildEnhancedPrompt
-          // already provides this when the model has a registered spec;
-          // we keep the fuzzy-match fallback so unspec'd / pre-MXIMG-001
-          // models still get a styleId pick.
-          const fuzzyStyleUuids = (() => {
-            if (!modelStyle) return undefined;
-            if (!modelConfig?.styles) return undefined;
-            const match = modelConfig.styles.find(s =>
-              s.name.toLowerCase() === modelStyle.toLowerCase() ||
-              s.name.toLowerCase().includes(modelStyle.toLowerCase())
-            );
-            return match ? [match.uuid] : undefined;
-          })();
-
           const submitWidth = enhanced.leonardo.width ?? dimsFallback.width;
           const submitHeight = enhanced.leonardo.height ?? dimsFallback.height;
-          const submitStyleIds = enhanced.leonardo.styleIds ?? fuzzyStyleUuids;
           const submitPrompt = enhanced.prompt;
 
           // Provider branch — minimax-image-01 (and any future MiniMax
           // image models) route to /api/minimax-image, which calls
           // MiniMax's native image_generation endpoint with a
-          // synchronous response (no polling). All other models stay on
-          // the Leonardo v2 submit-then-poll path. Mirrors the branching
-          // shipped to hooks/useImageGeneration.ts in MXIMG-001 — that
-          // hook's `generateImages` is destructured in several places
-          // but never actually invoked (Studio + Pipeline use this
-          // generateComparison path instead), which is why the routing
-          // gap survived until now.
+          // synchronous response (no polling). The Leonardo submit-then-
+          // poll path has been removed (MashupForge rip); MiniMax is the
+          // live Compare backend.
           // V1.7.0-PIPELINE-HIGGSFIELD: the unified registry is the
-          // authoritative provider source (LEONARDO_MODELS only knows
-          // leonardo/minimax; higgsfield ids live in image-models.ts).
+          // authoritative provider source (LEONARDO_MODELS now only
+          // holds the kept minimax-image-01 entry; higgsfield ids live
+          // in image-models.ts). With the Leonardo engine removed, an
+          // unresolved provider defaults to 'minimax'.
           const unifiedModel = getImageModel(modelId);
-          const submitProvider: 'leonardo' | 'minimax' | 'higgsfield' =
-            unifiedModel?.provider === 'higgsfield' ? 'higgsfield'
-            : (modelConfig?.provider ?? 'leonardo');
+          const submitProvider: 'minimax' | 'higgsfield' =
+            unifiedModel?.provider === 'higgsfield' ? 'higgsfield' : 'minimax';
 
           // Single-attempt submit. Throws on any failure; on Leonardo
           // FAILED-with-moderation it annotates the Error with
@@ -276,58 +256,15 @@ export function useComparison({ settings, saveImage, applyWatermark }: UseCompar
               return { imageUrl: first.url, imageId: data.generationId ?? '', seed: 0 };
             }
 
-            // Leonardo branch — POST then poll until COMPLETE / FAILED.
-            const res = await fetch('/api/leonardo', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                prompt,
-                modelId,
-                width: submitWidth,
-                height: submitHeight,
-                negative_prompt: modelNegPrompt,
-                styleIds: submitStyleIds,
-                quality: enhanced.leonardo.quality,
-                apiKey: settings.apiKeys.leonardo,
-              }),
-            });
-            if (!res.ok) {
-              let detail = `Leonardo submit failed (${res.status})`;
-              try {
-                const j = await res.json();
-                if (typeof j?.error === 'string') detail = j.error;
-              } catch { /* non-JSON */ }
-              throw new Error(detail);
-            }
-            const data = await res.json();
-            if (!data.generationId) throw new Error('Leonardo returned no generationId');
-            let attempts = 0;
-            while (attempts < 150) {
-              await new Promise(resolve => setTimeout(resolve, 2000));
-              attempts++;
-              const statusRes = await fetch(`/api/leonardo/${data.generationId}`);
-              if (!statusRes.ok) continue; // tolerate transient 5xx / Hasura layer hiccups
-              const statusData = await statusRes.json();
-              if (statusData.status === 'COMPLETE') {
-                return {
-                  imageUrl: statusData.url,
-                  imageId: statusData.imageId ?? '',
-                  seed: statusData.seed ?? 0,
-                };
-              }
-              if (statusData.status === 'FAILED') {
-                const cls: string[] = Array.isArray(statusData.moderation?.moderationClassification)
-                  ? statusData.moderation.moderationClassification
-                  : [];
-                const e = new Error(
-                  statusData.error || 'Leonardo generation failed',
-                ) as SubmitError;
-                e.moderationClassification = cls;
-                e.failedPrompt = statusData.failedPrompt || prompt;
-                throw e;
-              }
-            }
-            throw new Error('Timeout polling Leonardo generation');
+            // MashupForge rip: the Leonardo submit-then-poll branch has
+            // been removed. MiniMax is the only Compare backend; a
+            // non-MiniMax provider here (e.g. a higgsfield-only model
+            // dropped into Compare) is surfaced verbatim rather than
+            // silently routed to a dead Leonardo endpoint.
+            throw new Error(
+              `Compare supports MiniMax image models only — "${modelId}" (${submitProvider}) ` +
+              `cannot be generated here.`,
+            );
           };
 
           // TRADEMARK-STAGED-PIPELINE (2026-05-22): 3-stage retry on

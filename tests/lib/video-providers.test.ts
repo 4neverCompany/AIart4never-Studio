@@ -37,7 +37,6 @@ function stubProvider(
     const u = typeof url === 'string' ? url : url.toString();
     // Submit endpoint detection (URL has no /<id> suffix on submit)
     if (
-      (provider === 'leonardo' && u.includes('/api/leonardo-video') && !u.match(/leonardo\/[^/?]+/)) ||
       (provider === 'minimax' && u.includes('/api/minimax-video') && !u.match(/minimax-video\/[^/?]+/)) ||
       (provider === 'higgsfield' && u.includes('/api/higgsfield/video')) ||
       (provider === 'mmx' && u.includes('/api/mmx/video'))
@@ -58,9 +57,6 @@ function stubProvider(
     }
     // Out of prepared responses: keep returning "still processing"
     // so the polling loop times out cleanly via timeoutMs.
-    if (provider === 'leonardo') {
-      return new Response(JSON.stringify({ status: 'PENDING' }), { status: 200 });
-    }
     if (provider === 'minimax') {
       return new Response(JSON.stringify({ status: 'processing' }), { status: 200 });
     }
@@ -71,41 +67,6 @@ function stubProvider(
 const FAST = { pollIntervalMs: 5, timeoutMs: 500 };
 
 describe('submitAndPollVideo — provider dispatch', () => {
-  it('Leonardo: returns VideoResult on COMPLETE', async () => {
-    stubProvider(
-      'leonardo',
-      { generationId: 'gen-1' },
-      [
-        { status: 200, body: { status: 'PROCESSING' } },
-        { status: 200, body: { status: 'COMPLETE', url: 'https://cdn.example/v.mp4' } },
-      ],
-    );
-    const r = await submitAndPollVideo('leonardo', { prompt: 'p', model: 'kling-3.0', ...FAST });
-    expect(r.provider).toBe('leonardo');
-    expect(r.modelId).toBe('kling-3.0');
-    expect(r.modelName).toBe('Kling 3.0');
-    expect(r.videoUrl).toBe('https://cdn.example/v.mp4');
-    expect(r.externalId).toBe('gen-1');
-  });
-
-  it('Leonardo: throws on FAILED status', async () => {
-    stubProvider(
-      'leonardo',
-      { generationId: 'gen-1' },
-      [{ status: 200, body: { status: 'FAILED', error: 'content blocked' } }],
-    );
-    await expect(
-      submitAndPollVideo('leonardo', { prompt: 'p', model: 'kling-3.0', ...FAST }),
-    ).rejects.toThrow(/content blocked/);
-  });
-
-  it('Leonardo: times out if poll never reaches COMPLETE', async () => {
-    stubProvider('leonardo', { generationId: 'gen-1' }, []);
-    await expect(
-      submitAndPollVideo('leonardo', { prompt: 'p', model: 'kling-3.0', ...FAST, timeoutMs: 100 }),
-    ).rejects.toThrow(/timed out/);
-  });
-
   it('MiniMax: returns VideoResult on success status', async () => {
     stubProvider(
       'minimax',
@@ -198,30 +159,6 @@ describe('submitAndPollVideo — provider dispatch', () => {
     await expect(
       submitAndPollVideo('minimax', { prompt: 'p', model: 'MiniMax-Hailuo-2.3' }),
     ).rejects.toThrow(/quota/);
-  });
-
-  it('passes leonardoImageId to the leonardo route and firstFrameUrl to minimax', async () => {
-    const calls: Array<{ url: string; body: unknown }> = [];
-    fetchMock.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
-      const u = typeof url === 'string' ? url : url.toString();
-      const body = init?.body ? JSON.parse(init.body as string) : null;
-      calls.push({ url: u, body });
-      if (u.includes('/api/leonardo-video') && !u.match(/leonardo\/[^/?]+/)) {
-        return new Response(JSON.stringify({ generationId: 'g1' }), { status: 200 });
-      }
-      if (u.match(/leonardo\/[^/?]+/)) {
-        return new Response(JSON.stringify({ status: 'COMPLETE', url: 'https://x/v.mp4' }), { status: 200 });
-      }
-      return new Response('{}', { status: 200 });
-    });
-    await submitAndPollVideo('leonardo', {
-      prompt: 'p',
-      model: 'kling-3.0',
-      leonardoImageId: 'leo-img-42',
-      ...FAST,
-    });
-    const submit = calls.find((c) => c.url.includes('/api/leonardo-video'));
-    expect(submit?.body).toMatchObject({ imageId: 'leo-img-42' });
   });
 
   it('passes firstFrameUrl to the minimax route', async () => {

@@ -45,24 +45,24 @@ import { canonTags } from '@/lib/canon/content-plan';
  * The provider/modelId go through the existing `modelInfo`
  * struct (the legacy field the gallery already renders). We
  * narrow the assetRef.provider to the union that struct expects
- * (leonardo/minimax/higgsfield/mmx); other providers (openai,
- * mock) are recorded as the closest valid value plus a comment
- * on `imageId` so the v1.2.3 PR can extend the union.
+ * (minimax/higgsfield/mmx); other providers (openai, mock) are
+ * recorded as the closest valid value plus a comment on `imageId`
+ * so the v1.2.3 PR can extend the union.
  */
 function modelInfoFor(input: PersistAssetInput): {
-  provider: 'leonardo' | 'minimax' | 'higgsfield' | 'mmx';
+  provider: 'minimax' | 'higgsfield' | 'mmx';
   modelId: string;
   modelName: string;
 } {
   const ref = input.assetRef;
   // Map the wider AssetRef.provider union down to the
-  // GeneratedImage.modelInfo.provider union. 'higgsfield',
-  // 'leonardo', 'minimax' are direct; 'openai' and 'mock'
-  // collapse to 'mmx' (the generic multi-modal fallback). The
-  // original provider label is preserved on `imageId` for forensic
-  // clarity — see the v1.2.3 PR to extend the union.
-  const provider: 'leonardo' | 'minimax' | 'higgsfield' | 'mmx' =
-    ref.provider === 'higgsfield' || ref.provider === 'leonardo' || ref.provider === 'minimax'
+  // GeneratedImage.modelInfo.provider union. 'higgsfield' and
+  // 'minimax' are direct; 'openai' and 'mock' collapse to 'mmx'
+  // (the generic multi-modal fallback). The original provider
+  // label is preserved on `imageId` for forensic clarity — see
+  // the v1.2.3 PR to extend the union.
+  const provider: 'minimax' | 'higgsfield' | 'mmx' =
+    ref.provider === 'higgsfield' || ref.provider === 'minimax'
       ? ref.provider
       : 'mmx';
   return { provider, modelId: ref.id, modelName: ref.id };

@@ -6,8 +6,86 @@
 // buildPerModelPromptPayload were removed with the helpers themselves.
 
 import { describe, it, expect } from 'vitest';
-import { suggestParameters, suggestParametersAI } from '@/lib/param-suggest';
-import type { GeneratedImage, LeonardoModelConfig } from '@/types/mashup';
+import { suggestParameters, suggestParametersAI, type SuggestParametersInput } from '@/lib/param-suggest';
+import type { GeneratedImage, LeonardoModelConfig, LeonardoModelSpec } from '@/types/mashup';
+
+// MashupForge rip: the production LEONARDO_MODEL_PARAMS map was trimmed
+// to the kept minimax-image-01 entry (the Leonardo specs were deleted
+// with the engine). These engine tests validate per-model spec handling,
+// so they carry their own fixture spec map decoupled from the production
+// catalog. `suggestParameters` / `suggestParametersAI` accept `modelParams`
+// explicitly; threading this fixture keeps the engine assertions intact
+// without resurrecting the deleted Leonardo specs in production.
+const TEST_MODEL_PARAMS: Record<string, LeonardoModelSpec> = {
+  'gpt-image-1.5': {
+    type: 'image',
+    width: 1024,
+    height: 1024,
+    supported_sizes: ['1024x1024'],
+    quality: ['LOW', 'MEDIUM', 'HIGH'],
+    style_ids: false,
+    prompt_enhance: 'ON',
+    supports_image_reference: true,
+  },
+  'gpt-image-2': {
+    type: 'image',
+    width: 1024,
+    height: 1024,
+    supported_sizes: ['1024x1024'],
+    quality: ['LOW', 'MEDIUM', 'HIGH'],
+    style_ids: false,
+    prompt_enhance: 'ON',
+    supports_image_reference: true,
+  },
+  'nano-banana': {
+    type: 'image',
+    width: 1024,
+    height: 1024,
+    supported_sizes: ['1024x1024'],
+    style_ids: true,
+    prompt_enhance: 'ON',
+    supports_image_reference: false,
+  },
+  'nano-banana-2': {
+    type: 'image',
+    width: 1024,
+    height: 1024,
+    supported_sizes: ['1024x1024'],
+    style_ids: true,
+    prompt_enhance: 'ON',
+    supports_image_reference: false,
+  },
+  'nano-banana-pro': {
+    type: 'image',
+    api_name: 'gemini-image-2',
+    width: 1024,
+    height: 1024,
+    supported_sizes: ['1024x1024'],
+    style_ids: true,
+    prompt_enhance: 'ON',
+    supports_image_reference: false,
+  },
+  'minimax-image-01': {
+    type: 'image',
+    api_name: 'image-01',
+    width: 1024,
+    height: 1024,
+    supported_sizes: ['1024x1024'],
+    style_ids: false,
+    prompt_enhance: 'ON',
+    supports_image_reference: false,
+  },
+  'kling-3.0': {
+    type: 'video',
+    width: 1920,
+    height: 1080,
+    duration: 5,
+    mode: 'RESOLUTION_1080',
+    motion_has_audio: true,
+    supports_start_frame: true,
+    supports_end_frame: false,
+  },
+};
 
 function makeModel(id: string, overrides?: Partial<LeonardoModelConfig>): LeonardoModelConfig {
   return {
@@ -35,7 +113,7 @@ function makeSaved(
     url: 'https://cdn/x.jpg',
     status: 'ready',
     winner: true,
-    modelInfo: { provider: 'leonardo', modelId, modelName: modelId },
+    modelInfo: { provider: 'higgsfield', modelId, modelName: modelId },
     ...overrides,
   };
 }
@@ -75,6 +153,7 @@ describe('suggestParameters', () => {
       modelGuides: guides,
       availableStyles: styles,
       savedImages: [],
+      modelParams: TEST_MODEL_PARAMS,
     });
     expect(s.modelIds.length).toBeGreaterThan(0);
     for (const id of s.modelIds) {
@@ -90,6 +169,7 @@ describe('suggestParameters', () => {
       modelGuides: { 'gpt-image-1.5': 'photorealistic mountains' },
       availableStyles: styles,
       savedImages: [],
+      modelParams: TEST_MODEL_PARAMS,
     });
     const entry = s.perModel['gpt-image-1.5'];
     expect(entry.type).toBe('image');
@@ -110,6 +190,7 @@ describe('suggestParameters', () => {
       modelGuides: { 'gpt-image-1.5': 'photorealistic detailed' },
       availableStyles: styles,
       savedImages: [],
+      modelParams: TEST_MODEL_PARAMS,
     });
     const entry = s.perModel['gpt-image-1.5'];
     if (entry.type !== 'image') throw new Error('expected image');
@@ -124,6 +205,7 @@ describe('suggestParameters', () => {
       modelGuides: { 'nano-banana-2': 'illustration anime' },
       availableStyles: styles,
       savedImages: [],
+      modelParams: TEST_MODEL_PARAMS,
     });
     const entry = s.perModel['nano-banana-2'];
     if (entry.type !== 'image') throw new Error('expected image');
@@ -141,6 +223,7 @@ describe('suggestParameters', () => {
       availableStyles: styles,
       savedImages: [],
       topN: 2,
+      modelParams: TEST_MODEL_PARAMS,
     });
     const nano = s.perModel['nano-banana-2'];
     const gpt = s.perModel['gpt-image-1.5'];
@@ -156,6 +239,7 @@ describe('suggestParameters', () => {
       modelGuides: { 'gpt-image-1.5': 'cityscape panorama' },
       availableStyles: styles,
       savedImages: [],
+      modelParams: TEST_MODEL_PARAMS,
     });
     const entry = s.perModel['gpt-image-1.5'];
     if (entry.type !== 'image') throw new Error('expected image');
@@ -169,6 +253,7 @@ describe('suggestParameters', () => {
       modelGuides: guides,
       availableStyles: styles,
       savedImages: [],
+      modelParams: TEST_MODEL_PARAMS,
     });
     expect(s.modelIds).not.toContain('nano-banana');
     expect(s.perModel['nano-banana']).toBeUndefined();
@@ -184,6 +269,7 @@ describe('suggestParameters', () => {
       availableStyles: styles,
       savedImages: [],
       includedModelIds: ['gpt-image-1.5'],
+      modelParams: TEST_MODEL_PARAMS,
     });
     expect(s.modelIds).toContain('gpt-image-1.5');
     expect(s.perModel['gpt-image-1.5']).toBeDefined();
@@ -228,6 +314,7 @@ describe('suggestParameters', () => {
       availableStyles: styles,
       savedImages: [],
       topN: 3,
+      modelParams: TEST_MODEL_PARAMS,
     });
     expect(s.modelIds.length).toBe(3);
     expect(Object.keys(s.perModel).length).toBe(3);
@@ -245,6 +332,7 @@ describe('suggestParameters', () => {
       modelGuides: guides,
       availableStyles: styles,
       savedImages: saved,
+      modelParams: TEST_MODEL_PARAMS,
     });
     expect(s.modelIds[0]).toBe('gpt-image-1.5');
     expect(s.priorMatchCount).toBeGreaterThan(0);
@@ -262,6 +350,7 @@ describe('suggestParameters', () => {
       modelGuides: guides,
       availableStyles: styles,
       savedImages: saved,
+      modelParams: TEST_MODEL_PARAMS,
     });
     const entry = s.perModel[s.modelIds[0]];
     if (entry.type !== 'image') throw new Error('expected image');
@@ -275,6 +364,7 @@ describe('suggestParameters', () => {
       modelGuides: guides,
       availableStyles: styles,
       savedImages: [],
+      modelParams: TEST_MODEL_PARAMS,
     });
     expect(s.modelIds.length).toBeGreaterThan(0);
     expect(Object.keys(s.perModel).length).toBeGreaterThan(0);
@@ -294,6 +384,7 @@ describe('suggestParameters', () => {
       },
       availableStyles: styles,
       savedImages: [],
+      modelParams: TEST_MODEL_PARAMS,
     });
     const a = s.perModel['nano-banana-2'];
     const b = s.perModel['nano-banana-pro'];
@@ -320,6 +411,7 @@ describe('suggestParameters', () => {
       modelGuides: { 'nano-banana-2': 'photoreal ray traced render' },
       availableStyles: styles,
       savedImages: [],
+      modelParams: TEST_MODEL_PARAMS,
     });
     const entry = s.perModel['nano-banana-2'];
     if (entry.type !== 'image') throw new Error('expected image');
@@ -342,6 +434,7 @@ describe('suggestParameters', () => {
       },
       availableStyles: styles,
       savedImages: [],
+      modelParams: TEST_MODEL_PARAMS,
     });
     const a = s.perModel['nano-banana-2'];
     const b = s.perModel['nano-banana-pro'];
@@ -368,6 +461,7 @@ describe('suggestParameters', () => {
       },
       availableStyles: limitedStyles,
       savedImages: [],
+      modelParams: TEST_MODEL_PARAMS,
     });
     const entries = [s.perModel['nano-banana-2'], s.perModel['nano-banana-pro']];
     const withStyle = entries.filter(e => e.type === 'image' && e.style).length;
@@ -383,6 +477,7 @@ describe('suggestParameters', () => {
       modelGuides: { 'kling-3.0': 'video reel motion dancer' },
       availableStyles: styles,
       savedImages: [],
+      modelParams: TEST_MODEL_PARAMS,
     });
     const entry = s.perModel['kling-3.0'];
     expect(entry.type).toBe('video');
@@ -396,7 +491,10 @@ describe('suggestParameters', () => {
 });
 
 describe('suggestParameters provider filter (P2 of PROV-AGNOSTIC-PARAMS)', () => {
-  // Mixed pool: 4 Leonardo + 1 MiniMax image model.
+  // MashupForge rip: the Leonardo image engine is gone. The local model
+  // fixtures (nano-banana* / gpt-image-1.5) carry NO provider field, so
+  // the filter buckets them as 'minimax' (the post-rip default). The
+  // mixed pool adds the explicit MiniMax image model on top.
   const mixedModels = [
     ...models,
     makeModel('minimax-image-01', { provider: 'minimax', apiModelId: 'image-01', version: 'v1' }),
@@ -413,6 +511,7 @@ describe('suggestParameters provider filter (P2 of PROV-AGNOSTIC-PARAMS)', () =>
       modelGuides: mixedGuides,
       availableStyles: styles,
       savedImages: [],
+      modelParams: TEST_MODEL_PARAMS,
     });
     // nano-banana is excluded by default; the other 4 should all be present.
     expect(s.modelIds).toContain('nano-banana-2');
@@ -421,24 +520,21 @@ describe('suggestParameters provider filter (P2 of PROV-AGNOSTIC-PARAMS)', () =>
     expect(s.modelIds).toContain('minimax-image-01');
   });
 
-  it('provider=leonardo drops minimax-image-01 from the pool', () => {
+  it('provider=higgsfield drops every minimax-bucketed model from the pool', () => {
     const s = suggestParameters({
       prompt: 'photorealistic mountains',
       availableModels: mixedModels,
       modelGuides: mixedGuides,
       availableStyles: styles,
       savedImages: [],
-      provider: 'leonardo',
+      provider: 'higgsfield',
     });
-    expect(s.modelIds).not.toContain('minimax-image-01');
-    expect(s.modelIds).toContain('nano-banana-2');
-    expect(s.modelIds).toContain('nano-banana-pro');
-    expect(s.modelIds).toContain('gpt-image-1.5');
-    // perModel is a Record — its keys mirror modelIds.
-    expect(s.perModel['minimax-image-01']).toBeUndefined();
+    // None of the fixture models are higgsfield-provider, so the pool is empty.
+    expect(s.modelIds).toEqual([]);
+    expect(s.perModel).toEqual({});
   });
 
-  it('provider=minimax keeps only minimax-image-01', () => {
+  it('provider=minimax keeps every minimax-bucketed model (absent provider defaults to minimax)', () => {
     const s = suggestParameters({
       prompt: 'photorealistic mountains',
       availableModels: mixedModels,
@@ -447,20 +543,25 @@ describe('suggestParameters provider filter (P2 of PROV-AGNOSTIC-PARAMS)', () =>
       savedImages: [],
       provider: 'minimax',
     });
-    expect(s.modelIds).toEqual(['minimax-image-01']);
-    expect(Object.keys(s.perModel)).toEqual(['minimax-image-01']);
+    // Every fixture model buckets as minimax now (explicit on
+    // minimax-image-01, defaulted on the rest), so all survive — nano-banana
+    // is still dropped by the default-exclude list.
+    expect(s.modelIds).toContain('minimax-image-01');
+    expect(s.modelIds).toContain('nano-banana-2');
+    expect(s.modelIds).toContain('nano-banana-pro');
+    expect(s.modelIds).toContain('gpt-image-1.5');
   });
 
-  it('treats absent provider on a model as leonardo (back-compat)', () => {
-    // nano-banana-2 has no `provider` field — every pre-MXIMG-001 model is
-    // implicitly Leonardo, which the filter must honour.
+  it('treats absent provider on a model as minimax (post-rip default)', () => {
+    // nano-banana-2 has no `provider` field — the Leonardo engine is gone,
+    // so the filter treats an absent provider as 'minimax'.
     const s = suggestParameters({
       prompt: 'photorealistic mountains',
       availableModels: mixedModels,
       modelGuides: mixedGuides,
       availableStyles: styles,
       savedImages: [],
-      provider: 'leonardo',
+      provider: 'minimax',
     });
     expect(s.modelIds).toContain('nano-banana-2');
   });
@@ -486,6 +587,7 @@ describe('suggestParametersAI', () => {
     modelGuides: guides,
     availableStyles: styles,
     savedImages: [] as GeneratedImage[],
+    modelParams: TEST_MODEL_PARAMS,
   };
 
   it('returns the same shape as suggestParameters when no aiCall provided', async () => {
@@ -671,7 +773,7 @@ describe('suggestParametersAI', () => {
 
   it('honors a fallback override', async () => {
     let fallbackCalled = false;
-    const fakeFallback = (input: typeof baseInput): ReturnType<typeof suggestParameters> => {
+    const fakeFallback = (input: SuggestParametersInput): ReturnType<typeof suggestParameters> => {
       fallbackCalled = true;
       return suggestParameters(input);
     };
@@ -686,6 +788,7 @@ describe('suggestParametersAI', () => {
       modelGuides: { 'gpt-image-1.5': 'photorealistic cinematic' },
       availableStyles: styles,
       savedImages: [],
+      modelParams: TEST_MODEL_PARAMS,
     });
     const entry = s.perModel['gpt-image-1.5'];
     if (entry.type !== 'image') throw new Error('expected image');
@@ -701,6 +804,7 @@ describe('suggestParametersAI', () => {
       modelGuides: guides,
       availableStyles: styles,
       savedImages: [],
+      modelParams: TEST_MODEL_PARAMS,
     });
     // All non-excluded models should appear.
     expect(s.modelIds).toContain('gpt-image-1.5');

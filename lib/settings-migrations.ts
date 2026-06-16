@@ -113,6 +113,82 @@ export function applyM33AiAgentFlip<
 }
 
 /**
+ * MashupForge rip — Leonardo engine removal migration.
+ *
+ * The Leonardo image/video engine has been removed; MiniMax + Higgsfield
+ * are the only providers. Pre-rip stores carry leftover `'leonardo'`
+ * references that the narrowed types no longer permit and that would
+ * orphan gallery metadata or trip `persist-asset` on a legacy ref. This
+ * additive one-shot rewrite cleans the persisted SETTINGS-level provider
+ * fields on hydration:
+ *
+ *   - `enabledProviders`: every `'leonardo'` → `'minimax'` (deduped).
+ *   - `videoProviders`:   every `'leonardo'` → `'minimax'` (deduped).
+ *   - `defaultLeonardoModel`: a stale Leonardo-catalog id (the deleted
+ *     nano-banana* / gpt-image* slugs) → `'minimax-image-01'` so the
+ *     model picker / `pickDefaultImageModel` resolve to a live model.
+ *
+ * The UserSettings `apiKeys.leonardo` and `defaultLeonardoModel` FIELDS
+ * are intentionally preserved (IDB safety) — only stale VALUES that the
+ * narrowed unions reject are rewritten. Idempotent + referential-equality
+ * friendly: a clean store returns the input reference unchanged.
+ *
+ * The companion {@link rewriteLegacyLeonardoImageProvider} helper rewrites
+ * a single persisted `GeneratedImage.modelInfo.provider === 'leonardo'`
+ * value to `'higgsfield'` for the gallery-hydration path.
+ */
+const DELETED_LEONARDO_MODEL_IDS = new Set([
+  'nano-banana',
+  'nano-banana-2',
+  'nano-banana-pro',
+  'gpt-image-1.5',
+  'gpt-image-2',
+]);
+
+export function applyLeonardoRemovalMigration<
+  T extends {
+    enabledProviders?: string[];
+    videoProviders?: string[];
+    defaultLeonardoModel?: string;
+  },
+>(settings: T): T {
+  const hasLegacyEnabled = Array.isArray(settings.enabledProviders)
+    && settings.enabledProviders.includes('leonardo');
+  const hasLegacyVideo = Array.isArray(settings.videoProviders)
+    && settings.videoProviders.includes('leonardo');
+  const hasLegacyDefault = typeof settings.defaultLeonardoModel === 'string'
+    && DELETED_LEONARDO_MODEL_IDS.has(settings.defaultLeonardoModel);
+
+  if (!hasLegacyEnabled && !hasLegacyVideo && !hasLegacyDefault) return settings;
+
+  const dedupe = (xs: string[]) => Array.from(new Set(xs));
+
+  return {
+    ...settings,
+    ...(hasLegacyEnabled
+      ? { enabledProviders: dedupe(settings.enabledProviders!.map((p) => (p === 'leonardo' ? 'minimax' : p))) }
+      : {}),
+    ...(hasLegacyVideo
+      ? { videoProviders: dedupe(settings.videoProviders!.map((p) => (p === 'leonardo' ? 'minimax' : p))) }
+      : {}),
+    ...(hasLegacyDefault ? { defaultLeonardoModel: 'minimax-image-01' } : {}),
+  };
+}
+
+/**
+ * Rewrite a single persisted gallery-image provider value. A pre-rip
+ * `GeneratedImage.modelInfo.provider === 'leonardo'` becomes
+ * `'higgsfield'` (the closest live image engine) so the narrowed
+ * `modelInfo.provider` union stays valid and `persist-asset` never sees
+ * a legacy ref. Any non-leonardo value passes through unchanged. Pure +
+ * idempotent — safe for the images-hydration migration to map over the
+ * persisted gallery on load.
+ */
+export function rewriteLegacyLeonardoImageProvider(provider: string | undefined): string | undefined {
+  return provider === 'leonardo' ? 'higgsfield' : provider;
+}
+
+/**
  * Composition of every load-time settings migration, applied by
  * useSettings on each hydration path. Order: oldest first, so later
  * migrations see the post-migration state of earlier ones.
@@ -123,6 +199,10 @@ export function applyM33AiAgentFlip<
  * rewrite of legacy `'pi' | 'nca' | 'mmx'` string values to
  * `'vercel-ai'`. Idempotent: a value that's already `'vercel-ai'`
  * (or `undefined`) returns the input reference unchanged.
+ *
+ * MashupForge rip: `applyLeonardoRemovalMigration` is the outermost
+ * step — it rewrites stale `'leonardo'` provider/model references left
+ * in pre-rip stores after the earlier migrations have settled the rest.
  */
 export function applySettingsMigrations<
   T extends {
@@ -131,9 +211,14 @@ export function applySettingsMigrations<
     directorPipelineUserSet?: boolean;
     activeAiAgent?: string;
     aiAgentProvider?: string;
+    enabledProviders?: string[];
+    videoProviders?: string[];
+    defaultLeonardoModel?: string;
   },
 >(settings: T): T {
-  return applyV160DirectorDefaultMigration(
-    applyV040AutoApproveMigration(applyM33AiAgentFlip(settings)),
+  return applyLeonardoRemovalMigration(
+    applyV160DirectorDefaultMigration(
+      applyV040AutoApproveMigration(applyM33AiAgentFlip(settings)),
+    ),
   );
 }

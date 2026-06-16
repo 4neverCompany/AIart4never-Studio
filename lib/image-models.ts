@@ -35,7 +35,7 @@ import {
   type HiggsfieldModelMeta,
 } from '@/lib/higgsfield/models'
 
-export type ImageProvider = 'leonardo' | 'minimax' | 'higgsfield'
+export type ImageProvider = 'minimax' | 'higgsfield'
 
 /**
  * V1.4.0: each Higgsfield model maps to a skill from
@@ -99,12 +99,16 @@ export const IMAGE_MODELS: readonly UnifiedImageModel[] = [
     higgsfieldConfig: m,
     skillBinding: deriveSkillBinding(m),
   })),
+  // The Leonardo image engine has been removed; LEONARDO_MODELS now
+  // holds only the kept minimax-image-01 entry (provider:'minimax').
+  // We still spread it through so the unified registry exposes the
+  // MiniMax image model alongside Higgsfield.
   ...LEONARDO_MODELS.map((m): UnifiedImageModel => ({
     id: m.id,
-    name: `${m.name} (Leonardo)`,
+    name: m.name,
     apiModelId: m.apiModelId,
-    provider: (m.provider as ImageProvider | undefined) ?? 'leonardo',
-    creditHint: 4, // Leonardo doesn't expose credits, use a flat hint
+    provider: (m.provider as ImageProvider | undefined) ?? 'minimax',
+    creditHint: 4,
     aspectRatios: m.aspectRatios.map((a) => a.label),
     blurb: undefined,
     leonardoConfig: m,
@@ -162,16 +166,18 @@ export function listImageModels(): readonly UnifiedImageModel[] {
 /**
  * Pick the best image model given the user's settings.
  *
- * V1.4.0-REWORK: Leonardo is the primary default. Higgsfield is an
- * add-on that the user opts into. The auto-pick only chooses Higgsfield
- * if the user has explicitly enabled it via `higgsfieldEnabled` AND
- * picked at least one model in `higgsfieldImageModels`.
+ * The Leonardo engine has been removed; MiniMax + Higgsfield are the
+ * live image providers. The auto-pick chooses Higgsfield when the user
+ * has explicitly enabled it via `higgsfieldEnabled` AND picked at least
+ * one model in `higgsfieldImageModels`.
  *
  * Rules (in order):
  *   1. The user's `defaultImageModel` if set and available
  *   2. Their `defaultHiggsfieldImageModel` if Higgsfield is enabled
  *      AND that model is in their `higgsfieldImageModels` list
- *   3. Their `defaultLeonardoModel` (legacy) — this is the safe default
+ *   3. Their legacy `defaultLeonardoModel` (IDB-preserved field) — the
+ *      settings-migration rewrites stale 'leonardo' refs, so this now
+ *      resolves to a MiniMax / Higgsfield id or falls through
  *   4. First available model
  *
  * Note: when the pipeline runs with `higgsfieldEnabled`, the

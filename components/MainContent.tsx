@@ -1007,11 +1007,11 @@ export function MainContent() {
       // the user just turned off.
       const enabledProviders = new Set<string>(settings.enabledProviders);
       const eligibleModels = LEONARDO_MODELS.filter(
-        m => enabledProviders.has(m.provider ?? 'leonardo'),
+        m => enabledProviders.has(m.provider ?? 'minimax'),
       );
       const eligibleIncluded = comparisonModels.filter(id => {
         const m = LEONARDO_MODELS.find(x => x.id === id);
-        return m ? enabledProviders.has(m.provider ?? 'leonardo') : false;
+        return m ? enabledProviders.has(m.provider ?? 'minimax') : false;
       });
       const suggestion = await suggestParametersAI(
         {
@@ -1056,7 +1056,7 @@ export function MainContent() {
     const enabledProviders = new Set<string>(settings.enabledProviders);
     const allowed = modelIds.filter(id => {
       const m = LEONARDO_MODELS.find(x => x.id === id);
-      return m ? enabledProviders.has(m.provider ?? 'leonardo') : false;
+      return m ? enabledProviders.has(m.provider ?? 'minimax') : false;
     });
     setComparisonModels(prev => {
       const merged = new Set(prev);
@@ -1186,8 +1186,6 @@ export function MainContent() {
 
       const modelFor = (provider: string): string => {
         switch (provider) {
-          case 'leonardo':
-            return settings.defaultVideoModel || 'kling-3.0';
           case 'minimax':
             return settings.defaultMinimaxVideoModel || 'MiniMax-Hailuo-2.3';
           case 'higgsfield':
@@ -1195,19 +1193,17 @@ export function MainContent() {
           case 'mmx':
             return 'MiniMax-Hailuo-2.3';
           default:
-            return 'kling-3.0';
+            return 'MiniMax-Hailuo-2.3';
         }
       };
 
       const results = await Promise.allSettled(
         providers.map((provider) =>
-          submitAndPollVideo(provider as 'leonardo' | 'minimax' | 'higgsfield' | 'mmx', {
+          submitAndPollVideo(provider as 'minimax' | 'higgsfield' | 'mmx', {
             prompt: videoPrompt,
             model: modelFor(provider),
             duration,
-            leonardoImageId: img.imageId,
             firstFrameUrl: img.url,
-            leonardoApiKey: settings.apiKeys.leonardo,
           }),
         ),
       );

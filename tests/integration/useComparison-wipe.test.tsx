@@ -33,8 +33,8 @@ import { type GeneratedImage, type UserSettings } from '@/types/mashup'
 import { renderHook, act } from '@testing-library/react'
 
 const storedResults: GeneratedImage[] = [
-  { id: 'comp-1', url: 'http://x/1.png', prompt: 'p1', status: 'ready', modelInfo: { provider: 'leonardo', modelId: 'm', modelName: 'M' } },
-  { id: 'comp-2', url: 'http://x/2.png', prompt: 'p2', status: 'ready', modelInfo: { provider: 'leonardo', modelId: 'm', modelName: 'M' } },
+  { id: 'comp-1', url: 'http://x/1.png', prompt: 'p1', status: 'ready', modelInfo: { provider: 'higgsfield', modelId: 'm', modelName: 'M' } },
+  { id: 'comp-2', url: 'http://x/2.png', prompt: 'p2', status: 'ready', modelInfo: { provider: 'higgsfield', modelId: 'm', modelName: 'M' } },
 ]
 
 const deps = {

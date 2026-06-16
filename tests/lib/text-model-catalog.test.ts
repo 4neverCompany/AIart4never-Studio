@@ -40,9 +40,10 @@ describe('text-model-catalog V082', () => {
     expect(getTextCatalogByProvider('anthropic')).toEqual([]);
     expect(getTextCatalogByProvider('openrouter')).toEqual([]);
 
-    // leonardo has no text models — must not accidentally pick up
-    // image specs from the parallel lib/model-specs registry.
-    expect(getTextCatalogByProvider('leonardo')).toEqual([]);
+    // higgsfield is an image provider with no text models — must not
+    // accidentally pick up image specs from the parallel
+    // lib/model-specs registry. (Leonardo removed in the MashupForge rip.)
+    expect(getTextCatalogByProvider('higgsfield')).toEqual([]);
   });
 
   it('catalog has the expected model count and structure', () => {

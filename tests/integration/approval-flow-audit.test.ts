@@ -42,7 +42,7 @@ function makeImage(overrides: Partial<GeneratedImage> = {}): GeneratedImage {
     url: 'https://cdn.example.com/img.jpg',
     status: 'ready',
     pipelinePending: true,
-    modelInfo: { provider: 'leonardo', modelId: 'phoenix', modelName: 'Phoenix' },
+    modelInfo: { provider: 'higgsfield', modelId: 'phoenix', modelName: 'Phoenix' },
     ...overrides,
   };
 }

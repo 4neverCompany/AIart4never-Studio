@@ -18,7 +18,7 @@ function makeImage(id: string): GeneratedImage {
     prompt: 'test prompt',
     url: `https://cdn.example.com/${id}.jpg`,
     status: 'ready',
-    modelInfo: { provider: 'leonardo', modelId: 'm', modelName: 'M' },
+    modelInfo: { provider: 'higgsfield', modelId: 'm', modelName: 'M' },
   };
 }
 

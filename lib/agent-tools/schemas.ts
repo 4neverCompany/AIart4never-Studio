@@ -74,7 +74,7 @@ export type SkillNameString = z.infer<typeof zSkillNameString>;
  * agnostic.
  */
 export const zAssetRef = z.object({
-  provider: z.enum(['higgsfield', 'minimax', 'leonardo', 'openai', 'mock']),
+  provider: z.enum(['higgsfield', 'minimax', 'openai', 'mock']),
   id: z.string().min(1, 'asset id is required'),
   url: z.string().url('asset url must be a valid URL'),
 });

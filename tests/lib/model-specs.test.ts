@@ -1,10 +1,12 @@
 /**
  * P1 of PROV-AGNOSTIC-PARAMS: every model spec carries a `provider`
- * field, `getModelProvider` resolves it (with a documented Leonardo
- * fallback for older shipped JSON), and `getModelSpecsByProvider`
- * filters cleanly. The image-only `minimax-image-01` spec — added to
- * close the gap discovered during MXIMG-001 — is the first
- * non-Leonardo image provider in the registry.
+ * field, `getModelProvider` resolves it (with a documented MiniMax
+ * fallback for un-tagged JSON), and `getModelSpecsByProvider` filters
+ * cleanly.
+ *
+ * MashupForge rip: the 8 Leonardo-catalog specs (gpt-image-*,
+ * nano-banana-*, kling-*, veo-*, seedance-*) have been removed. Only
+ * the kept `minimax-image-01` spec ships now.
  *
  * See `docs/bmad/briefs/PROV-AGNOSTIC-PARAMS.md` for the rollout plan.
  */
@@ -21,14 +23,14 @@ import {
 describe('model-specs P1 — provider tagging', () => {
   it('every shipped spec declares a provider', () => {
     const all = getAllModelSpecs();
-    expect(Object.keys(all).length).toBeGreaterThanOrEqual(9);
+    expect(Object.keys(all).length).toBeGreaterThanOrEqual(1);
     for (const [modelId, spec] of Object.entries(all)) {
       expect(spec.provider, `${modelId} missing provider`).toBeDefined();
     }
   });
 
-  it('all 8 pre-MXIMG-001 image/video specs are tagged as leonardo', () => {
-    const expectedLeonardo = [
+  it('the deleted Leonardo-catalog specs are gone (MashupForge rip)', () => {
+    const removed = [
       'gpt-image-1.5',
       'gpt-image-2',
       'nano-banana-2',
@@ -38,10 +40,8 @@ describe('model-specs P1 — provider tagging', () => {
       'veo-3.1',
       'seedance-2.0',
     ];
-    for (const id of expectedLeonardo) {
-      const spec = getModelSpec(id);
-      expect(spec, `${id} spec missing`).toBeDefined();
-      expect(spec?.provider).toBe('leonardo');
+    for (const id of removed) {
+      expect(getModelSpec(id), `${id} should have been removed`).toBeUndefined();
     }
   });
 
@@ -58,23 +58,17 @@ describe('model-specs P1 — provider tagging', () => {
   });
 
   it('getModelProvider returns the explicit field for tagged specs', () => {
-    expect(getModelProvider('nano-banana-pro')).toBe('leonardo');
     expect(getModelProvider('minimax-image-01')).toBe('minimax');
   });
 
-  it('getModelProvider falls back to leonardo for unknown models (back-compat)', () => {
+  it('getModelProvider falls back to minimax for unknown models (post-rip default)', () => {
     // Unknown / future model id with no spec — fallback documented in
-    // the doc-block, exercised here so the contract is enforced.
-    expect(getModelProvider('totally-not-a-real-model')).toBe('leonardo');
+    // the doc-block, exercised here so the contract is enforced. The
+    // Leonardo engine is gone, so the fallback is now 'minimax'.
+    expect(getModelProvider('totally-not-a-real-model')).toBe('minimax');
   });
 
   it('getModelSpecsByProvider returns only matching specs', () => {
-    const leonardo = getModelSpecsByProvider('leonardo');
-    expect(leonardo.length).toBe(8);
-    for (const s of leonardo) {
-      expect(s.provider).toBe('leonardo');
-    }
-
     const minimax = getModelSpecsByProvider('minimax');
     expect(minimax.length).toBe(1);
     expect(minimax[0]?.modelId).toBe('minimax-image-01');

@@ -1,11 +1,54 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { buildEnhancedPrompt } from '@/lib/image-prompt-builder';
 
-// nano-banana-2 spec has style "Dynamic" with a UUID, and an aspectRatios
-// table keyed "1:1" -> { "1K": [1024,1024], "2K": [2048,2048], "4K": [...] }.
-// gpt-image-1.5 spec has parameters.quality default HIGH, mode default
-// ULTRA, prompt_enhance default ON.
+// MashupForge rip: the Leonardo-catalog model-spec JSONs (nano-banana-2,
+// gpt-image-1.5) were deleted with the engine, but buildEnhancedPrompt's
+// spec-driven branches (style-UUID resolution, tiered dimensions, quality /
+// prompt_enhance forwarding) are still live behaviour. These engine tests
+// supply synthetic specs via a mock of getModelSpec so the contract stays
+// covered without resurrecting the deleted production catalog. The shapes
+// mirror the historical Leonardo specs the assertions were written against.
 const NANO_DYNAMIC_UUID = '111dc692-d470-4eec-b791-3475abac4c46';
+
+vi.mock('@/lib/model-specs', () => {
+  const SPECS: Record<string, unknown> = {
+    'nano-banana-2': {
+      modelId: 'nano-banana-2',
+      apiName: 'nano-banana-2',
+      type: 'image',
+      provider: 'leonardo',
+      endpoint: '',
+      parameters: { prompt_enhance: { default: 'ON' } },
+      aspectRatios: {
+        '1:1': { '1K': [1024, 1024], '2K': [2048, 2048], '4K': [4096, 4096] },
+        '16:9': { '1K': [1344, 768] },
+      },
+      capabilities: { styles: true, promptEnhance: true },
+      // Keep in sync with NANO_DYNAMIC_UUID below (vi.mock is hoisted
+      // above top-level consts, so the literal can't be referenced here).
+      styles: { Dynamic: '111dc692-d470-4eec-b791-3475abac4c46' },
+      rules: [],
+    },
+    'gpt-image-1.5': {
+      modelId: 'gpt-image-1.5',
+      apiName: 'gpt-image-1.5',
+      type: 'image',
+      provider: 'leonardo',
+      endpoint: '',
+      parameters: { quality: { default: 'HIGH' }, prompt_enhance: { default: 'ON' } },
+      aspectRatios: { '1:1': { '1K': [1024, 1024] } },
+      capabilities: { styles: false, promptEnhance: true },
+      rules: [],
+    },
+  };
+  return {
+    getModelSpec: (id: string) => SPECS[id],
+    getAllModelSpecs: () => SPECS,
+    getModelProvider: (id: string) =>
+      (SPECS[id] as { provider?: string } | undefined)?.provider ?? 'minimax',
+    getModelSpecsByProvider: () => [],
+  };
+});
 
 describe('buildEnhancedPrompt — shared output (prompt + hints)', () => {
   it('returns the original prompt unchanged when no spec/style is given', () => {

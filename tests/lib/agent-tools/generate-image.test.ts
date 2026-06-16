@@ -221,15 +221,6 @@ describe('executeGenerateImage — provider dispatch', () => {
     if (!r.ok) expect(r.error).toBeInstanceOf(ToolNotAvailableError);
   });
 
-  it('leonardo provider throws ToolNotAvailableError', async () => {
-    const r = await executeGenerateImage({
-      model: 'leonardo:phoenix',
-      prompt: validPrompt,
-    });
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error).toBeInstanceOf(ToolNotAvailableError);
-  });
-
   it('openai provider throws ToolNotAvailableError', async () => {
     const r = await executeGenerateImage({
       model: 'gpt-image-1.5',
@@ -307,7 +298,6 @@ describe('__test__ helpers', () => {
     expect(__test__.detectProvider('gpt_image_2')).toBe('higgsfield');
     expect(__test__.detectProvider('higgsfield:anything')).toBe('higgsfield');
     expect(__test__.detectProvider('minimax:image-01')).toBe('minimax');
-    expect(__test__.detectProvider('leonardo:phoenix')).toBe('leonardo');
     expect(__test__.detectProvider('openai:anything')).toBe('openai');
   });
 

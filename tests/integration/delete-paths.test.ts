@@ -26,7 +26,7 @@ function makeImage(overrides?: Partial<GeneratedImage>): GeneratedImage {
     prompt: 'test prompt',
     url: 'https://cdn.example.com/img.jpg',
     status: 'ready',
-    modelInfo: { provider: 'leonardo', modelId: 'phoenix', modelName: 'Phoenix' },
+    modelInfo: { provider: 'higgsfield', modelId: 'phoenix', modelName: 'Phoenix' },
     ...overrides,
   };
 }

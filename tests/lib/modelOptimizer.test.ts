@@ -32,8 +32,9 @@ describe('enhancePromptForModel', () => {
   });
 
   it('falls back to model default aspectRatio when caller omits it', async () => {
-    const result = await enhancePromptForModel('x', 'nano-banana');
-    // First entry in nano-banana aspectRatios is 1:1.
+    // MashupForge rip: the Leonardo catalog is gone; minimax-image-01 is
+    // the kept entry in LEONARDO_MODELS and its first aspectRatio is 1:1.
+    const result = await enhancePromptForModel('x', 'minimax-image-01');
     expect(result.aspectRatio).toBe('1:1');
   });
 
@@ -51,22 +52,10 @@ describe('enhancePromptForModel', () => {
   // existing negativePrompt strip — models whose JSON spec declares
   // `capabilities.styles: false` must not receive a style downstream, so the
   // preview panel and the generation path can't surface a style the API
-  // would silently ignore.
+  // would silently ignore. MashupForge rip: the gpt-image-* Leonardo specs
+  // are deleted; minimax-image-01 (capabilities.styles: false) is the kept
+  // styles:false model that pins this contract.
   describe('STYLE-AI-FIX — capability-aware style stripping', () => {
-    it('strips style for gpt-image-1.5 (capabilities.styles: false)', async () => {
-      const result = await enhancePromptForModel('x', 'gpt-image-1.5', {
-        style: 'Cinematic',
-      });
-      expect(result.style).toBeUndefined();
-    });
-
-    it('strips style for gpt-image-2 (capabilities.styles: false)', async () => {
-      const result = await enhancePromptForModel('x', 'gpt-image-2', {
-        style: 'Cinematic',
-      });
-      expect(result.style).toBeUndefined();
-    });
-
     it('strips style for minimax-image-01 (capabilities.styles: false)', async () => {
       const result = await enhancePromptForModel('x', 'minimax-image-01', {
         style: 'Cinematic',
@@ -74,19 +63,13 @@ describe('enhancePromptForModel', () => {
       expect(result.style).toBeUndefined();
     });
 
-    it('preserves style for nano-banana-2 (capabilities.styles: true)', async () => {
-      const result = await enhancePromptForModel('x', 'nano-banana-2', {
+    it('preserves style for an unregistered model (no spec → defaults to supports)', async () => {
+      // A model with no JSON spec defaults to "supports styles" so we
+      // don't regress on stragglers (the pre-fix pass-through behaviour).
+      const result = await enhancePromptForModel('x', 'some-future-model', {
         style: 'Cinematic',
       });
       expect(result.style).toBe('Cinematic');
     });
-
-    it('preserves style for nano-banana-pro (capabilities.styles: true)', async () => {
-      const result = await enhancePromptForModel('x', 'nano-banana-pro', {
-        style: 'Cinematic',
-      });
-      expect(result.style).toBe('Cinematic');
-    });
-
   });
 });

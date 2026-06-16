@@ -62,7 +62,6 @@ import {
  *   - `higgsfield:*`  → forward to the Higgsfield CLI (v1.2.3) /
  *                        MCP tool (v1.0.4 fallback). Stubbed here.
  *   - `minimax:*`     → forward to MiniMax image-01 endpoint.
- *   - `leonardo:*`    → forward to the Leonardo API.
  *   - `openai:*`      → forward to the OpenAI Images API.
  *   - `mock:*` / `mock` → in-process mock provider (tests only).
  *
@@ -73,7 +72,7 @@ import {
  * should NOT be a runtime crash, it should be a typed error the
  * Director loop can fall back from.
  */
-type ProviderKind = 'higgsfield' | 'minimax' | 'leonardo' | 'openai' | 'mock';
+type ProviderKind = 'higgsfield' | 'minimax' | 'openai' | 'mock';
 
 function detectProvider(model: string): ProviderKind {
   if (model.startsWith('higgsfield:')) return 'higgsfield';
@@ -89,7 +88,6 @@ function detectProvider(model: string): ProviderKind {
     return 'higgsfield';
   }
   if (model.startsWith('minimax:') || model.includes('minimax-image')) return 'minimax';
-  if (model.startsWith('leonardo:') || model.includes('leonardo')) return 'leonardo';
   if (model.startsWith('openai:') || model.startsWith('gpt-image')) return 'openai';
   // Unknown slug — let the caller decide whether to fall through.
   // Default to 'openai' so a typo'd model name doesn't silently
@@ -262,10 +260,6 @@ async function generateMinimax(_input: GenerateImageInput): Promise<GenerateImag
   throw new ToolNotAvailableError('generate_image', 'MiniMax image provider lands in v1.2.3.');
 }
 
-async function generateLeonardo(_input: GenerateImageInput): Promise<GenerateImageOutput> {
-  throw new ToolNotAvailableError('generate_image', 'Leonardo provider lands in v1.2.3.');
-}
-
 async function generateOpenai(_input: GenerateImageInput): Promise<GenerateImageOutput> {
   throw new ToolNotAvailableError('generate_image', 'OpenAI image provider lands in v1.2.3.');
 }
@@ -380,9 +374,6 @@ export async function executeGenerateImage(
       case 'minimax':
         output = await generateMinimax(input);
         break;
-      case 'leonardo':
-        output = await generateLeonardo(input);
-        break;
       case 'openai':
         output = await generateOpenai(input);
         break;
@@ -399,7 +390,7 @@ export async function executeGenerateImage(
 
 export const generateImageTool = tool({
   description:
-    "Generate an image from a model+prompt+settings triple. Returns an AssetRef that downstream tools (persist_asset) can save to the user's library. Provider is auto-detected from the model slug (higgsfield:*, minimax:*, leonardo:*, openai:*); use 'mock' for tests.",
+    "Generate an image from a model+prompt+settings triple. Returns an AssetRef that downstream tools (persist_asset) can save to the user's library. Provider is auto-detected from the model slug (higgsfield:*, minimax:*, openai:*); use 'mock' for tests.",
   inputSchema: zGenerateImageInput,
   outputSchema: zGenerateImageOutput,
   execute: async (input, options) => {

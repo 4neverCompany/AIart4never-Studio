@@ -413,36 +413,11 @@ export function SettingsModal({
           <div className="space-y-4 pt-4 border-t border-zinc-800">
             <label className="text-sm font-medium text-zinc-300">API Keys</label>
             {/*
-              STORY-130: In desktop mode the Leonardo API key is owned by
-              DesktopSettingsPanel (writes to config.json + injects env var
-              into the sidecar). Rendering a second input here persisted to
-              origin-scoped IndexedDB and silently shadowed the real value
-              — top appeared broken while bottom worked. Hide in desktop.
+              MashupForge rip: the Leonardo API-key input has been removed
+              (Leonardo engine is gone). The settings.apiKeys.leonardo field
+              is preserved on UserSettings for IDB safety but no longer has
+              a rendered control. MiniMax + Higgsfield are the live engines.
             */}
-            {isDesktop === false && (
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Leonardo API Key</label>
-                <div className="relative">
-                  <input
-                    type={revealedFields.has('leonardo') ? 'text' : 'password'}
-                    value={settings.apiKeys.leonardo || ''}
-                    onChange={(e) => updateSettings({ apiKeys: { ...settings.apiKeys, leonardo: e.target.value } })}
-                    placeholder="••••••••••••••••"
-                    className="w-full bg-zinc-950 border border-zinc-800/60 rounded-lg px-3 py-2 pr-16 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30"
-                  />
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                    {settings.apiKeys.leonardo && (
-                      <button type="button" onClick={() => copyField(settings.apiKeys.leonardo!)} className="text-zinc-500 hover:text-zinc-300 transition-colors" aria-label="Copy API key">
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                    <button type="button" onClick={() => toggleReveal('leonardo')} className="text-zinc-500 hover:text-zinc-300 transition-colors" aria-label={revealedFields.has('leonardo') ? 'Hide API key' : 'Show API key'}>
-                      {revealedFields.has('leonardo') ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
 
             <div className="space-y-4 pt-4 border-t border-zinc-800">
               <h4 className="text-sm font-bold text-white">Free Social Posting Setup</h4>
@@ -787,27 +762,28 @@ export function SettingsModal({
                   className="w-full bg-zinc-950 border border-zinc-800/60 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30"
                 >
                   {/* P3 of PROV-AGNOSTIC-PARAMS: group models by backend
-                      provider so the user can see at a glance which
-                      models go through Leonardo vs MiniMax's native
-                      image_generation endpoint. Undefined `provider` on
-                      pre-MXIMG-001 models bucketises as Leonardo. */}
+                      provider so the user can see which models go through
+                      MiniMax's native image_generation endpoint vs other
+                      providers. The Leonardo engine has been removed;
+                      LEONARDO_MODELS now holds the kept minimax-image-01
+                      entry, and an undefined `provider` bucketises as
+                      MiniMax. */}
                   {(() => {
                     const buckets = new Map<string, typeof LEONARDO_MODELS>();
                     for (const m of LEONARDO_MODELS) {
-                      const p = m.provider ?? 'leonardo';
+                      const p = m.provider ?? 'minimax';
                       const list = buckets.get(p) ?? [];
                       list.push(m);
                       buckets.set(p, list);
                     }
                     const providerLabel = (p: string) =>
-                      p === 'leonardo' ? 'Leonardo' :
                       p === 'minimax' ? 'MiniMax' :
                       p.charAt(0).toUpperCase() + p.slice(1);
-                    // Stable display order: Leonardo first (historical
-                    // default), then everything else alphabetical.
+                    // Stable display order: MiniMax first, then everything
+                    // else alphabetical.
                     const orderedProviders = Array.from(buckets.keys()).sort((a, b) => {
-                      if (a === 'leonardo') return -1;
-                      if (b === 'leonardo') return 1;
+                      if (a === 'minimax') return -1;
+                      if (b === 'minimax') return 1;
                       return a.localeCompare(b);
                     });
                     return orderedProviders.map((p) => (
@@ -1130,10 +1106,9 @@ export function SettingsModal({
                   submissions to every selected provider and saves
                   all successful results to the gallery.
                 </p>
-                {(['leonardo', 'minimax', 'higgsfield', 'mmx'] as const).map((p) => {
+                {(['minimax', 'higgsfield', 'mmx'] as const).map((p) => {
                   const active = (settings.videoProviders ?? ['minimax']).includes(p);
                   const labels: Record<typeof p, { name: string; cost: string }> = {
-                    leonardo: { name: 'Leonardo.AI', cost: '$$$ (credits)' },
                     minimax: { name: 'MiniMax (Hailuo 2.3)', cost: '$ (Token Plan)' },
                     higgsfield: { name: 'Higgsfield MCP', cost: '$$ (credits)' },
                     mmx: { name: 'mmx CLI (Hailuo via shell)', cost: '$ (Token Plan)' },
@@ -1163,26 +1138,8 @@ export function SettingsModal({
                   providers the user has selected, so the UI stays
                   scannable. The mmx picker just defaults to
                   Hailuo 2.3 (mmx is a CLI wrapper around that
-                  same model). */}
-              {(settings.videoProviders ?? ['minimax']).includes('leonardo') && (
-                <div className="space-y-2">
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Leonardo Video Model</label>
-                  <select
-                    value={settings.defaultVideoModel || 'kling-3.0'}
-                    onChange={(e) => updateSettings({ defaultVideoModel: e.target.value })}
-                    className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30 cursor-pointer"
-                  >
-                    <option value="kling-video-o-3">Kling O3 Omni (New)</option>
-                    <option value="kling-3.0">Kling 3.0 (Pro Quality)</option>
-                    <option value="ray-v2">Ray V2 (High Quality)</option>
-                    <option value="ray-v1">Ray V1 (Standard)</option>
-                    <option value="seedance-2.0">Seedance 2.0</option>
-                    <option value="seedance-2.0-fast">Seedance 2.0 Fast</option>
-                    <option value="veo-3.1">Veo 3.1</option>
-                    <option value="VEO3_1FAST">Veo 3.1 Fast</option>
-                  </select>
-                </div>
-              )}
+                  same model). The Leonardo Video Model picker has been
+                  removed (Leonardo engine is gone). */}
               {(settings.videoProviders ?? ['minimax']).includes('minimax') && (
                 <div className="space-y-2">
                   <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider">MiniMax Video Model</label>

@@ -9,8 +9,6 @@ import { getModelSpec } from '@/lib/model-specs';
 import { MASTERPROMPT_INSTRUCTIONS } from '@/lib/masterpromptTemplate';
 import { getErrorMessage } from '@/lib/errors';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
-import { extractTrademarkNames } from '@/lib/extract-trademark-names';
-import { planStagedSubstitution, setOutcome } from '@/lib/trademark-outcomes';
 import { MASHUPFORGE_AI_PERSONA } from '@/lib/agent-prompt';
 import {
   type GeneratedImage,
@@ -38,20 +36,13 @@ import {
 } from '../lib/image-generation/parseGeneratedItems';
 import {
   buildModerationRewriteInstruction,
-  markPromptNamesAllowed,
 } from '../lib/image-generation/moderation';
 import type {
-  LeonardoSubmitParams,
   LeonardoSuccess,
   LeonardoGenerationError,
-  AiImageSubmitParams,
-  AiImageSubmitResult,
   MinimaxImageParams,
   HiggsfieldImageParams,
   HiggsfieldImageResult,
-  ModerationRetryCallback,
-  SubmitResult,
-  AiImageContext,
   LastGenerationError,
   UseImageGenerationDeps,
 } from '../lib/image-generation/types';
@@ -63,150 +54,6 @@ export type { LeonardoGenerationError, LastGenerationError, GeneratedItem };
 // generation path AND re-exported so every existing importer
 // (MashupContext, useComparison, …) keeps working unchanged.
 export { applyWatermark };
-
-/**
- * Poll Leonardo's status endpoint until the generation is COMPLETE,
- * FAILED, or we hit the attempt cap. Shared by `submitLeonardoAndPoll`
- * (Leonardo-only path) and `submitViaAiImage` (vercel-ai orchestrator
- * path). On FAILED, the thrown error is annotated with the moderation
- * classifications + failedPrompt so the caller can decide whether to
- * rewrite + retry.
- */
-async function pollLeonardoGeneration(
-  generationId: string,
-  promptForErrorContext: string,
-): Promise<LeonardoSuccess> {
-  // Initial delay: Leonardo's Hasura layer needs ~3s to commit the
-  // generation before status polls return a usable result.
-  await new Promise(resolve => setTimeout(resolve, 3000));
-  let attempts = 0;
-  while (attempts < 150) {
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    attempts++;
-    const statusRes = await fetch(`/api/leonardo/${generationId}`);
-    if (!statusRes.ok) {
-      const errText = await statusRes.text();
-      throw new Error(`Failed to check status: ${errText.slice(0, 100)}`);
-    }
-    const statusData = await statusRes.json();
-    if (statusData.status === 'COMPLETE') {
-      return {
-        url: statusData.url,
-        imageId: statusData.imageId,
-        seed: statusData.seed,
-      };
-    }
-    if (statusData.status === 'FAILED') {
-      const classifications: string[] = Array.isArray(statusData.moderation?.moderationClassification)
-        ? statusData.moderation.moderationClassification
-        : [];
-      const err = new Error(statusData.error || 'Leonardo generation failed') as LeonardoGenerationError;
-      err.moderationClassification = classifications;
-      err.failedPrompt = statusData.failedPrompt || promptForErrorContext;
-      err.moderation = statusData.moderation;
-      throw err;
-    }
-  }
-  throw new Error('Timeout waiting for Leonardo generation');
-}
-
-async function submitLeonardoAndPoll(params: LeonardoSubmitParams): Promise<LeonardoSuccess> {
-  // V1.0.7-PROMPT-ENG-A4: join the user-supplied negative prompt
-  // with the anti-AI-look curated list. Leonardo takes a single
-  // `negative_prompt` string — comma-separated is the conventional
-  // concat. We keep undefined as the empty case so the route layer's
-  // "if defined, send" logic still treats no-negatives as "no field".
-  const joinedNegatives = [params.negativePrompt, ...(params.antiAiLookNegatives ?? [])]
-    .filter((s): s is string => Boolean(s && s.trim()))
-    .join(', ') || undefined;
-
-  const res = await fetchWithRetry('/api/leonardo', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      prompt: params.prompt,
-      negative_prompt: joinedNegatives,
-      modelId: params.modelId,
-      width: params.width,
-      height: params.height,
-      styleIds: params.styleIds,
-      apiKey: params.apiKey,
-      quality: params.quality || 'HIGH',
-      promptEnhance: params.promptEnhance,
-    }),
-  });
-  if (!res.ok) {
-    let errMessage = 'Leonardo API failed';
-    try {
-      const errData = await res.json();
-      errMessage = errData.error || errMessage;
-    } catch {
-      const text = await res.text();
-      errMessage = `Server error (${res.status}): ${text.slice(0, 100)}...`;
-    }
-    throw new Error(errMessage);
-  }
-  const data = await res.json();
-  if (!data.generationId) throw new Error('Leonardo returned no generationId');
-
-  return pollLeonardoGeneration(data.generationId, params.prompt);
-}
-
-/**
- * vercel-ai orchestrator path. Submits via `/api/ai/image` which
- * server-side runs MiniMax-enhance + Leonardo-submit, then polls the
- * existing `/api/leonardo/{id}` route just like submitLeonardoAndPoll.
- *
- * Set `skipEnhance: true` to bypass MiniMax (used by the moderation
- * retry, which has already produced a rewritten prompt and just wants
- * the Leonardo submit half).
- */
-async function submitViaAiImage(params: AiImageSubmitParams): Promise<AiImageSubmitResult> {
-  // V1.0.7-PROMPT-ENG-A4: same join pattern as submitLeonardoAndPoll.
-  const joinedNegatives = [params.negativePrompt, ...(params.antiAiLookNegatives ?? [])]
-    .filter((s): s is string => Boolean(s && s.trim()))
-    .join(', ') || undefined;
-
-  const res = await fetchWithRetry('/api/ai/image', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      idea: params.idea,
-      modelId: params.modelId,
-      width: params.width,
-      height: params.height,
-      styleIds: params.styleIds,
-      quality: params.quality,
-      negativePrompt: joinedNegatives,
-      systemPrompt: params.systemPrompt,
-      niches: params.niches,
-      genres: params.genres,
-      apiKey: params.apiKey,
-      skipEnhance: params.skipEnhance === true,
-      promptEnhance: params.promptEnhance,
-    }),
-  });
-  if (!res.ok) {
-    let errMessage = 'vercel-ai image orchestrator failed';
-    try {
-      const errData = await res.json();
-      errMessage = errData.error || errMessage;
-    } catch {
-      const text = await res.text();
-      errMessage = `Server error (${res.status}): ${text.slice(0, 100)}…`;
-    }
-    throw new Error(errMessage);
-  }
-  const data = (await res.json()) as {
-    generationId?: string;
-    prompt?: string;
-  };
-  if (!data.generationId || typeof data.prompt !== 'string') {
-    throw new Error('Orchestrator returned no generationId/prompt');
-  }
-  const success = await pollLeonardoGeneration(data.generationId, data.prompt);
-  return { ...success, enhancedPrompt: data.prompt };
-}
 
 /**
  * Submit a MiniMax-native image generation job. Synchronous: one POST
@@ -334,191 +181,6 @@ async function submitMinimaxImage(params: MinimaxImageParams): Promise<LeonardoS
     url: first.url,
     imageId: data.generationId,
   };
-}
-
-/**
- * TRADEMARK-SELF-HEAL (2026-05-21): the previous one-size-fits-all
- * instruction said "Keep the character names and core concept" — which
- * is exactly the wrong move for TRADEMARK rejections (Leonardo flagged
-/**
- * TRADEMARK-STAGED-PIPELINE (2026-05-22): 3-stage moderation recovery.
- *
- * Maurice's spec: a TRADEMARK/COPYRIGHT block does NOT pre-emptively
- * rewrite the user's prompt and does NOT swap every famous name at
- * once. It tries the original verbatim, then a single-term minimal
- * swap, then a single-term rich descriptor swap — surfacing the error
- * only after all three fail.
- *
- *   Stage 1: original prompt VERBATIM.
- *   Stage 2: on TRADEMARK fail, pick ONE term (planStagedSubstitution),
- *            swap with the minimal placeholder ("a character"), retry.
- *   Stage 3: still TRADEMARK fail, swap the SAME term with the rich
- *            GENERIC_FOR descriptor, retry. This is the last resort.
- *
- * Non-TRADEMARK moderation (NSFW / EXTREME_VIOLENCE / CHILD) keeps
- * the single-shot LLM rewrite — that's a legitimate softening task,
- * not a one-word-swap task, and the staged pipeline doesn't help.
- *
- * Non-moderation errors rethrow immediately.
- */
-async function submitWithOneRetry(
-  initialPrompt: string,
-  baseParams: Omit<LeonardoSubmitParams, 'prompt'>,
-  callbacks: ModerationRetryCallback,
-  // M3.3-P3 commit a: narrowed to `'vercel-ai' | undefined`. The
-  // provider argument is now purely a forwarder to
-  // `lib/aiClient.ts:streamAIToString`; the legacy pi/nca/mmx routes
-  // are gone.
-  provider?: 'vercel-ai',
-): Promise<SubmitResult> {
-  // STAGE 1 — original prompt verbatim.
-  try {
-    const success = await submitLeonardoAndPoll({ prompt: initialPrompt, ...baseParams });
-    markPromptNamesAllowed(initialPrompt, baseParams.modelId);
-    return { success, finalPrompt: initialPrompt, retried: false };
-  } catch (err) {
-    const lErr = err as LeonardoGenerationError;
-    const classifications = lErr.moderationClassification || [];
-    if (classifications.length === 0) throw err;
-
-    const upper = classifications.map((c) => c.toUpperCase());
-    const isTrademark = upper.some((c) => c === 'TRADEMARK' || c === 'COPYRIGHT');
-
-    callbacks.onRetry(classifications);
-
-    if (!isTrademark) {
-      // NSFW / EXTREME_VIOLENCE / CHILD — single LLM rewrite, one retry.
-      const rewritten = await streamAIToString(
-        buildModerationRewriteInstruction(lErr.failedPrompt || initialPrompt, classifications),
-        { mode: 'enhance', provider },
-      );
-      const activePrompt = (rewritten || '').trim() || initialPrompt;
-      const success = await submitLeonardoAndPoll({ prompt: activePrompt, ...baseParams });
-      return { success, finalPrompt: activePrompt, retried: true };
-    }
-
-    // pollLeonardoGeneration always annotates failedPrompt on moderation
-    // errors (statusData.failedPrompt, or the submitted prompt as fallback),
-    // and we only reach here when classifications.length > 0 — so the
-    // `|| initialPrompt` branch is defensive padding, not a live fallback.
-    const plan = planStagedSubstitution(lErr.failedPrompt || initialPrompt, baseParams.modelId);
-    if (!plan) {
-      // No eligible name to swap (none extracted, or all user-whitelisted).
-      // Surface the original moderation error so the user edits manually.
-      throw err;
-    }
-    // The picked term is by definition a real blocker for this model now —
-    // record it so future prompts for this model skip it pre-flight.
-    setOutcome(plan.targetName, 'blocked', baseParams.modelId);
-
-    // STAGE 2 — minimal placeholder swap.
-    try {
-      const success = await submitLeonardoAndPoll({ prompt: plan.stage2Prompt, ...baseParams });
-      return { success, finalPrompt: plan.stage2Prompt, retried: true };
-    } catch (err2) {
-      const l2 = err2 as LeonardoGenerationError;
-      const c2 = (l2.moderationClassification || []).map((c) => c.toUpperCase());
-      const stillTrademark = c2.some((c) => c === 'TRADEMARK' || c === 'COPYRIGHT');
-      if (!stillTrademark) throw err2;
-      // STAGE 3 — same target, rich descriptor.
-      const success = await submitLeonardoAndPoll({ prompt: plan.stage3Prompt, ...baseParams });
-      return { success, finalPrompt: plan.stage3Prompt, retried: true };
-    }
-  }
-}
-
-/**
- * Same one-shot moderation-retry shape as `submitWithOneRetry`, but
- * the underlying submit goes through `/api/ai/image` (server-side
- * MiniMax-enhance + Leonardo-submit). On retry, the client asks
- * MiniMax for a clean rewrite of the failed prompt, then re-submits
- * via `/api/ai/image` with `skipEnhance: true` so the orchestrator
- * doesn't re-enhance the already-rewritten text.
- */
-// M3.4-P4-B3: `buildModerationRewriteInstruction` and
-// `markPromptNamesAllowed` moved to `lib/image-generation/moderation.ts`
-// (pure functions, no React dependencies). Re-imported at the top of
-// this file and re-exported so the existing public surface
-// (Vitest unit tests, useComparison.ts) keeps working.
-
-async function submitViaAiImageWithOneRetry(
-  initialIdea: string,
-  baseParams: Omit<AiImageSubmitParams, 'idea' | 'skipEnhance'>,
-  context: AiImageContext,
-  callbacks: ModerationRetryCallback,
-): Promise<SubmitResult> {
-  // STAGE 1 — original idea (server enhances + submits).
-  try {
-    const r = await submitViaAiImage({
-      ...baseParams,
-      ...context,
-      idea: initialIdea,
-      skipEnhance: false,
-    });
-    markPromptNamesAllowed(r.enhancedPrompt, baseParams.modelId);
-    return { success: r, finalPrompt: r.enhancedPrompt, retried: false };
-  } catch (err) {
-    const lErr = err as LeonardoGenerationError;
-    const classifications = lErr.moderationClassification || [];
-    if (classifications.length === 0) throw err;
-
-    const upper = classifications.map((c) => c.toUpperCase());
-    const isTrademark = upper.some((c) => c === 'TRADEMARK' || c === 'COPYRIGHT');
-
-    callbacks.onRetry(classifications);
-
-    if (!isTrademark) {
-      const rewritten = await streamAIToString(
-        buildModerationRewriteInstruction(lErr.failedPrompt || initialIdea, classifications),
-        { mode: 'enhance', provider: 'vercel-ai' },
-      );
-      const activePrompt = (rewritten || '').trim() || initialIdea;
-      const r = await submitViaAiImage({
-        ...baseParams,
-        ...context,
-        idea: activePrompt,
-        skipEnhance: true,
-      });
-      return { success: r, finalPrompt: r.enhancedPrompt, retried: true };
-    }
-
-    // TRADEMARK-STAGED-PIPELINE: plan against the enhanced prompt that
-    // Leonardo actually saw (lErr.failedPrompt), not the rough idea —
-    // the orchestrator's enhancement may have introduced names that
-    // aren't in the user's idea string. pollLeonardoGeneration always
-    // sets failedPrompt for moderation FAILED responses (server's
-    // statusData.failedPrompt or the submitted prompt as fallback), and
-    // this branch is only reached on classifications.length > 0, so the
-    // `|| initialIdea` is defensive padding for an unreachable case.
-    const plan = planStagedSubstitution(lErr.failedPrompt || initialIdea, baseParams.modelId);
-    if (!plan) throw err;
-    setOutcome(plan.targetName, 'blocked', baseParams.modelId);
-
-    // STAGE 2 — minimal swap. skipEnhance so the orchestrator submits
-    // the swapped prompt verbatim.
-    try {
-      const r = await submitViaAiImage({
-        ...baseParams,
-        ...context,
-        idea: plan.stage2Prompt,
-        skipEnhance: true,
-      });
-      return { success: r, finalPrompt: r.enhancedPrompt, retried: true };
-    } catch (err2) {
-      const l2 = err2 as LeonardoGenerationError;
-      const c2 = (l2.moderationClassification || []).map((c) => c.toUpperCase());
-      const stillTrademark = c2.some((c) => c === 'TRADEMARK' || c === 'COPYRIGHT');
-      if (!stillTrademark) throw err2;
-      // STAGE 3 — rich descriptor swap, same target term.
-      const r = await submitViaAiImage({
-        ...baseParams,
-        ...context,
-        idea: plan.stage3Prompt,
-        skipEnhance: true,
-      });
-      return { success: r, finalPrompt: r.enhancedPrompt, retried: true };
-    }
-  }
 }
 
 export function useImageGeneration({ settings, updateImageTags }: UseImageGenerationDeps) {
@@ -812,7 +474,7 @@ Return ONLY a JSON array of objects (one per input idea, in the same order), eac
           const imageProvider: ImageProvider =
             (options?.imageProvider as ImageProvider | undefined) ||
             unifiedSelected?.provider ||
-            'leonardo';
+            'minimax';
 
           const sharedWidth = enhanced.leonardo.width ?? fallbackDims.width;
           const sharedHeight = enhanced.leonardo.height ?? fallbackDims.height;
@@ -904,58 +566,16 @@ Return ONLY a JSON array of objects (one per input idea, in the same order), eac
             // model's actual cost from lib/model-specs and pass it
             // here. Failed submissions don't count.
             void incrementCredits(1);
-          } else if (settings.activeAiAgent === 'vercel-ai') {
-            // Hybrid orchestrator path: server-side MiniMax-enhance +
-            // Leonardo-submit via /api/ai/image, then poll via the
-            // existing /api/leonardo/{id} route.
-            ({ success, finalPrompt: activePrompt, retried } = await submitViaAiImageWithOneRetry(
-              enhanced.prompt,
-              {
-                modelId: selectedModel,
-                width: sharedWidth,
-                height: sharedHeight,
-                styleIds: sharedStyleIds,
-                quality: sharedQuality,
-                negativePrompt: generatedNegativePrompt,
-                // V1.0.7-PROMPT-ENG-A4: forward anti-AI-look curated
-                // negatives to /api/ai/image. The route layer will
-                // forward them into the provider's negative_prompt
-                // channel (Leonardo / Higgsfield MCP).
-                antiAiLookNegatives: enhanced.negativePrompts,
-                promptEnhance: 'ON',
-              },
-              {
-                systemPrompt: settings.agentPrompt,
-                niches: settings.agentNiches,
-                genres: settings.agentGenres,
-                apiKey: settings.apiKeys.leonardo,
-              },
-              { onRetry: onModerationBlock },
-            ));
           } else {
-            ({ success, finalPrompt: activePrompt, retried } = await submitWithOneRetry(
-              enhanced.prompt,
-              {
-                negativePrompt: generatedNegativePrompt,
-                // V1.0.7-PROMPT-ENG-A4: forward anti-AI-look curated
-                // negatives to /api/leonardo. Joined with the
-                // user-supplied negative inside submitLeonardoAndPoll.
-                antiAiLookNegatives: enhanced.negativePrompts,
-                modelId: selectedModel,
-                width: sharedWidth,
-                height: sharedHeight,
-                styleIds: sharedStyleIds,
-                apiKey: settings.apiKeys.leonardo,
-                quality: sharedQuality,
-                // IMG-INVEST-001 PART 2: force Leonardo's API-side enhancement ON
-              // for Manual + Pipeline regardless of per-model spec default.
-              // Brief: "we do NOT touch/improve prompts ourselves; Leonardo's
-              // prompt_enhance handles all expansion."
-              promptEnhance: 'ON',
-              },
-              { onRetry: onModerationBlock },
-              settings.activeAiAgent,
-            ));
+            // MashupForge rip: the Leonardo image engine has been
+            // removed. MiniMax + Higgsfield are the only image
+            // providers; an unknown provider here is a config/registry
+            // bug, surfaced verbatim instead of silently routing to a
+            // dead Leonardo endpoint.
+            throw new Error(
+              `Unsupported image provider "${imageProvider}" for "${selectedModel}". ` +
+              `Only MiniMax and Higgsfield are available.`,
+            );
           }
 
           let finalUrl = success.url;
@@ -1259,7 +879,7 @@ Return ONLY a JSON array of objects (one per input idea, in the same order), eac
 
         const modelConfig = LEONARDO_MODELS.find(m => m.id === selectedModel);
         const imageProvider =
-          options?.imageProvider || modelConfig?.provider || 'leonardo';
+          options?.imageProvider || modelConfig?.provider || 'minimax';
 
         const sharedWidth = enhanced.leonardo.width ?? fallbackDims.width;
         const sharedHeight = enhanced.leonardo.height ?? fallbackDims.height;
@@ -1321,56 +941,14 @@ Return ONLY a JSON array of objects (one per input idea, in the same order), eac
           retried = false;
           // V1.0.7-PROMPT-ENG-D: charge 1 credit per successful reroll.
           void incrementCredits(1);
-        } else if (settings.activeAiAgent === 'vercel-ai') {
-          ({ success, finalPrompt: activePrompt, retried } = await submitViaAiImageWithOneRetry(
-            enhanced.prompt,
-            {
-              modelId: selectedModel,
-              width: sharedWidth,
-              height: sharedHeight,
-              styleIds: sharedStyleIds,
-              quality: sharedQuality,
-              negativePrompt: modelNegPrompt,
-              // V1.0.7-PROMPT-ENG-A4: forward anti-AI-look curated
-              // negatives to /api/ai/image in the reroll path too.
-              antiAiLookNegatives: enhanced.negativePrompts,
-              // IMG-INVEST-001 PART 2: force Leonardo's API-side enhancement ON
-              // for Manual + Pipeline regardless of per-model spec default.
-              // Brief: "we do NOT touch/improve prompts ourselves; Leonardo's
-              // prompt_enhance handles all expansion."
-              promptEnhance: 'ON',
-            },
-            {
-              systemPrompt: settings.agentPrompt,
-              niches: settings.agentNiches,
-              genres: settings.agentGenres,
-              apiKey: settings.apiKeys.leonardo,
-            },
-            { onRetry: onModerationBlock },
-          ));
         } else {
-          ({ success, finalPrompt: activePrompt, retried } = await submitWithOneRetry(
-            enhanced.prompt,
-            {
-              negativePrompt: modelNegPrompt,
-              // V1.0.7-PROMPT-ENG-A4: forward anti-AI-look curated
-              // negatives to /api/leonardo in the reroll path too.
-              antiAiLookNegatives: enhanced.negativePrompts,
-              modelId: selectedModel,
-              width: sharedWidth,
-              height: sharedHeight,
-              styleIds: sharedStyleIds,
-              apiKey: settings.apiKeys.leonardo,
-              quality: sharedQuality,
-              // IMG-INVEST-001 PART 2: force Leonardo's API-side enhancement ON
-              // for Manual + Pipeline regardless of per-model spec default.
-              // Brief: "we do NOT touch/improve prompts ourselves; Leonardo's
-              // prompt_enhance handles all expansion."
-              promptEnhance: 'ON',
-            },
-            { onRetry: onModerationBlock },
-            settings.activeAiAgent,
-          ));
+          // MashupForge rip: Leonardo image engine removed. MiniMax +
+          // Higgsfield are the only providers; anything else is a
+          // config/registry bug surfaced verbatim.
+          throw new Error(
+            `Unsupported image provider "${imageProvider}" for "${selectedModel}". ` +
+            `Only MiniMax and Higgsfield are available.`,
+          );
         }
 
         let finalUrl = success.url;

@@ -40,7 +40,6 @@ import { useImageGeneration, applyWatermark } from '../hooks/useImageGeneration'
 import { useComparison } from '../hooks/useComparison';
 import { useIdeas } from '../hooks/useIdeas';
 import { useSocial } from '../hooks/useSocial';
-import { usePipeline } from '../hooks/usePipeline';
 import { collectFinalizeTargets, finalizePipelineImage } from '../lib/pipeline-finalize';
 import { persistApprovedImageToDisk } from '../lib/images/storage';
 import { applyCaptionEdit } from '../lib/caption-edit';
@@ -190,28 +189,6 @@ export function MashupProvider({ children }: { children: ReactNode }) {
     // cleared by now).
     autoTagImage(needsTagging.id, needsTagging).catch(() => {});
   }, [savedImages, autoTagImage]);
-
-  const pipelineHook = usePipeline({
-    ideas,
-    settings,
-    // V082-FIX-SETTINGS-HYDRATE: thread isSettingsLoaded through to
-    // both the auto-start guard in usePipeline AND the runOuterLoop
-    // pre-cycle check in usePipelineDaemon. Without this, a cold
-    // mount with persisted settings could auto-start a generation
-    // cycle on a week that's already been published — because
-    // settings.scheduledPosts starts as the default ([]) until the
-    // IDB load lands.
-    isSettingsLoaded,
-    updateSettings,
-    updateIdeaStatus,
-    addIdea,
-    generateComparison,
-    generatePostContent,
-    saveImage,
-    deleteImage,
-    savedImages,
-    images,
-  });
 
   // Approval flow for pending_approval scheduled posts. Pipeline-
   // produced posts land in that status and need explicit action before
@@ -633,23 +610,11 @@ export function MashupProvider({ children }: { children: ReactNode }) {
     requestSettingsLoad,
     requestComparisonLoad,
     setIsSidebarOpen,
-    setPipelineDelay: pipelineHook.setPipelineDelay,
-    togglePipeline: pipelineHook.togglePipeline,
-    startPipeline: pipelineHook.startPipeline,
-    stopPipeline: pipelineHook.stopPipeline,
-    skipCurrentIdea: pipelineHook.skipCurrentIdea,
-    toggleContinuous: pipelineHook.toggleContinuous,
-    setPipelineInterval: pipelineHook.setPipelineInterval,
-    setPipelineTargetDays: pipelineHook.setPipelineTargetDays,
-    setPipelineIdeasPerCycle: pipelineHook.setPipelineIdeasPerCycle,
-    clearPipelineLog: pipelineHook.clearPipelineLog,
     approveScheduledPost,
     rejectScheduledPost,
     bulkApproveScheduledPosts,
     bulkRejectScheduledPosts,
     updateScheduledPostsCaption,
-    acceptResume: pipelineHook.acceptResume,
-    dismissResume: pipelineHook.dismissResume,
   });
 
   // The value object is memoized on DATA fields only (stableFns never
@@ -673,18 +638,6 @@ export function MashupProvider({ children }: { children: ReactNode }) {
     comparisonOptions,
     ideas,
     isSidebarOpen,
-    pipelineEnabled: pipelineHook.pipelineEnabled,
-    pipelineRunning: pipelineHook.pipelineRunning,
-    pipelineQueue: pipelineHook.pipelineQueue,
-    pipelineProgress: pipelineHook.pipelineProgress,
-    pipelineLog: pipelineHook.pipelineLog,
-    pipelineDelay: pipelineHook.pipelineDelay,
-    pipelineContinuous: pipelineHook.pipelineContinuous,
-    pipelineInterval: pipelineHook.pipelineInterval,
-    pipelineTargetDays: pipelineHook.pipelineTargetDays,
-    pipelineIdeasPerCycle: pipelineHook.pipelineIdeasPerCycle,
-    pendingResume: pipelineHook.pendingResume,
-    weekFillStatus: pipelineHook.weekFillStatus,
     ...stableFns,
   }), [
     isLoaded,
@@ -703,18 +656,6 @@ export function MashupProvider({ children }: { children: ReactNode }) {
     comparisonOptions,
     ideas,
     isSidebarOpen,
-    pipelineHook.pipelineEnabled,
-    pipelineHook.pipelineRunning,
-    pipelineHook.pipelineQueue,
-    pipelineHook.pipelineProgress,
-    pipelineHook.pipelineLog,
-    pipelineHook.pipelineDelay,
-    pipelineHook.pipelineContinuous,
-    pipelineHook.pipelineInterval,
-    pipelineHook.pipelineTargetDays,
-    pipelineHook.pipelineIdeasPerCycle,
-    pipelineHook.pendingResume,
-    pipelineHook.weekFillStatus,
     stableFns,
   ]);
 

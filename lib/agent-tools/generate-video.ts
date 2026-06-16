@@ -35,7 +35,7 @@ import { currentRunContext, bumpStepCounter } from '@/lib/agent-loop/run-context
 // Provider dispatcher
 // ---------------------------------------------------------------------------
 
-type ProviderKind = 'higgsfield' | 'minimax' | 'leonardo' | 'openai' | 'mock';
+type ProviderKind = 'higgsfield' | 'minimax' | 'openai' | 'mock';
 
 /** Shape of a Higgsfield `generate get` job record (subset we read). */
 type HiggsfieldJobRecord = { status?: string; result_url?: string; url?: string; error?: string };
@@ -51,7 +51,6 @@ function detectProvider(model: string): ProviderKind {
     return 'higgsfield';
   }
   if (model.startsWith('minimax:') || model.includes('hailuo')) return 'minimax';
-  if (model.startsWith('leonardo:') || model.includes('leonardo')) return 'leonardo';
   if (model.startsWith('openai:') || model.startsWith('sora')) return 'openai';
   return 'openai';
 }
@@ -182,10 +181,6 @@ async function generateMinimax(_input: GenerateVideoInput): Promise<GenerateVide
   throw new ToolNotAvailableError('generate_video', 'MiniMax video provider lands in v1.2.3.');
 }
 
-async function generateLeonardo(_input: GenerateVideoInput): Promise<GenerateVideoOutput> {
-  throw new ToolNotAvailableError('generate_video', 'Leonardo video provider lands in v1.2.3.');
-}
-
 async function generateOpenai(_input: GenerateVideoInput): Promise<GenerateVideoOutput> {
   throw new ToolNotAvailableError('generate_video', 'OpenAI video provider lands in v1.2.3.');
 }
@@ -292,9 +287,6 @@ export async function executeGenerateVideo(
         break;
       case 'minimax':
         output = await generateMinimax(input);
-        break;
-      case 'leonardo':
-        output = await generateLeonardo(input);
         break;
       case 'openai':
         output = await generateOpenai(input);

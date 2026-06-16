@@ -93,14 +93,6 @@ describe('executeGenerateVideo — provider dispatch', () => {
     if (!r.ok) expect(r.error).toBeInstanceOf(ToolNotAvailableError);
   });
 
-  it('leonardo provider throws ToolNotAvailableError', async () => {
-    const r = await executeGenerateVideo({
-      model: 'leonardo:motion',
-      prompt: validPrompt,
-    });
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error).toBeInstanceOf(ToolNotAvailableError);
-  });
 
   it('openai provider throws ToolNotAvailableError', async () => {
     const r = await executeGenerateVideo({
@@ -239,7 +231,6 @@ describe('__test__ helpers', () => {
     expect(__test__.detectProvider('minimax_hailuo')).toBe('higgsfield');
     expect(__test__.detectProvider('higgsfield:any')).toBe('higgsfield');
     expect(__test__.detectProvider('minimax:hailuo')).toBe('minimax');
-    expect(__test__.detectProvider('leonardo:motion')).toBe('leonardo');
     expect(__test__.detectProvider('sora')).toBe('openai');
   });
 

@@ -75,14 +75,15 @@ export interface GeneratedImage {
   postedTo?: string[];
   postError?: string;
   modelInfo?: {
-    // V1.1.1-MULTI-PROVIDER-VIDEO: widened to include `'mmx'` for
-    // the multi-provider video path (the `mmx` provider in
+    // V1.1.1-MULTI-PROVIDER-VIDEO: includes `'mmx'` for the
+    // multi-provider video path (the `mmx` provider in
     // settings.videoProviders is the CLI-based fallback). The
     // Studio's Animate button writes the matching provider id so
     // the gallery badge + post-lifecycle code can route correctly.
-    // Existing entries (leonardo/minimax/higgsfield) keep their
-    // meanings; mmx is the new optional fourth value.
-    provider: 'leonardo' | 'minimax' | 'higgsfield' | 'mmx';
+    // MashupForge rip: `'leonardo'` has been removed; the
+    // settings-migration rewrites any persisted 'leonardo' badge to
+    // 'higgsfield' on hydration so legacy gallery metadata stays valid.
+    provider: 'minimax' | 'higgsfield' | 'mmx';
     modelId: string;
     modelName: string;
   };
@@ -140,20 +141,18 @@ export interface GenerateOptions {
   negativePrompt?: string;
   aspectRatio?: string;
   imageSize?: string;
-  provider?: 'leonardo';
   /**
    * Image-pipeline provider override. Defaults to the active model's
-   * `provider` field in LEONARDO_MODELS (`'leonardo'` for all classic
-   * models, `'minimax'` for MiniMax-native models like image-01). Set
-   * explicitly when the caller needs to force a route; otherwise the
-   * model entry decides.
+   * `provider` field in LEONARDO_MODELS (`'minimax'` for the kept
+   * minimax-image-01 entry). Set explicitly when the caller needs to
+   * force a route; otherwise the model entry decides.
    *
-   * HIGGSFIELD-INTEGRATION: `'higgsfield'` is the third image
-   * provider. The /api/higgsfield/{image,video} routes forward to
-   * the MCP `higgsfield_generate` tool with the model's `apiName`
-   * (Higgsfield job_set_type slug) as the `model` arg.
+   * MashupForge rip: the Leonardo engine has been removed. MiniMax
+   * (/api/minimax-image) and Higgsfield (/api/higgsfield/image) are
+   * the only image providers.
    */
-  imageProvider?: 'leonardo' | 'minimax' | 'higgsfield';
+  imageProvider?: 'minimax' | 'higgsfield';
+  /** Model-id override (legacy name kept for call-site stability). */
   leonardoModel?: string;
   skipEnhance?: boolean;
   style?: string;
@@ -288,8 +287,14 @@ export interface ScheduledPost {
 }
 
 export interface UserSettings {
-  enabledProviders: 'leonardo'[];
+  // MashupForge rip: the Leonardo image engine has been removed.
+  // enabledProviders now lists the live image providers. The
+  // settings-migration rewrites any persisted 'leonardo' entry to
+  // 'minimax' on hydration.
+  enabledProviders: ('minimax' | 'higgsfield')[];
   apiKeys: {
+    /** Legacy Leonardo API key — preserved for IDB safety; no longer
+     *  has a rendered control or a live code path (Leonardo OUT). */
     leonardo?: string;
     instagram?: {
       accessToken: string;
@@ -634,14 +639,13 @@ export interface LeonardoModelConfig {
   aspectRatios: { label: string; width: number; height: number }[];
   styles?: { name: string; uuid: string }[];
   /**
-   * Backend provider. Undefined defaults to `'leonardo'` for backwards
-   * compatibility with every model added before MiniMax-native support
-   * landed. `'minimax'` routes the request to `/api/minimax-image` and
-   * uses MiniMax's `image_generation` endpoint instead of Leonardo's v2
-   * `generations` API; the `apiModelId` is then the MiniMax model name
-   * (e.g. `'image-01'`), not a Leonardo model id.
+   * Backend provider. `'minimax'` routes the request to
+   * `/api/minimax-image` and uses MiniMax's `image_generation`
+   * endpoint; the `apiModelId` is then the MiniMax model name
+   * (e.g. `'image-01'`). MashupForge rip: `'leonardo'` has been
+   * removed — the kept entry is the MiniMax image model.
    */
-  provider?: 'leonardo' | 'minimax';
+  provider?: 'minimax';
 }
 
 // Shared styles for Nano Banana 2 and Nano Banana Pro (API-documented, 19 styles)
@@ -667,105 +671,17 @@ export const LEONARDO_SHARED_STYLES = [
   { name: 'Pro Film Photography', uuid: '581ba6d6-5aac-4492-bebe-54c424a0d46e' },
 ];
 
+// MashupForge rip: the Leonardo image catalog (nano-banana, nano-banana-2,
+// nano-banana-pro, gpt-image-1.5, gpt-image-2 — all provider:'leonardo')
+// has been removed. The array name is retained because it is the kept,
+// non-Leonardo home for the MiniMax image model and is imported by the
+// Studio model pickers, useComparison, param-suggest, and image-models.
 export const LEONARDO_MODELS: LeonardoModelConfig[] = [
-  {
-    id: 'nano-banana',
-    name: 'Nano Banana',
-    apiModelId: 'nano-banana',
-    version: 'v2',
-    supportsStyleIds: true,
-    supportsQuality: false,
-    supportsGuidance: true,
-    maxQuantity: 8,
-    aspectRatios: [
-      { label: '1:1', width: 1024, height: 1024 },
-      { label: '4:5', width: 896, height: 1152 },
-      { label: '5:4', width: 1152, height: 896 },
-      { label: '3:4', width: 768, height: 1024 },
-      { label: '4:3', width: 1024, height: 768 },
-      { label: '9:16', width: 768, height: 1344 },
-      { label: '16:9', width: 1344, height: 768 },
-    ],
-    styles: LEONARDO_SHARED_STYLES,
-  },
-  {
-    id: 'nano-banana-2',
-    name: 'Nano Banana 2',
-    apiModelId: 'nano-banana-2',
-    version: 'v2',
-    supportsStyleIds: true,
-    supportsQuality: false,
-    supportsGuidance: true,
-    maxQuantity: 8,
-    aspectRatios: [
-      { label: '1:1', width: 1024, height: 1024 },
-      { label: '2:3', width: 1024, height: 1536 },
-      { label: '3:2', width: 1536, height: 1024 },
-      { label: '3:4', width: 768, height: 1024 },
-      { label: '9:16', width: 768, height: 1344 },
-    ],
-    styles: LEONARDO_SHARED_STYLES,
-  },
-  {
-    id: 'nano-banana-pro',
-    name: 'Nano Banana Pro',
-    apiModelId: 'gemini-image-2',
-    version: 'v2',
-    supportsStyleIds: true,
-    supportsQuality: false,
-    supportsGuidance: true,
-    maxQuantity: 8,
-    aspectRatios: [
-      { label: '1:1', width: 1024, height: 1024 },
-      { label: '2:3', width: 1024, height: 1536 },
-      { label: '3:2', width: 1536, height: 1024 },
-    ],
-    styles: LEONARDO_SHARED_STYLES,
-  },
-  {
-    id: 'gpt-image-1.5',
-    name: 'GPT Image-1.5',
-    apiModelId: 'gpt-image-1.5',
-    version: 'v2',
-    supportsStyleIds: false,
-    supportsQuality: true,
-    supportsGuidance: true,
-    maxQuantity: 4,
-    aspectRatios: [
-      { label: '1:1', width: 1024, height: 1024 },
-      { label: '2:3', width: 1024, height: 1536 },
-      { label: '3:2', width: 1536, height: 1024 },
-    ],
-  },
-  {
-    id: 'gpt-image-2',
-    name: 'GPT Image-2',
-    apiModelId: 'gpt-image-2',
-    version: 'v2',
-    // Same capability profile as gpt-image-1.5: no style_ids, accepts the
-    // quality parameter (LOW/MEDIUM/HIGH), guidance-friendly. Quantity
-    // cap raised to 8 per Leonardo docs for the newer model.
-    supportsStyleIds: false,
-    supportsQuality: true,
-    supportsGuidance: true,
-    maxQuantity: 8,
-    // 5 ratios: 3 baseline shared with gpt-image-1.5 + 16:9/9:16. If
-    // Leonardo rejects the wide/tall pair with a v2 VALIDATION_ERROR,
-    // swap them to 4:5 (896x1152) and 5:4 (1152x896) — every 1.5/Nano
-    // model already accepts that pair so it's a known-safe fallback.
-    aspectRatios: [
-      { label: '1:1', width: 1024, height: 1024 },
-      { label: '2:3', width: 1024, height: 1536 },
-      { label: '3:2', width: 1536, height: 1024 },
-      { label: '16:9', width: 1344, height: 768 },
-      { label: '9:16', width: 768, height: 1344 },
-    ],
-  },
   {
     id: 'minimax-image-01',
     name: 'MiniMax Image-01',
-    // MiniMax's own `image_generation` endpoint, not a Leonardo model.
-    // The route /api/minimax-image branches on this and forwards to
+    // MiniMax's own `image_generation` endpoint. The route
+    // /api/minimax-image forwards to
     // {MINIMAX_API_BASE_URL}/image_generation with model="image-01".
     apiModelId: 'image-01',
     provider: 'minimax',
@@ -793,57 +709,17 @@ export const LEONARDO_MODELS: LeonardoModelConfig[] = [
 ];
 
 /**
- * Per-model prompt engineering guides. Before sending a prompt to
- * Leonardo we ask pi to rewrite it using the guide for the target
- * model, which substantially narrows quality variance between models.
+ * Per-model prompt engineering guides, keyed by LEONARDO_MODELS[].id.
+ * The Director / Compare flow looks up the guide for the target model
+ * (a missing key simply means "no model-specific guide").
  *
- * Keys must match LEONARDO_MODELS[].id, not apiModelId — we want to
- * optimise for the user-facing model choice.
+ * MashupForge rip: the Leonardo-catalog guides (nano-banana*,
+ * gpt-image-*) were removed with their models. The live MiniMax +
+ * Higgsfield models carry their guidance through model-specs JSON and
+ * the Higgsfield skill bindings instead, so this map is currently empty
+ * but kept so existing `modelGuides` consumers compile unchanged.
  */
-export const MODEL_PROMPT_GUIDES: Record<string, string> = {
-  'nano-banana': `This model works best with concise, visually descriptive prompts focused on:
-- Clear subject description with specific visual attributes (colors, textures, materials)
-- Explicit lighting and atmosphere keywords (dramatic lighting, golden hour, neon glow)
-- Art style keywords (digital art, concept art, cinematic, illustration style)
-- Avoid overly long prompts — keep it focused and vivid
-- Negative prompts are effective for this model`,
-
-  'nano-banana-2': `This model works best with concise, visually descriptive prompts focused on:
-- Clear subject description with specific visual attributes (colors, textures, materials)
-- Explicit lighting and atmosphere keywords (dramatic lighting, golden hour, neon glow)
-- Art style keywords (digital art, concept art, cinematic, illustration style)
-- Avoid overly long prompts — keep it focused and vivid
-- Negative prompts are effective for this model`,
-
-  'nano-banana-pro': `This model excels with:
-- Detailed scene composition (foreground/midground/background)
-- Photorealistic rendering keywords (photorealistic, 8k, ultra detailed, sharp focus)
-- Complex multi-subject scenes with spatial relationships
-- Specific camera and lens descriptors (85mm, shallow depth of field, wide angle)
-- Atmospheric effects (volumetric lighting, lens flare, depth of field)`,
-
-  'gpt-image-1.5': `This model is best at:
-- Photorealistic image generation with accurate text rendering
-- Precise spatial composition and perspective
-- Complex scenes with multiple interacting elements
-- Use natural language descriptions — this model understands context well
-- Specify text/labels/logos explicitly and they will render correctly
-- Avoid negative prompts — not well supported`,
-
-  'gpt-image-2': `GPT Image-2 is OpenAI's GPT-architecture image model
-(same family as DALL-E 3). Prompts can be longer and more detailed than
-Nano Banana models.
-- Include character descriptions, setting, lighting/style tags,
-  composition notes
-- Text rendering is significantly better than other models — spell out
-  text/labels/logos literally
-- Do not use leetspeak or obfuscation
-- Keep trademark names as-is — they pass fine
-- Best results with 60-100 word detailed prompts containing clear scene
-  description, subject detail, and quality tags (cinematic, 8k, etc.)
-- Avoid stacking violence vocabulary — keep grimdark tone from lighting
-  and atmosphere, not gore descriptions`,
-};
+export const MODEL_PROMPT_GUIDES: Record<string, string> = {};
 
 // V030-007-followup: Authoritative per-model API parameter spec from
 // Maurice's model-params.json. This is the source of truth for what
@@ -880,61 +756,11 @@ export interface LeonardoVideoModelSpec {
 export type LeonardoModelSpec = LeonardoImageModelSpec | LeonardoVideoModelSpec;
 
 export const LEONARDO_MODEL_PARAMS: Record<string, LeonardoModelSpec> = {
-  // V030-008: prompt_enhance defaults to 'ON' for all image models —
-  // Maurice wants Leonardo to auto-improve prompts unless the user
-  // explicitly opts out. Matches the `/api/leonardo/route.ts` default.
-  'gpt-image-1.5': {
-    type: 'image',
-    width: 1024,
-    height: 1024,
-    supported_sizes: ['1024x1024'],
-    quality: ['LOW', 'MEDIUM', 'HIGH'],
-    // V085-GPT15-STYLE-FIX: explicitly false (not just absent). gpt-image-1.5
-    // has NO style parameter — the param-suggest rule engine reads this flag
-    // to decide whether to assign a style. Leaving it undefined would still
-    // be falsy but invites accidental regressions; spelling it out is the
-    // canonical capability declaration.
-    style_ids: false,
-    prompt_enhance: 'ON',
-    supports_image_reference: true,
-  },
-  'gpt-image-2': {
-    type: 'image',
-    width: 1024,
-    height: 1024,
-    supported_sizes: ['1024x1024'],
-    quality: ['LOW', 'MEDIUM', 'HIGH'],
-    // Same style_ids posture as gpt-image-1.5 — GPT family has no style
-    // parameter. param-suggest reads this flag to skip style assignment.
-    style_ids: false,
-    prompt_enhance: 'ON',
-    supports_image_reference: true,
-  },
-  'nano-banana-2': {
-    type: 'image',
-    width: 1024,
-    height: 1024,
-    supported_sizes: ['1024x1024'],
-    style_ids: true,
-    prompt_enhance: 'ON',
-    supports_image_reference: false,
-  },
-  'nano-banana-pro': {
-    type: 'image',
-    api_name: 'gemini-image-2',
-    width: 1024,
-    height: 1024,
-    supported_sizes: ['1024x1024'],
-    style_ids: true,
-    prompt_enhance: 'ON',
-    supports_image_reference: false,
-  },
+  // MashupForge rip: the Leonardo image/video param specs (gpt-image-*,
+  // nano-banana-*, kling-*, veo-*, seedance-*) were removed with their
+  // models. Only the kept MiniMax image model remains. `param-suggest`
+  // reads this slimmer map; missing keys yield an empty perModel entry.
   'minimax-image-01': {
-    // P2 of PROV-AGNOSTIC-PARAMS — closes the gap discovered during
-    // the provider-filter tests. The model lives in LEONARDO_MODELS
-    // (UI config) and lib/model-specs/minimax-image-01.json (rich spec)
-    // but was missing from this slimmer map that `param-suggest` reads,
-    // so the rule engine returned an empty perModel entry for it.
     type: 'image',
     api_name: 'image-01',
     width: 1024,
@@ -944,137 +770,35 @@ export const LEONARDO_MODEL_PARAMS: Record<string, LeonardoModelSpec> = {
     prompt_enhance: 'ON',
     supports_image_reference: false,
   },
-  'kling-3.0': {
-    type: 'video',
-    width: 1920,
-    height: 1080,
-    duration: 5,
-    mode: 'RESOLUTION_1080',
-    motion_has_audio: true,
-    supports_start_frame: true,
-    supports_end_frame: false,
-  },
-  'kling-o3': {
-    type: 'video',
-    api_name: 'kling-video-o-3',
-    width: 1920,
-    height: 1080,
-    duration: 3,
-    mode: 'RESOLUTION_1080',
-    motion_has_audio: true,
-    supports_start_frame: true,
-    supports_end_frame: false,
-  },
-  'veo-3.1': {
-    type: 'video',
-    api_name: 'VEO3_1',
-    width: 1920,
-    height: 1080,
-    duration: 8,
-    mode: 'RESOLUTION_1080',
-    supports_start_frame: true,
-    supports_end_frame: true,
-  },
-  'seedance-2.0': {
-    type: 'video',
-    api_name: 'seedance-2.0',
-    width: 1280,
-    height: 720,
-    duration: 8,
-    mode: 'RESOLUTION_720',
-    motion_has_audio: true,
-    supports_start_frame: true,
-    supports_end_frame: true,
-  },
 };
 
-// Video model configs, analogous to LEONARDO_MODELS but carrying the
-// duration/frame-support shape the pipeline and Compare tab need. Kept
-// separate because image and video models don't share a UI list.
-export interface LeonardoVideoModelConfig {
-  id: string;
-  name: string;
-  apiModelId: string;
-  duration: number;
-  width: number;
-  height: number;
-  supportsStartFrame: boolean;
-  supportsEndFrame: boolean;
-  motionHasAudio: boolean;
-}
-
-export const LEONARDO_VIDEO_MODELS: LeonardoVideoModelConfig[] = [
-  {
-    id: 'kling-3.0',
-    name: 'Kling 3.0',
-    apiModelId: 'kling-3.0',
-    duration: 5,
-    width: 1920,
-    height: 1080,
-    supportsStartFrame: true,
-    supportsEndFrame: false,
-    motionHasAudio: true,
-  },
-  {
-    id: 'kling-o3',
-    name: 'Kling o3',
-    apiModelId: 'kling-video-o-3',
-    duration: 3,
-    width: 1920,
-    height: 1080,
-    supportsStartFrame: true,
-    supportsEndFrame: false,
-    motionHasAudio: true,
-  },
-  {
-    id: 'veo-3.1',
-    name: 'Veo 3.1',
-    apiModelId: 'VEO3_1',
-    duration: 8,
-    width: 1920,
-    height: 1080,
-    supportsStartFrame: true,
-    supportsEndFrame: true,
-    motionHasAudio: false,
-  },
-  {
-    id: 'seedance-2.0',
-    name: 'Seedance 2.0',
-    apiModelId: 'seedance-2.0',
-    duration: 8,
-    width: 1280,
-    height: 720,
-    supportsStartFrame: true,
-    supportsEndFrame: true,
-    motionHasAudio: true,
-  },
-];
-
-/** Get a Leonardo model config by its id */
+/** Get a model config by its id (kept name; the array now holds the
+ *  MiniMax image model after the Leonardo rip). */
 export function getLeonardoModel(modelId: string): LeonardoModelConfig | undefined {
   return LEONARDO_MODELS.find(m => m.id === modelId || m.apiModelId === modelId);
 }
 
 /**
- * Display label for the *underlying* provider behind a Leonardo-routed model.
- * Used in the comparison-history badge so each column carries the actual
- * model family ("GEMINI" / "OPENAI") rather than a uniform "LEONARDO" — the
- * persisted `modelInfo.provider` is always 'leonardo' (the API broker) since
- * everything goes through /api/leonardo/*.
+ * Display label for the *underlying* provider/model family behind a
+ * persisted gallery image. Used in the comparison-history badge so a
+ * column carries the actual model family. After the MashupForge rip the
+ * live providers are MiniMax + Higgsfield; legacy persisted ids that
+ * predate the rip still map to their historical family label.
  *
- * Resolves on `id` first, then `apiModelId` (some persisted images store
- * the apiModelId variant). Unknown ids fall back to "LEONARDO" — the broker
- * is at least correct.
+ * Resolves on `id` (or the apiModelId some persisted images store).
+ * Unknown ids fall back to "MINIMAX" — the kept default image provider.
  */
 export function getModelProviderLabel(modelId: string | undefined): string {
-  if (!modelId) return 'LEONARDO';
+  if (!modelId) return 'MINIMAX';
   const id = modelId.toLowerCase();
   if (id.startsWith('nano-banana') || id.startsWith('gemini-')) return 'GEMINI';
   if (id.startsWith('gpt-image')) return 'OPENAI';
-  return 'LEONARDO';
+  if (id.startsWith('minimax') || id.startsWith('image-01')) return 'MINIMAX';
+  if (id.startsWith('higgsfield') || id.startsWith('seedance') || id.startsWith('kling')) return 'HIGGSFIELD';
+  return 'MINIMAX';
 }
 
-/** Get aspect ratio dimensions for a Leonardo model */
+/** Get aspect ratio dimensions for a model (kept name post-rip) */
 export function getLeonardoDimensions(modelId: string, aspectRatio: string): { width: number; height: number } {
   const model = getLeonardoModel(modelId);
   const ar = model?.aspectRatios.find(a => a.label === aspectRatio);
@@ -1102,17 +826,19 @@ export const IMAGE_SIZES = ['1K', '2K', '4K'];
 // ── Default Settings ────────────────────────────────────────────────────────
 
 export const defaultSettings: UserSettings = {
-  enabledProviders: ['leonardo'],
+  enabledProviders: ['minimax'],
   apiKeys: {},
-  defaultLeonardoModel: 'nano-banana-2',
+  // Legacy field kept for IDB safety; defaults to the kept MiniMax
+  // image model now that Leonardo specs are gone.
+  defaultLeonardoModel: 'minimax-image-01',
   defaultAnimationDuration: 3,
   defaultAnimationStyle: 'DYNAMIC',
   defaultVideoModel: 'kling-video-o-3',
-  // V1.1.1-MULTI-PROVIDER-VIDEO: new default is MiniMax (Hailuo 2.3)
-  // instead of the v1.1.0 implicit-Leonardo behavior. The Settings
-  // modal lets the user add or remove providers; the Animate button
-  // fires parallel submissions to all selected ones.
-  videoProviders: ['minimax'] as ('leonardo' | 'minimax' | 'higgsfield' | 'mmx')[],
+  // V1.1.1-MULTI-PROVIDER-VIDEO: default is MiniMax (Hailuo 2.3). The
+  // Settings modal lets the user add or remove providers; the Animate
+  // button fires parallel submissions to all selected ones. Leonardo
+  // is no longer a video provider (engine removed).
+  videoProviders: ['minimax'] as ('minimax' | 'higgsfield' | 'mmx')[],
   defaultMinimaxVideoModel: 'MiniMax-Hailuo-2.3',
   // V1.1.1-SKILLS-AUTO-USE: default to the banana-pro-director
   // skill (the SLCT + Skin Study cinematic-direction protocol) for
@@ -1273,32 +999,6 @@ export interface MashupContextType {
   requestIdeasLoad: () => void;
   requestSettingsLoad: () => void;
   requestComparisonLoad: () => void;
-  pipelineEnabled: boolean;
-  pipelineRunning: boolean;
-  pipelineQueue: Idea[];
-  pipelineProgress: PipelineProgress | null;
-  pipelineLog: PipelineLogEntry[];
-  pipelineDelay: number;
-  setPipelineDelay: (delay: number) => void;
-  togglePipeline: () => void;
-  startPipeline: () => void;
-  stopPipeline: () => void;
-  /** Bail out of the in-flight idea without stopping the whole pipeline. */
-  skipCurrentIdea: () => void;
-  /** Continuous / daemon mode — keep regenerating ideas and posting on an interval. */
-  pipelineContinuous: boolean;
-  toggleContinuous: () => void;
-  /** Minutes between daemon cycles when continuous mode is on. */
-  pipelineInterval: number;
-  setPipelineInterval: (minutes: number) => void;
-  /** How many days ahead the daemon tries to keep the schedule filled. */
-  pipelineTargetDays: number;
-  setPipelineTargetDays: (days: number) => void;
-  /** Ideas the daemon auto-generates per cycle when the queue is empty (1-10, default 5). */
-  pipelineIdeasPerCycle: number;
-  setPipelineIdeasPerCycle: (n: number) => void;
-  /** Clear the pipeline log — leaves state/persistence intact otherwise. */
-  clearPipelineLog: () => void;
   /** Approve a pending_approval post — flips its status to 'scheduled'. */
   approveScheduledPost: (postId: string) => void;
   /** Reject a pending_approval post — sets its status to 'rejected' (content stays visible). */
@@ -1318,13 +1018,4 @@ export interface MashupContextType {
    * group's persisted caption stays in sync with its sibling posts.
    */
   updateScheduledPostsCaption: (postIds: string[], caption: string) => void;
-  /** FEAT-006: surviving checkpoint from the previous run, if any.
-   *  Set on mount when IDB has a record; null otherwise. */
-  pendingResume: import('../lib/pipeline-checkpoint').PipelineCheckpoint | null;
-  /** Accept the resume prompt — restart the pipeline from the saved idea. */
-  acceptResume: () => void;
-  /** Dismiss the resume prompt and drop the checkpoint. */
-  dismissResume: () => void;
-  /** V030-004: reactive week-fill status for the progress meter UI. */
-  weekFillStatus: import('../lib/weekly-fill').WeekFillStatus;
 }

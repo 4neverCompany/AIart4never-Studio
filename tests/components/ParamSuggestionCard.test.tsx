@@ -12,6 +12,46 @@ import { cleanup, render, fireEvent, screen, within } from '@testing-library/rea
 import { ParamSuggestionCard } from '@/components/ParamSuggestionCard';
 import type { ParamSuggestion, PerModelImageSuggestion } from '@/lib/param-suggest';
 
+// MashupForge rip: the nano-banana-* / gpt-image-1.5 model-spec JSONs were
+// deleted with the Leonardo engine, but ParamSuggestionCard's capability
+// gating (hide Style / Negative Prompt rows for capabilities.styles===false
+// models) is still live behaviour. Supply synthetic specs via a getModelSpec
+// mock so the per-model gating contract stays covered. Display names fall
+// back to the raw model id now that these ids are out of LEONARDO_MODELS,
+// so the name-based assertions below match the ids directly.
+vi.mock('@/lib/model-specs', () => {
+  const SPECS: Record<string, unknown> = {
+    'nano-banana-2': {
+      modelId: 'nano-banana-2', apiName: 'nano-banana-2', type: 'image',
+      provider: 'leonardo', endpoint: '', parameters: {},
+      aspectRatios: { '1:1': { '1K': [1024, 1024] } },
+      capabilities: { styles: true, negativePrompt: true, imageSize: true, promptEnhance: true },
+      styles: {}, rules: [],
+    },
+    'nano-banana-pro': {
+      modelId: 'nano-banana-pro', apiName: 'gemini-image-2', type: 'image',
+      provider: 'leonardo', endpoint: '', parameters: {},
+      aspectRatios: { '1:1': { '1K': [1024, 1024] } },
+      capabilities: { styles: true, negativePrompt: true, imageSize: true, promptEnhance: true },
+      styles: {}, rules: [],
+    },
+    'gpt-image-1.5': {
+      modelId: 'gpt-image-1.5', apiName: 'gpt-image-1.5', type: 'image',
+      provider: 'leonardo', endpoint: '', parameters: {},
+      aspectRatios: { '1:1': { '1K': [1024, 1024] } },
+      capabilities: { styles: false, negativePrompt: false, imageSize: true, promptEnhance: true },
+      rules: [],
+    },
+  };
+  return {
+    getModelSpec: (id: string) => SPECS[id],
+    getAllModelSpecs: () => SPECS,
+    getModelProvider: (id: string) =>
+      (SPECS[id] as { provider?: string } | undefined)?.provider ?? 'minimax',
+    getModelSpecsByProvider: () => [],
+  };
+});
+
 beforeEach(() => {
   cleanup();
 });
@@ -83,10 +123,11 @@ describe('ParamSuggestionCard — per-model state isolation', () => {
     const panels = container.querySelectorAll('.border.border-zinc-800\\/80');
     expect(panels.length).toBe(3);
 
-    // Model names appear in both toggle buttons and panel headers
-    expect(screen.getAllByText(/Nano Banana 2/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Nano Banana Pro/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/GPT Image-1.5/).length).toBeGreaterThanOrEqual(1);
+    // Model labels appear in both toggle buttons and panel headers. The
+    // Leonardo catalog is gone, so formatModel falls back to the raw id.
+    expect(screen.getAllByText(/nano-banana-2/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/nano-banana-pro/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/gpt-image-1\.5/).length).toBeGreaterThanOrEqual(1);
   });
 
   it('changing style in Edit mode for one model does NOT change another model', () => {
@@ -210,10 +251,14 @@ describe('ParamSuggestionCard — per-model state isolation', () => {
   });
 
   it('toggling a model off removes it from the Apply payload', () => {
+    // MashupForge rip: the toggle row maps LEONARDO_MODELS, which now holds
+    // only the kept minimax-image-01 entry — so that's the model with a
+    // togglable button. Pair it with nano-banana-2 (panel-only) and toggle
+    // minimax-image-01 off to exercise the de-selection contract.
     const onApply = vi.fn();
     const suggestion = makeSuggestion({
       'nano-banana-2': makeImageSuggestion('nano-banana-2'),
-      'gpt-image-1.5': makeImageSuggestion('gpt-image-1.5'),
+      'minimax-image-01': makeImageSuggestion('minimax-image-01'),
     });
 
     render(
@@ -225,15 +270,15 @@ describe('ParamSuggestionCard — per-model state isolation', () => {
       />,
     );
 
-    // Click "GPT Image-1.5" model toggle button to deselect it
-    const gptButton = screen.getByRole('button', { name: /GPT Image-1.5/ });
-    fireEvent.click(gptButton);
+    // Click the "MiniMax Image-01" model toggle button to deselect it.
+    const minimaxButton = screen.getByRole('button', { name: /MiniMax Image-01/ });
+    fireEvent.click(minimaxButton);
 
     fireEvent.click(screen.getByText('Apply'));
 
     const [modelIds, , perModel] = onApply.mock.calls[0];
     expect(modelIds).toEqual(['nano-banana-2']);
-    expect(perModel['gpt-image-1.5']).toBeUndefined();
+    expect(perModel['minimax-image-01']).toBeUndefined();
     expect(perModel['nano-banana-2']).toBeDefined();
   });
 

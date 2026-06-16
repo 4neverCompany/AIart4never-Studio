@@ -88,7 +88,7 @@ function buildApprovalFixture(opts: {
     url: 'https://cdn.example.com/img.jpg',
     prompt: 'test prompt',
     status: 'ready',
-    modelInfo: { provider: 'leonardo', modelId: 'phoenix', modelName: 'Phoenix' },
+    modelInfo: { provider: 'higgsfield', modelId: 'phoenix', modelName: 'Phoenix' },
   };
 
   // Build the PostRecord in the requested state by walking the
@@ -156,9 +156,9 @@ function buildApprovalFixture(opts: {
   }
 
   const settings: UserSettings = {
-    enabledProviders: ['leonardo'],
+    enabledProviders: ['minimax'],
     apiKeys: {},
-    defaultLeonardoModel: 'phoenix',
+    defaultLeonardoModel: 'minimax-image-01',
     scheduledPosts: [post],
   };
 
@@ -384,9 +384,9 @@ describe('approval integration: approveScheduledPost + applyTransition', () => {
     });
 
     const settings: UserSettings = {
-      enabledProviders: ['leonardo'],
+      enabledProviders: ['minimax'],
       apiKeys: {},
-      defaultLeonardoModel: 'phoenix',
+      defaultLeonardoModel: 'minimax-image-01',
       scheduledPosts: [fixture1.post, fixture2.post, fixture3.post],
     };
     await set(LEGACY_SETTINGS_KEY, settings);

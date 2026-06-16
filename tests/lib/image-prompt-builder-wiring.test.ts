@@ -8,8 +8,40 @@
 // outputs against the actual spec JSON. If a spec change or builder
 // regression would break the hook's body shape, this fails first.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { buildEnhancedPrompt } from '@/lib/image-prompt-builder';
+
+// MashupForge rip: the nano-banana-2 Leonardo spec JSON was deleted with
+// the engine, but the wiring contract this file pins (style-UUID + tiered
+// dimension resolution that useImageGeneration relies on) is still live.
+// Supply a synthetic nano-banana-2 spec via a getModelSpec mock so the
+// contract stays covered without resurrecting the deleted production JSON.
+vi.mock('@/lib/model-specs', () => {
+  const SPECS: Record<string, unknown> = {
+    'nano-banana-2': {
+      modelId: 'nano-banana-2',
+      apiName: 'nano-banana-2',
+      type: 'image',
+      provider: 'leonardo',
+      endpoint: '',
+      parameters: { prompt_enhance: { default: 'ON' } },
+      aspectRatios: {
+        '1:1': { '1K': [1024, 1024], '2K': [2048, 2048] },
+        '16:9': { '1K': [1344, 768] },
+      },
+      capabilities: { styles: true, promptEnhance: true },
+      styles: { '3D Render': 'debdf72a-91a4-467b-bf61-cc02bdeb69c6' },
+      rules: [],
+    },
+  };
+  return {
+    getModelSpec: (id: string) => SPECS[id],
+    getAllModelSpecs: () => SPECS,
+    getModelProvider: (id: string) =>
+      (SPECS[id] as { provider?: string } | undefined)?.provider ?? 'minimax',
+    getModelSpecsByProvider: () => [],
+  };
+});
 
 describe('buildEnhancedPrompt — useImageGeneration wiring contract', () => {
   it('returns a Leonardo-shaped slice for nano-banana-2 + named style + aspect', () => {
