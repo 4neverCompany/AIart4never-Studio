@@ -411,6 +411,54 @@ select optgroup {
            after:bg-gradient-to-r after:from-transparent
            after:via-[#ff7a18]/30 after:to-transparent;
   }
+
+  /* ── Studio topbar (Ashen Cyberforge console shell) ───────────────── */
+  /* The console's command bar: wordmark + Chat↔Gallery toggle +        */
+  /* character switcher + connector dots + budget. Mirrors AgentConsole's */
+  /* header treatment (dark surface, gold hairline border).             */
+  .studio-topbar {
+    @apply relative flex items-center gap-3 px-4 h-12 shrink-0
+           border-b border-[#8a97a6]/16 bg-[#0a0b0e]/90 backdrop-blur-xl;
+  }
+
+  /* Segmented Chat↔Gallery toggle track + segments. */
+  .seg-track {
+    @apply flex items-center gap-0.5 p-0.5 rounded-lg
+           bg-[#050505] border border-[#8a97a6]/18;
+  }
+
+  .seg-item {
+    @apply flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold
+           text-[#8a97a6] hover:text-[#e8edf2]
+           transition-colors duration-150;
+  }
+
+  .seg-item-active {
+    @apply bg-[#ff7a18]/15 text-[#ff9d4d] border border-[#ff7a18]/40;
+  }
+
+  /* Connector status dot — cyan when connected, ashen when not. */
+  .conn-dot {
+    @apply inline-block w-2 h-2 rounded-full bg-[#8a97a6]/45;
+  }
+
+  .conn-dot-on {
+    @apply bg-[#00e6ff] shadow-[0_0_6px_rgba(0,230,255,0.7)];
+  }
+
+  /* ── AgentConsole right rail ──────────────────────────────────────── */
+  .rail-surface {
+    @apply w-60 shrink-0 border-l border-[#8a97a6]/16 bg-[#0a0b0e]
+           overflow-y-auto flex flex-col;
+  }
+
+  .rail-panel {
+    @apply border-b border-[#8a97a6]/12 p-3.5;
+  }
+
+  .rail-heading {
+    @apply text-[11px] font-bold uppercase tracking-wider text-[#8a97a6];
+  }
 }
 
 @keyframes progress-shimmer {

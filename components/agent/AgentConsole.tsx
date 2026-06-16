@@ -49,6 +49,7 @@ import { useSettings } from '@/hooks/useSettings';
 import { listCharacters, type CharacterId } from '@/lib/canon';
 import { streamAgent, type AgentAssetRef } from '@/lib/aiClient';
 import type { McpServerConfig } from '@/lib/mcp';
+import { AgentConsoleRail } from './AgentConsoleRail';
 
 // ── Thread model ────────────────────────────────────────────────────────────
 
@@ -336,8 +337,14 @@ export function AgentConsole() {
         </div>
       )}
 
-      {/* Thread */}
-      <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+      {/* AGENTIC-CORE / PHASE 2: split the body into the chat column (thread +
+          input, behaviour 100% unchanged) and the additive right rail
+          (Approval Deck + Canon Panel). The rail is a sibling — it never wraps
+          or alters the chat loop. */}
+      <div className="flex-1 min-h-0 flex flex-row overflow-hidden">
+        <div className="flex flex-col flex-1 min-w-0">
+          {/* Thread */}
+          <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
         {turns.length === 0 && (
           <div
             data-testid="agent-intro"
@@ -517,6 +524,12 @@ export function AgentConsole() {
             )}
           </button>
         </form>
+        </div>
+        </div>
+
+        {/* AGENTIC-CORE / PHASE 2: the additive right rail — Approval Deck +
+            Canon Panel, both reading real approval + canon data. */}
+        <AgentConsoleRail characterId={characterId} />
       </div>
     </section>
   );

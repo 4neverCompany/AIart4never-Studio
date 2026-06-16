@@ -7,12 +7,13 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { DesktopLoadingScreen } from './DesktopLoadingScreen';
 import { OnboardingWizard } from './onboarding/OnboardingWizard';
 import { SetupUnfinishedPill } from './onboarding/SetupUnfinishedPill';
-import { ShieldAlert, Cpu, LayoutDashboard } from 'lucide-react';
+import { ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { CreditBudgetBanner } from './CreditBudgetBanner';
 import { MinimaxQuotaBanner } from './MinimaxQuotaBanner';
 import { resolveAllowance } from '@/lib/minimax-quota';
 import { useSettings } from '@/hooks/useSettings';
+import { StudioTopbar, type PrimarySurface } from './StudioTopbar';
 
 const MainContent = dynamic(
   () => import('./MainContent').then((m) => m.MainContent),
@@ -35,14 +36,6 @@ const AgentConsole = dynamic(
   () => import('./agent/AgentConsole').then((m) => m.AgentConsole),
   { ssr: false },
 );
-
-/**
- * AGENTIC-CORE / PHASE 1: which primary surface the studio shows. 'studio' is
- * the existing Sidebar + MainContent (unchanged); 'agent' is the new
- * Cyberforge agent console. Default stays 'studio' so nothing about the
- * existing first-run experience changes.
- */
-type PrimarySurface = 'studio' | 'agent';
 
 /** V050-DES-002 — first-run + pill state machine.
  *  Reads localStorage flags only (schema field is PROP). */
@@ -165,7 +158,7 @@ function MashupApp() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-zinc-950">
+    <div className="flex flex-col h-screen overflow-hidden bg-zinc-950">
       {/* V1.0.7-PROMPT-ENG-D: low-credit + cap-reached banner. The
           banner is self-gating (returns null when the cap isn't set
           or usage is under 80%) so this is a safe unconditional
@@ -173,24 +166,26 @@ function MashupApp() {
           the floating panels. */}
       <StudioCreditStrip />
 
-      {/* AGENTIC-CORE / PHASE 1: primary-surface switcher. Floating, top-
-          centre, above both surfaces. Lets the operator flip between the
-          existing Studio (Sidebar + MainContent) and the new agentic
-          Cyberforge console without removing either. */}
-      <SurfaceSwitcher surface={surface} onChange={setSurface} />
+      {/* AGENTIC-CORE / PHASE 2: the Cyberforge command bar. Replaces the old
+          floating surface-switcher with a real topbar — wordmark, the
+          segmented Chat↔Gallery toggle (surface), the active-character
+          switcher, connector status dots, and the budget readout. */}
+      <StudioTopbar surface={surface} onChange={setSurface} />
 
-      {surface === 'agent' ? (
-        <ErrorBoundary section="AgentConsole">
-          <AgentConsole />
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {surface === 'agent' ? (
+          <ErrorBoundary section="AgentConsole">
+            <AgentConsole />
+          </ErrorBoundary>
+        ) : (
+          <ErrorBoundary section="MainContent">
+            <MainContent />
+          </ErrorBoundary>
+        )}
+        <ErrorBoundary section="MmxStudioPanel">
+          <MmxStudioPanel />
         </ErrorBoundary>
-      ) : (
-        <ErrorBoundary section="MainContent">
-          <MainContent />
-        </ErrorBoundary>
-      )}
-      <ErrorBoundary section="MmxStudioPanel">
-        <MmxStudioPanel />
-      </ErrorBoundary>
+      </div>
 
       {onboarding.kind === 'show-wizard' && (
         <OnboardingWizard
@@ -245,54 +240,6 @@ export function MashupStudio() {
  * never covers it. Sits at the top of the flex column with the rest
  * of the studio below — no z-index gymnastics required.
  */
-/**
- * AGENTIC-CORE / PHASE 1: floating switcher between the existing Studio
- * surface and the new agentic Cyberforge console. Centre-top, pointer-events
- * isolated so it never blocks the surfaces behind it. Orange = active (the
- * AIART4NEVER primary); ashen = inactive.
- */
-function SurfaceSwitcher({
-  surface,
-  onChange,
-}: {
-  surface: PrimarySurface;
-  onChange: (s: PrimarySurface) => void;
-}) {
-  const items: Array<{ id: PrimarySurface; label: string; Icon: typeof Cpu }> = [
-    { id: 'studio', label: 'Studio', Icon: LayoutDashboard },
-    { id: 'agent', label: 'Agent', Icon: Cpu },
-  ];
-  return (
-    <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
-      <div
-        role="tablist"
-        aria-label="Primary surface"
-        className="pointer-events-auto flex items-center gap-1 p-1 rounded-xl bg-[#0a0b0d]/90 backdrop-blur-xl border border-[#ff7a18]/25 shadow-xl"
-      >
-        {items.map(({ id, label, Icon }) => {
-          const active = surface === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => onChange(id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
-                active
-                  ? 'bg-[#ff7a18]/15 text-[#ff9d4d] border border-[#ff7a18]/40'
-                  : 'text-[#8a97a6] hover:text-zinc-200 border border-transparent'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {label}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 function StudioCreditStrip() {
   const { settings } = useSettings();
@@ -304,7 +251,9 @@ function StudioCreditStrip() {
   // threshold, so an unconditional mount is safe.
   const minimaxAllowance = resolveAllowance(settings.minimaxTier, settings.minimaxCustomTokenCap);
   return (
-    <div className="absolute top-0 left-0 right-0 z-30 p-3 pointer-events-none">
+    // AGENTIC-CORE / PHASE 2: offset below the new 48px topbar (top-14) so a
+    // surfaced banner floats under the command bar, not over it.
+    <div className="absolute top-14 left-0 right-0 z-30 p-3 pointer-events-none">
       <div className="pointer-events-auto max-w-3xl mx-auto space-y-2">
         <CreditBudgetBanner cap={settings.higgsfieldMonthlyCreditCap} />
         <MinimaxQuotaBanner allowance={minimaxAllowance} />

@@ -74,6 +74,20 @@ vi.mock('@/hooks/useSettings', () => ({
   }),
 }));
 
+// PHASE 2: the console now mounts the additive right rail, whose Approval Deck
+// reads the real approval queue from MashupContext. Mock useMashup with an
+// empty queue so the console renders standalone (the chat assertions below are
+// unaffected); the rail's own behaviour is covered by AgentConsoleRail.test.tsx.
+vi.mock('@/components/MashupContext', () => ({
+  useMashup: () => ({
+    settings: { scheduledPosts: [] },
+    savedImages: [],
+    images: [],
+    approveScheduledPost: vi.fn(),
+    rejectScheduledPost: vi.fn(),
+  }),
+}));
+
 // The agentic client entry — a vi.fn returning an async generator of
 // AgentEvents. Each test sets `eventScript` to drive the stream.
 const streamAgentSpy = vi.fn();
