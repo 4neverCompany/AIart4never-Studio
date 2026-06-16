@@ -49,7 +49,55 @@ import { useSettings } from '@/hooks/useSettings';
 import { listCharacters, type CharacterId } from '@/lib/canon';
 import { streamAgent, type AgentAssetRef } from '@/lib/aiClient';
 import type { McpServerConfig } from '@/lib/mcp';
+import ReactMarkdown, { type Components } from 'react-markdown';
 import { AgentConsoleRail } from './AgentConsoleRail';
+
+// ── Markdown rendering for agent bubbles ────────────────────────────────────
+// The agent (a reasoning model) replies in markdown (## headings, **bold**,
+// lists, `code`, > quotes). Rendered raw it leaks the syntax chars; this maps
+// each element to the Ashen Cyberforge dark theme. Operator bubbles stay plain.
+
+const AGENT_MD_COMPONENTS: Components = {
+  p: (p) => <p className="my-1.5 first:mt-0 last:mb-0" {...p} />,
+  strong: (p) => <strong className="font-semibold text-white" {...p} />,
+  em: (p) => <em className="italic" {...p} />,
+  ul: (p) => <ul className="my-1.5 ml-4 list-disc space-y-0.5" {...p} />,
+  ol: (p) => <ol className="my-1.5 ml-4 list-decimal space-y-0.5" {...p} />,
+  li: (p) => <li className="leading-relaxed" {...p} />,
+  h1: (p) => <h3 className="mt-2 mb-1 text-[15px] font-bold text-white" {...p} />,
+  h2: (p) => <h4 className="mt-2 mb-1 text-sm font-bold text-white" {...p} />,
+  h3: (p) => <h5 className="mt-2 mb-1 text-sm font-semibold text-[#ff9d4d]" {...p} />,
+  a: (p) => (
+    <a className="text-[#00e6ff] underline underline-offset-2" target="_blank" rel="noreferrer" {...p} />
+  ),
+  code: (p) => (
+    <code
+      className="rounded bg-[#00e6ff]/10 px-1 py-0.5 text-[12px] text-[#00e6ff]"
+      style={{ fontFamily: 'var(--font-mono)' }}
+      {...p}
+    />
+  ),
+  pre: (p) => (
+    <pre
+      className="my-2 overflow-x-auto rounded-lg border border-[#ff7a18]/15 bg-[#050505] p-3 text-[12px] [&>code]:bg-transparent [&>code]:p-0 [&>code]:text-[#cdd6e0]"
+      style={{ fontFamily: 'var(--font-mono)' }}
+      {...p}
+    />
+  ),
+  blockquote: (p) => (
+    <blockquote className="my-1.5 border-l-2 border-[#ff7a18]/40 pl-3 text-[#8a97a6]" {...p} />
+  ),
+  hr: () => <hr className="my-2 border-[#8a97a6]/20" />,
+};
+
+/** Renders agent reasoning text as themed markdown. Partial (streaming) markdown renders gracefully. */
+export function AgentMarkdown({ text }: { text: string }) {
+  return (
+    <div className="text-sm leading-relaxed [&>:first-child]:mt-0 [&>:last-child]:mb-0">
+      <ReactMarkdown components={AGENT_MD_COMPONENTS}>{text}</ReactMarkdown>
+    </div>
+  );
+}
 
 // ── Thread model ────────────────────────────────────────────────────────────
 
@@ -429,8 +477,10 @@ export function AgentConsole() {
             >
               {/* Reasoning bubble */}
               {(turn.text || turn.streaming) && (
-                <div className="rounded-2xl rounded-bl-sm bg-[#0f1114] border border-[#ff7a18]/12 text-[#cdd6e0] px-4 py-2.5 text-sm whitespace-pre-wrap leading-relaxed">
-                  {turn.text || (
+                <div className="rounded-2xl rounded-bl-sm bg-[#0f1114] border border-[#ff7a18]/12 text-[#cdd6e0] px-4 py-2.5 text-sm leading-relaxed">
+                  {turn.text ? (
+                    <AgentMarkdown text={turn.text} />
+                  ) : (
                     <span className="text-[#8a97a6] italic">Planning…</span>
                   )}
                   {turn.streaming && (
