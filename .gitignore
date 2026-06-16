@@ -66,3 +66,6 @@ docs/bmad/
 # scripts/install-higgsfield-cli.ps1 -Dest src-tauri/resources/higgsfield-cli
 # (a fetched node_modules artifact, like resources/node and resources/camofox).
 src-tauri/resources/higgsfield-cli/
+
+# BMAD planning artifacts — kept LOCAL (contain strategy/persona/growth targets); not for the public repo
+_bmad-output/
