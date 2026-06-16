@@ -22,13 +22,13 @@ const ctaSecondary =
   'inline-flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 text-sm font-medium rounded-xl border border-zinc-700/60 transition-colors';
 
 /**
- * Gallery empty state. The MashupForge content pipeline GUI has been
- * removed, so the CTAs now point at the live surfaces — Compare (the
- * generate-and-pick flow) and the Gallery itself — instead of the
- * dead 'ideas' / 'pipeline' views.
+ * Gallery empty state. The MashupForge content pipeline GUI and the
+ * inherited Compare view have both been removed, so the CTAs now point
+ * at the live Gallery surface instead of the dead 'ideas' / 'pipeline' /
+ * 'compare' views.
  *
  * Two states, picked by `firstRun`:
- * 1. **first-run** — fresh install: welcome pitch + Open Compare.
+ * 1. **first-run** — fresh install: welcome pitch + Go to Gallery.
  * 2. **default-empty** — produced posts before but gallery is empty.
  */
 export function EmptyGalleryState({ firstRun, setView }: EmptyGalleryStateProps) {
@@ -51,19 +51,19 @@ export function EmptyGalleryState({ firstRun, setView }: EmptyGalleryStateProps)
       </h2>
       <p className="text-sm max-w-md text-center text-zinc-500 mb-6">
         {firstRun
-          ? 'Generate post-ready Master4never images in the Studio, then compare model variants side by side to pick the best one.'
-          : 'Save your favorite beats from the Studio to build your collection — or open Compare to generate and pick variants.'}
+          ? 'Generate post-ready Master4never images, then build your gallery, caption, and schedule them for posting.'
+          : 'Save your favorite beats to build your collection — captioned, scheduled, and post-ready.'}
       </p>
 
       <div className="flex flex-wrap items-center justify-center gap-3">
         <button
           type="button"
-          onClick={() => setView('compare')}
+          onClick={() => setView('gallery')}
           className={ctaPrimary}
-          aria-label="Open Compare"
+          aria-label="Go to Gallery"
         >
           <Sparkles className="w-4 h-4" />
-          Open Compare
+          Go to Gallery
           <ArrowRight className="w-3.5 h-3.5 opacity-70" />
         </button>
         <button

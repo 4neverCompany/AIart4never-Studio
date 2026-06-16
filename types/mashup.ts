@@ -565,7 +565,7 @@ export interface UserSettings {
   activeTextModel?: string;
 }
 
-export type ViewType = 'studio' | 'gallery' | 'compare' | 'captioning' | 'post-ready' | 'ideas' | 'pipeline';
+export type ViewType = 'studio' | 'gallery' | 'captioning' | 'post-ready' | 'ideas' | 'pipeline';
 
 export interface PipelineLogEntry {
   timestamp: Date;
@@ -723,10 +723,11 @@ export const MODEL_PROMPT_GUIDES: Record<string, string> = {};
 
 // V030-007-followup: Authoritative per-model API parameter spec from
 // Maurice's model-params.json. This is the source of truth for what
-// the Leonardo v2 API actually accepts per model — width/height,
-// supported sizes, quality levels, durations, and frame capabilities.
-// Smart pre-fill in lib/param-suggest.ts consults this map to avoid
-// suggesting values the API will reject.
+// the image API actually accepts per model — width/height, supported
+// sizes, quality levels, durations, and frame capabilities. Consumed by
+// the kept image-models / useComparison paths to avoid sending values
+// the API will reject. (The compare-view param-suggest layer that also
+// read this map was removed in the AIart4never compare-view rip.)
 export interface LeonardoImageModelSpec {
   type: 'image';
   width: number;

@@ -11,16 +11,13 @@ import {
   Sparkles, 
   Maximize2, 
   X, 
-  Trash2, 
-  Bookmark, 
-  BookmarkCheck, 
-  LayoutGrid, 
+  Trash2,
+  LayoutGrid,
   Settings, 
   RefreshCw, 
   Search, 
   Filter, 
   Video,
-  Columns,
   MinusCircle,
   Tag,
   FolderPlus,
@@ -28,7 +25,6 @@ import {
   Minus,
   ChevronDown,
   XCircle,
-  CheckCircle2,
   Folder,
   Save,
   FolderOpen,
@@ -56,28 +52,15 @@ import {
 import {
   useMashup,
   GeneratedImage,
-  LEONARDO_MODELS,
-  MODEL_PROMPT_GUIDES,
   Collection,
   GenerateOptions,
   ScheduledPost,
-  ART_STYLES,
-  LIGHTING_OPTIONS,
-  CAMERA_ANGLES,
-  ASPECT_RATIOS,
-  IMAGE_SIZES,
   type ViewType,
 } from './MashupContext';
-import { LEONARDO_SHARED_STYLES, getModelProviderLabel } from '@/types/mashup';
-import { suggestParametersAI, type ParamSuggestion, type PerModelSuggestion } from '@/lib/param-suggest';
-import { pushIdeaToStudio } from '@/lib/push-idea-to-studio';
-import { ParamSuggestionCard } from './ParamSuggestionCard';
 import { KebabMenu, type KebabMenuItem } from './KebabMenu';
 import { GalleryFilterBar } from './GalleryFilterBar';
 import { streamAIToString, extractJsonArrayFromLLM, extractJsonObjectFromLLM } from '@/lib/aiClient';
 import { submitAndPollVideo } from '@/lib/video-providers';
-import { enhancePromptForModel } from '@/lib/modelOptimizer';
-import { getModelSpec } from '@/lib/model-specs';
 import { getErrorMessage } from '@/lib/errors';
 import { recordOutcome } from '@/lib/outcome-tracker';
 import { findPostingBlock, isStillScheduled } from '@/lib/post-approval-gate';
@@ -169,21 +152,12 @@ export function MainContent() {
     addImageToCollection,
     removeImageFromCollection,
     toggleApproveImage,
-    generateComparison,
-    pickComparisonWinner,
-    comparisonResults,
-    clearComparison,
-    deleteComparisonResult,
     autoTagImage,
     autoGenerateCollectionInfo,
     bulkUpdateImageTags,
     setImageStatus,
     view,
     setView,
-    comparisonPrompt,
-    setComparisonPrompt,
-    comparisonOptions,
-    setComparisonOptions,
     ideas,
     clearIdeas,
     updateIdeaStatus,
@@ -310,7 +284,6 @@ export function MainContent() {
     requestCollectionsLoad,
     requestIdeasLoad,
     requestSettingsLoad,
-    requestComparisonLoad,
   } = useMashup();
   useEffect(() => {
     // Fire settings load on mount (no view gate). The studio renders
@@ -321,8 +294,6 @@ export function MainContent() {
     if (view === 'gallery') {
       requestImagesLoad();
       requestCollectionsLoad();
-    } else if (view === 'compare') {
-      requestComparisonLoad();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view]);
@@ -340,18 +311,6 @@ export function MainContent() {
     }
   };
   
-  // Comparison state
-  const [comparisonModels, setComparisonModels] = useState<string[]>([]);
-  const [isComparing, setIsComparing] = useState(false);
-  /** Per-model parameter preview (set by pi when prompt changes). */
-  const [modelPreviews, setModelPreviews] = useState<Record<string, { prompt?: string; style?: string; aspectRatio?: string; negativePrompt?: string; lighting?: string; angle?: string }>>({});
-  /** V030-007: smart pre-fill suggestion card visibility + payload. */
-  const [paramSuggestion, setParamSuggestion] = useState<ParamSuggestion | null>(null);
-  /** V030-008-per-model: per-model overrides from the suggestion card Apply. */
-  const [perModelOverrides, setPerModelOverrides] = useState<Record<string, { style?: string; aspectRatio?: string; negativePrompt?: string }>>({});
-  /** V030-008: pi.dev is reasoning about parameters — show spinner while it works. */
-  const [isSuggesting, setIsSuggesting] = useState(false);
-  const [isPushing, setIsPushing] = useState(false);
   // Track which image is currently having its caption generated so we can
   // show a per-card spinner while the pi caption request runs. Keyed by
   // image id.
@@ -685,160 +644,6 @@ export function MainContent() {
     return () => window.removeEventListener('mashup:open-settings', handler);
   }, []);
 
-  const PREDEFINED_PROMPTS = [
-    "Darth Vader as a Space Marine in the Warhammer 40k universe, grimdark style",
-    "Iron Man's Hulkbuster armor redesigned by Mandalorian armorers, Beskar plating",
-    "Batman investigating a Genestealer Cult in the underhive of Necromunda",
-    "The Millennium Falcon being chased by a fleet of Borg Cubes",
-    "Wonder Woman wielding a Thunder Hammer leading a charge against Chaos Daemons"
-  ];
-
-  /**
-   * Set when the user pushes an Idea Board concept into Compare — tells
-   * the comparisonResults watcher below to auto-collapse the resulting
-   * images into a single CarouselGroup once they're all ready, but only
-   * when pipelineCarouselMode is on. Ref (not state) so flipping it
-   * doesn't cause a re-render and the watcher reads the freshest value.
-   */
-  const pendingIdeaCarouselRef = useRef(false);
-
-  const handlePushIdeaToCompare = async (prompt: string) => {
-    // V050-006: body extracted to lib/push-idea-to-studio.ts so the
-    // wiring (param-suggest call, state setter fan-out) is unit-testable.
-    await pushIdeaToStudio(prompt, {
-      setIsPushing,
-      setView,
-      setComparisonPrompt,
-      setComparisonModels,
-      setComparisonOptions,
-      setParamSuggestion,
-      armCarouselWatcher: () => { pendingIdeaCarouselRef.current = true; },
-      suggest: suggestParametersAI,
-      availableModels: LEONARDO_MODELS,
-      modelGuides: MODEL_PROMPT_GUIDES,
-      availableStyles: LEONARDO_SHARED_STYLES,
-      savedImages,
-    });
-  };
-
-  /**
-   * Auto-collapse Ideas Board comparison runs into a single carousel.
-   * Fires when: (1) the user just pushed an idea into Compare (ref armed),
-   * (2) pipelineCarouselMode is on, and (3) all comparisonResults are in
-   * the 'ready' state with usable media. Creates one CarouselGroup in
-   * settings.carouselGroups and disarms the ref so a subsequent manual
-   * Compare run isn't also grouped.
-   */
-  useEffect(() => {
-    if (!pendingIdeaCarouselRef.current) return;
-    if (!settings.pipelineCarouselMode) {
-      pendingIdeaCarouselRef.current = false;
-      return;
-    }
-    if (comparisonResults.length < 2) return;
-    const allReady = comparisonResults.every(
-      (img) => img.status === 'ready' && (img.base64 || img.url),
-    );
-    if (!allReady) return;
-    pendingIdeaCarouselRef.current = false;
-    const nowStamp = Date.now();
-    const groupId = `carousel-idea-${nowStamp}-${Math.random().toString(36).slice(2, 8)}`;
-    persistCarouselGroup(
-      groupId,
-      comparisonResults.map((i) => i.id),
-      { status: 'draft' },
-    );
-  }, [comparisonResults, settings.pipelineCarouselMode, persistCarouselGroup]);
-
-  useEffect(() => {
-    const storedModels = localStorage.getItem('mashup_comparison_models');
-    if (storedModels) {
-      try {
-        const parsed = JSON.parse(storedModels);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // One-time hydrate of the model selection from localStorage on
-          // mount (empty deps) — the same init-effect pattern useImages
-          // uses for its store load. Safe: runs once, no cascade.
-          // eslint-disable-next-line react-hooks/set-state-in-effect
-          setComparisonModels(parsed);
-          return;
-        }
-      } catch {
-        // parse failure — fall through to defaults below
-      }
-    }
-    // Default: all three models selected. (No disable needed here — the
-    // React Compiler rule fires once per effect, already silenced above.)
-    setComparisonModels(LEONARDO_MODELS.map(m => m.id));
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('mashup_comparison_models', JSON.stringify(comparisonModels));
-  }, [comparisonModels]);
-
-  // Clean up stale per-model overrides when comparison models change.
-  // Functional updater with a referential-equality bail (returns `prev`
-  // when nothing changed), so this cannot cascade — but the value can't
-  // be a pure useMemo because perModelOverrides is also user-mutated
-  // elsewhere. Verified-safe derived-cleanup pattern.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPerModelOverrides(prev => {
-      const modelSet = new Set(comparisonModels);
-      const filtered = Object.fromEntries(
-        Object.entries(prev).filter(([key]) => modelSet.has(key))
-      );
-      // Avoid unnecessary re-render if nothing changed.
-      if (Object.keys(filtered).length === Object.keys(prev).length) return prev;
-      return filtered;
-    });
-  }, [comparisonModels]);
-
-  /** Preview per-model parameters whenever the prompt or models change. */
-  const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (!comparisonPrompt.trim() || comparisonModels.length === 0) {
-      // Clear stale previews when there's nothing to preview. A
-      // one-shot reset guarded by the condition — no cascade.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setModelPreviews({});
-      return;
-    }
-    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
-    previewTimerRef.current = setTimeout(async () => {
-      const previews: Record<string, { prompt?: string; style?: string; aspectRatio?: string; negativePrompt?: string; lighting?: string; angle?: string }> = {};
-      await Promise.all(comparisonModels.map(async (modelId) => {
-        try {
-          const overrides = perModelOverrides[modelId];
-          const enh = await enhancePromptForModel(comparisonPrompt, modelId, {
-            style: overrides?.style ?? comparisonOptions.style,
-            aspectRatio: overrides?.aspectRatio ?? comparisonOptions.aspectRatio,
-            negativePrompt: overrides?.negativePrompt ?? comparisonOptions.negativePrompt,
-          });
-          previews[modelId] = {
-            prompt: enh.prompt,
-            style: enh.style,
-            aspectRatio: enh.aspectRatio,
-            negativePrompt: enh.negativePrompt,
-          };
-        } catch { /* ignore */ }
-      }));
-      setModelPreviews(prev => {
-        const same = Object.keys(prev).length === Object.keys(previews).length
-          && Object.entries(prev).every(([k, v]) => JSON.stringify(v) === JSON.stringify(previews[k]));
-        return same ? prev : previews;
-      });
-    }, 800);
-    return () => { if (previewTimerRef.current) clearTimeout(previewTimerRef.current); };
-  }, [
-    comparisonPrompt,
-    comparisonModels,
-    comparisonOptions.style,
-    comparisonOptions.aspectRatio,
-    comparisonOptions.negativePrompt,
-    perModelOverrides,
-  ]);
-
   // Auto-poster (60s interval daemon) moved to useMainContentAutoPoster.
 
   const allTags = useMemo(
@@ -973,151 +778,6 @@ export function MainContent() {
     }
     return { total: savedImages.length, tagged, captioned };
   }, [savedImages]);
-
-  const handlePushToCompare = (prompt: string, options: GenerateOptions) => {
-    setComparisonPrompt(prompt);
-    setComparisonOptions(options);
-    setView('compare');
-  };
-
-  // V082-PARAM-SCRIPT: deterministic rule engine. Reads the prompt for
-  // subject/style/theme cues, looks up each model's supported parameters,
-  // and emits per-model panels that respect each model's capabilities.
-  // The pi.dev variant was retired (it produced wrong values for
-  // capability-aware models); rule-based is now the normal path.
-  const handleSuggestParameters = async () => {
-    if (!comparisonPrompt.trim()) {
-      showToast('Enter a prompt first so we can suggest parameters.', 'error');
-      return;
-    }
-    setIsSuggesting(true);
-    try {
-      // AI-PARAM-SUGGEST (2026-05-20): route the AI call through the
-      // user's selected text-AI backend (settings.activeAiAgent). The
-      // capability-aware post-filter inside suggestParametersAI strips
-      // any field the AI hallucinates that violates a model's spec, so
-      // we don't repeat the V082 failure of proposing styles for
-      // gpt-image-1.5 etc. If the AI fails / parse fails, it silently
-      // falls back to the rule engine.
-      //
-      // IMG-INVEST-001 issue 3: respect settings.enabledProviders.
-      // Without this filter, suggestions can re-introduce a model whose
-      // provider the user disabled (e.g. minimax) and then handleApply
-      // merges it back into comparisonModels — re-activating a model
-      // the user just turned off.
-      const enabledProviders = new Set<string>(settings.enabledProviders);
-      const eligibleModels = LEONARDO_MODELS.filter(
-        m => enabledProviders.has(m.provider ?? 'minimax'),
-      );
-      const eligibleIncluded = comparisonModels.filter(id => {
-        const m = LEONARDO_MODELS.find(x => x.id === id);
-        return m ? enabledProviders.has(m.provider ?? 'minimax') : false;
-      });
-      const suggestion = await suggestParametersAI(
-        {
-          prompt: comparisonPrompt,
-          availableModels: eligibleModels,
-          modelGuides: MODEL_PROMPT_GUIDES,
-          availableStyles: LEONARDO_SHARED_STYLES,
-          savedImages,
-          includedModelIds: eligibleIncluded,
-          // Defence-in-depth: when only one provider is enabled, also
-          // pass it as the engine-level filter so suggestParameters'
-          // internal candidate pool is narrowed at its own boundary.
-          provider:
-            settings.enabledProviders.length === 1
-              ? settings.enabledProviders[0]
-              : undefined,
-        },
-        {
-          aiCall: (message, signal) =>
-            streamAIToString(message, {
-              provider: settings.activeAiAgent,
-              mode: 'chat',
-              signal,
-            }),
-        },
-      );
-      setParamSuggestion(suggestion);
-    } finally {
-      setIsSuggesting(false);
-    }
-  };
-
-  const handleApplySuggestion = (
-    modelIds: string[],
-    options: Partial<GenerateOptions>,
-    perModel: Record<string, PerModelSuggestion>,
-  ) => {
-    // IMG-INVEST-001 issue 3: strip out any models whose provider the
-    // user has disabled. Belt-and-braces with the filter in
-    // handleSuggestParameters — a stale suggestion (e.g. from before
-    // the user toggled minimax off) must not re-activate the model.
-    const enabledProviders = new Set<string>(settings.enabledProviders);
-    const allowed = modelIds.filter(id => {
-      const m = LEONARDO_MODELS.find(x => x.id === id);
-      return m ? enabledProviders.has(m.provider ?? 'minimax') : false;
-    });
-    setComparisonModels(prev => {
-      const merged = new Set(prev);
-      for (const id of allowed) merged.add(id);
-      return Array.from(merged);
-    });
-    setComparisonOptions(prev => ({ ...prev, ...options }));
-    // V030-008-per-model: extract per-model overrides so each model
-    // can use its own style / aspectRatio / negativePrompt during
-    // preview and generation instead of sharing the first model's values.
-    const overrides: Record<string, { style?: string; aspectRatio?: string; negativePrompt?: string }> = {};
-    for (const id of allowed) {
-      const entry = perModel[id];
-      if (!entry) continue;
-      overrides[id] = entry.type === 'image'
-        ? {
-            aspectRatio: entry.aspectRatio,
-            style: entry.style,
-            negativePrompt: entry.negativePrompt,
-          }
-        : { aspectRatio: entry.aspectRatio };
-    }
-    setPerModelOverrides(overrides);
-    setParamSuggestion(null);
-    const droppedCount = modelIds.length - allowed.length;
-    showToast(
-      droppedCount > 0
-        ? `Parameters applied. ${droppedCount} suggested model${droppedCount === 1 ? '' : 's'} skipped — provider disabled in settings.`
-        : 'Parameters applied. You can still tweak anything before generating.',
-      'success',
-    );
-  };
-
-  const handleCompare = async () => {
-    if (comparisonModels.length < 2) {
-      showToast('Please select at least 2 models to compare.', 'error');
-      return;
-    }
-    if (!comparisonPrompt.trim()) {
-      showToast('Please enter a prompt for comparison.', 'error');
-      return;
-    }
-
-    setIsComparing(true);
-    try {
-      // Merge per-model overrides into cached enhancements so each model
-      // uses its own style / aspectRatio / negativePrompt during generation.
-      const mergedEnhancements: Record<string, { prompt?: string; style?: string; aspectRatio?: string; negativePrompt?: string }> = { ...modelPreviews };
-      for (const [id, overrides] of Object.entries(perModelOverrides)) {
-        mergedEnhancements[id] = {
-          ...mergedEnhancements[id],
-          ...overrides,
-        };
-      }
-      await generateComparison(comparisonPrompt, comparisonModels, comparisonOptions, mergedEnhancements);
-    } catch {
-      // generateComparison already surfaces error via setComparisonError
-    } finally {
-      setIsComparing(false);
-    }
-  };
 
   // M3.1: identity-stable — passed to the memoized GalleryCard.
   const handleAnimate = useStableCallback(async (img: GeneratedImage, isBatch: boolean = false) => {
@@ -1303,7 +963,7 @@ export function MainContent() {
         <div className="flex items-center gap-2 md:gap-4 overflow-hidden">
           <div className="relative hidden md:block">
             <div className="flex bg-zinc-900/60 rounded-xl p-1 border border-[#ff7a18]/15 overflow-x-auto hide-scrollbar snap-x">
-              {['compare', 'gallery', 'captioning', 'post-ready'].map((v) => (
+              {['gallery', 'captioning', 'post-ready'].map((v) => (
                 <button
                   key={v}
                   onClick={() => setView(v as ViewType)}
@@ -1317,13 +977,10 @@ export function MainContent() {
                     />
                   )}
                   <span className="relative z-10 flex items-center gap-2">
-                    {v === 'compare' && <Sparkles className="w-4 h-4 hidden sm:block" />}
                     {v === 'gallery' && <LayoutGrid className="w-4 h-4 hidden sm:block" />}
                     {v === 'captioning' && <Edit3 className="w-4 h-4 hidden sm:block" />}
                     {v === 'post-ready' && <Save className="w-4 h-4 hidden sm:block" />}
-                    {v === 'compare'
-                      ? 'Studio'
-                      : v.charAt(0).toUpperCase() + v.slice(1).replace('-', ' ')}
+                    {v.charAt(0).toUpperCase() + v.slice(1).replace('-', ' ')}
                   </span>
                 </button>
               ))}
@@ -1368,7 +1025,6 @@ export function MainContent() {
       >
         <div className="flex justify-around items-stretch px-1 py-1">
           {([
-            { key: 'compare', icon: Sparkles, label: 'Studio' },
             { key: 'gallery', icon: LayoutGrid, label: 'Gallery' },
             { key: 'captioning', icon: Edit3, label: 'Caption' },
             { key: 'post-ready', icon: Save, label: 'Post' },
@@ -1438,370 +1094,6 @@ export function MainContent() {
                   onSelectInCollection={handleSelectInCollectionBound}
                   onInvertSelection={handleInvertSelectionBound}
                 />
-              )}
-
-              {view === 'compare' && (
-                <div className="space-y-8">
-                  {/* Section header */}
-                  <div className="flex items-center gap-3">
-                    <div className="icon-box-blue">
-                      <Sparkles className="w-5 h-5 text-[#00e6ff]" />
-                    </div>
-                    <div>
-                      <h2 className="type-title">AIart4never Studio</h2>
-                      <p className="type-muted">Generate on-canon Master4never beats across different AI models and looks</p>
-                    </div>
-                  </div>
-
-                  <div className="card p-6 space-y-6">
-                    <div className="flex flex-wrap justify-end gap-2">
-                        <select
-                          className="text-xs bg-zinc-950 border border-zinc-800/60 rounded-xl px-2 py-1 text-zinc-300 focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30 max-w-[150px]"
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              setComparisonPrompt(e.target.value);
-                              e.target.value = ''; // Reset selection
-                            }
-                          }}
-                        >
-                          <option value="">Suggestions...</option>
-                          {PREDEFINED_PROMPTS.map((p) => (
-                            <option key={p} value={p}>{p.substring(0, 30)}...</option>
-                          ))}
-                        </select>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <label className="text-sm font-medium text-zinc-300">Select Models</label>
-                          <span className="text-[10px] font-mono text-zinc-500 tabular-nums">
-                            {comparisonModels.length} of {LEONARDO_MODELS.length} selected
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                          {LEONARDO_MODELS.map(model => {
-                            const isSelected = comparisonModels.includes(model.id);
-                            return (
-                              <button
-                                key={model.id}
-                                onClick={() => {
-                                  setComparisonModels(prev =>
-                                    prev.includes(model.id)
-                                      ? prev.filter(id => id !== model.id)
-                                      : [...prev, model.id]
-                                  );
-                                }}
-                                aria-pressed={isSelected}
-                                className={`px-3 py-2 rounded-xl text-xs font-medium border transition-all text-left flex items-center justify-between ${
-                                  isSelected
-                                    ? 'bg-[#ff7a18]/15 border-[#ff7a18] text-[#ff7a18]'
-                                    : 'bg-zinc-900 border-zinc-800/60 text-zinc-500 opacity-70 hover:opacity-100 hover:border-[#ff7a18]/40'
-                                }`}
-                              >
-                                <span className="truncate mr-2">{model.name}</span>
-                                {isSelected
-                                  ? <BookmarkCheck className="w-3 h-3 shrink-0" />
-                                  : <Plus className="w-3 h-3 shrink-0 text-zinc-600" />
-                                }
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-[#00e6ff] flex items-center gap-2">
-                          <Sparkles className="w-4 h-4" />
-                          Image Prompt
-                        </label>
-                        <textarea
-                          value={comparisonPrompt}
-                          onChange={(e) => setComparisonPrompt(e.target.value)}
-                          placeholder="Enter a prompt to compare across models..."
-                          rows={10}
-                          className="w-full bg-zinc-900/60 border border-[#00e6ff]/20 rounded-xl p-4 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#00e6ff]/20 focus:border-[#00e6ff]/35 min-h-[240px] resize-y shadow-inner shadow-[rgba(0,230,255,0.04)] transition-all duration-200"
-                        />
-                        <div className="flex items-center justify-end">
-                          <button
-                            onClick={handleSuggestParameters}
-                            disabled={!comparisonPrompt.trim() || isSuggesting}
-                            className="text-xs text-[#00e6ff] hover:text-white flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[#00e6ff]/25 hover:border-[#00e6ff]/50 bg-[#00e6ff]/5 hover:bg-[#00e6ff]/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                            title="Ask the AI to reason about the best models/style/ratio/quality/negative prompt for this idea"
-                          >
-                            {isSuggesting ? (
-                              <>
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                                AI is thinking…
-                              </>
-                            ) : (
-                              <>
-                                <Sparkles className="w-3 h-3" />
-                                Suggest Parameters
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-
-                      {paramSuggestion && (
-                        <ParamSuggestionCard
-                          suggestion={paramSuggestion}
-                          availableStyles={LEONARDO_SHARED_STYLES}
-                          onApply={handleApplySuggestion}
-                          onDismiss={() => setParamSuggestion(null)}
-                        />
-                      )}
-
-                      {isSuggesting && !paramSuggestion && (
-                        <div
-                          role="status"
-                          aria-live="polite"
-                          className="flex items-center gap-3 bg-zinc-900/50 border border-[#00e6ff]/20 rounded-xl p-4"
-                        >
-                          <Loader2 className="w-4 h-4 text-[#00e6ff] animate-spin shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-[#00e6ff]">
-                              pi is generating model recommendations…
-                            </p>
-                            <p className="text-[10px] text-zinc-500 mt-0.5">
-                              Auto-preview below stays in sync — this adds an applyable suggestion card here.
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* AI-Optimized Parameters — read-only per-model indicators.
-                          pi pre-computes optimal params per model via
-                          lib/modelOptimizer whenever the prompt changes.
-                          During generation the same optimizer runs again
-                          so these pills accurately preview what will be sent. */}
-                      <div className="bg-zinc-900/50 border border-[#ff7a18]/15 rounded-xl p-4 space-y-3">
-                        <div className="flex items-center gap-2 text-xs text-zinc-500">
-                          <Sparkles className="w-3 h-3" />
-                          <span className="uppercase tracking-wider font-medium">AI-Optimized Parameters</span>
-                          <span className="text-[10px] text-zinc-600">— pi auto-tunes per model</span>
-                        </div>
-                        {comparisonModels.length > 0 ? (
-                          <div className="space-y-2">
-                            {comparisonModels.map((modelId) => {
-                              const model = LEONARDO_MODELS.find(
-                                (m) => m.id === modelId || m.apiModelId === modelId
-                              );
-                              const preview = modelPreviews[modelId];
-                              const fallbackRatio = model?.aspectRatios?.[0]?.label || '1:1';
-                              // STYLE-AI-FIX (2026-05-20): only show the Style
-                              // pill / row when this model's spec actually
-                              // exposes a style parameter. Otherwise we're
-                              // misleading the user — gpt-image-*, minimax,
-                              // and every video model silently ignore style.
-                              const supportsStyles = getModelSpec(modelId)?.capabilities.styles !== false;
-                              return (
-                                <div key={modelId} className="flex flex-col gap-1">
-                                  <span className="text-[10px] font-mono text-zinc-500">
-                                    {model?.name || modelId}
-                                  </span>
-                                  {preview && (
-                                    <details className="mt-2 text-xs border border-zinc-800/60 rounded-lg overflow-hidden">
-                                      <summary className="px-3 py-2 cursor-pointer hover:bg-zinc-800/50 flex items-center gap-2 text-zinc-400">
-                                        <span className="text-indigo-400">AI Optimized</span>
-                                        {supportsStyles && (
-                                          <>
-                                            <span className="text-zinc-600">|</span>
-                                            <span>{preview.style || 'Auto'}</span>
-                                          </>
-                                        )}
-                                        <span className="text-zinc-600">|</span>
-                                        <span>{preview.aspectRatio || fallbackRatio}</span>
-                                        {preview.negativePrompt && (
-                                          <>
-                                            <span className="text-zinc-600">|</span>
-                                            <span className="text-red-400/70">Negative: yes</span>
-                                          </>
-                                        )}
-                                      </summary>
-                                      <div className="px-3 py-2 space-y-2 border-t border-zinc-800 bg-zinc-900/30">
-                                        {preview.prompt && (
-                                          <div>
-                                            <span className="text-zinc-500 text-[10px] uppercase tracking-wider">Enhanced Prompt</span>
-                                            <p className="text-zinc-300 mt-0.5 max-h-[200px] overflow-y-auto whitespace-pre-wrap leading-relaxed">{preview.prompt}</p>
-                                          </div>
-                                        )}
-                                        {supportsStyles && preview.style && (
-                                          <div>
-                                            <span className="text-zinc-500 text-[10px] uppercase tracking-wider">Style</span>
-                                            <p className="text-zinc-300 mt-0.5">{preview.style}</p>
-                                          </div>
-                                        )}
-                                        {preview.aspectRatio && (
-                                          <div>
-                                            <span className="text-zinc-500 text-[10px] uppercase tracking-wider">Aspect Ratio</span>
-                                            <p className="text-zinc-300 mt-0.5">{preview.aspectRatio}</p>
-                                          </div>
-                                        )}
-                                        {preview.negativePrompt && (
-                                          <div>
-                                            <span className="text-zinc-500 text-[10px] uppercase tracking-wider">Negative Prompt</span>
-                                            <p className="text-zinc-300 mt-0.5">{preview.negativePrompt}</p>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </details>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <p className="text-[10px] text-zinc-600">
-                            Select at least 2 models above to see per-model parameters
-                          </p>
-                        )}
-                      </div>
-
-                      <button
-                        onClick={handleCompare}
-                        disabled={isComparing || comparisonModels.length < 2 || !comparisonPrompt.trim()}
-                        className="btn-cta shadow-[0_0_28px_rgba(0,230,255,0.22)]"
-                      >
-                        {isComparing ? (
-                          <>
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            Generating...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="w-5 h-5" />
-                            Generate Beat ({comparisonModels.length} models)
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {comparisonResults.length > 0 && view === 'compare' && (
-                    <div className="space-y-12">
-                      <div className="flex justify-end">
-                        <button
-                          onClick={clearComparison}
-                          className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 transition-colors"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                          Clear Comparison History
-                        </button>
-                      </div>
-                      {Object.entries(
-                        comparisonResults.reduce((acc, img) => {
-                          const id = img.comparisonId || 'default';
-                          if (!acc[id]) acc[id] = [];
-                          acc[id].push(img);
-                          return acc;
-                        }, {} as Record<string, GeneratedImage[]>)
-                      ).map(([compId, group]) => (
-                        <div key={compId} className="space-y-4">
-                          <div className="flex items-center justify-between gap-2 border-b border-zinc-800 pb-2">
-                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <h3 className="text-sm font-medium text-zinc-400 flex items-center gap-2 min-w-0">
-                                <Columns className="w-4 h-4 shrink-0" />
-                                <span className="truncate">Comparison: {group[0]?.prompt.slice(0, 50)}...</span>
-                              </h3>
-                              <button
-                                onClick={() => {
-                                  group.forEach(img => deleteComparisonResult(img.id));
-                                }}
-                                className="shrink-0 text-[10px] text-zinc-600 hover:text-red-400 transition-colors flex items-center gap-1"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                                Delete Group
-                              </button>
-                            </div>
-                            <span className="shrink-0 text-[10px] text-zinc-500 uppercase tracking-widest">
-                              {(() => {
-                                // V1.8.1: derive the badge date PURELY from the
-                                // group id's embedded creation timestamp
-                                // (`carousel-…-<ms>-…`). The old `|| Date.now()`
-                                // fallback called an impure clock during render
-                                // (React-Compiler violation + a misleading
-                                // "today" for malformed ids); show an em-dash
-                                // instead when there's no parseable timestamp.
-                                const tsPart = parseInt(compId.split('-')[2], 10);
-                                return Number.isFinite(tsPart)
-                                  ? new Date(tsPart).toLocaleDateString()
-                                  : '—';
-                              })()}
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
-                            {group.map((img) => (
-                              <motion.div
-                                key={img.id}
-                                whileHover={{ scale: 1.02, y: -4, transition: { type: "spring", stiffness: 300, damping: 25 } }}
-                                className={`group relative bg-zinc-900 rounded-2xl overflow-hidden border transition-all duration-300 ${img.winner ? 'border-green-500 ring-2 ring-green-500/20' : 'border-zinc-800 shadow-xl'}`}
-                              >
-                                <div className="absolute top-0 left-0 right-0 z-20 bg-black/60 backdrop-blur-md px-4 py-2 flex justify-between items-center border-b border-white/10">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">
-                                      {img.modelInfo?.modelName || 'Model'}
-                                    </span>
-                                    {img.winner && (
-                                      <span className="bg-green-500 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-tighter">Winner</span>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-3">
-                                    <span className="text-[10px] text-zinc-400 uppercase tracking-widest">
-                                      {getModelProviderLabel(img.modelInfo?.modelId)}
-                                    </span>
-                                    <button
-                                      onClick={() => deleteComparisonResult(img.id)}
-                                      className="p-1 text-zinc-500 hover:text-red-400 transition-colors"
-                                      title="Delete Result"
-                                    >
-                                      <Trash2 className="w-3 h-3" />
-                                    </button>
-                                  </div>
-                                </div>
-                                <div
-                                  className="aspect-square relative overflow-hidden bg-zinc-950 cursor-pointer"
-                                  onClick={() => { if (img.status !== 'generating') setSelectedImage(img); }}
-                                >
-                                  {img.status === 'generating' ? (
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-zinc-900/50 backdrop-blur-sm">
-                                      <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-                                      <span className="text-xs text-zinc-400 font-medium">Generating...</span>
-                                    </div>
-                                  ) : (
-                                    <>
-                                      <img
-                                        src={img.url || `data:image/jpeg;base64,${img.base64}`}
-                                        alt={img.prompt}
-                                        loading="lazy"
-                                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                        referrerPolicy="no-referrer"
-                                      />
-                                      <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-black/60 via-black/20 to-transparent pointer-events-none" />
-                                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-6 pointer-events-none">
-                                        <div className="flex gap-3 pointer-events-auto">
-                                          <motion.button
-                                            whileTap={{ scale: 0.9 }}
-                                            onClick={(e) => { e.stopPropagation(); pickComparisonWinner(img.id); }}
-                                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-colors ${img.winner ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-[#00e6ff] hover:bg-[#33eaff] active:bg-[#00b8cc] text-[#050505]'}`}
-                                          >
-                                            {img.winner ? <CheckCircle2 className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
-                                            {img.winner ? 'Picked' : 'Keep this version'}
-                                          </motion.button>
-                                        </div>
-                                      </div>
-                                    </>
-                                  )}
-                                </div>
-                              </motion.div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
               )}
 
               {view === 'studio' && isGenerating && progress && (
