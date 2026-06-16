@@ -309,6 +309,11 @@ export interface AgentAssetRef {
  */
 export type AgentEvent =
   | { type: 'text'; text: string; stepType?: string; idx?: number }
+  // The internal director-plan step. Carries NO scaffold text — it's a marker
+  // so the console can show a subtle "planning…" pill. The plan scaffold is
+  // deliberately NOT streamed to the visible chat (it's Replay-UI-only); see
+  // `stepToEvent` in app/api/ai/prompt/route.ts.
+  | { type: 'plan'; stepType?: string; idx?: number }
   | { type: 'tool-call'; tool: string; args?: unknown; idx?: number; cost?: number }
   | {
       type: 'tool-result';

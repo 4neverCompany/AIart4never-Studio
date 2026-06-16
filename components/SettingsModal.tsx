@@ -1221,15 +1221,16 @@ export function SettingsModal({
 
           {activeTab === 'aiEngine' && (
           <>
-          {/* M3.4-P4-B2: AI System Prompt block (incl. Saved Personalities
-              + Trademark Blocklist + Reset button) moved to
-              ./Settings/SystemPromptEditor.tsx. The editor owns its
-              own local state for the in-flight personality name and
-              the trademark-store tick. */}
+          {/* AGENT.md REWIRE: the editable "AI System Prompt" + Saved
+              Personalities are GONE — the agent's persona is now defined by
+              the repo-root AGENT.md + the structured canon, not an editable
+              settings system prompt. What's left in this section is the still-
+              live operator config: Content Pillars / Style Tags (forwarded to
+              the Director loop) + the Trademark Blocklist (image retry
+              pipeline). See ./Settings/SystemPromptEditor.tsx. */}
           <SystemPromptEditor
             settings={settings}
             updateSettings={updateSettings}
-            activeAiAgent={activeAiAgent}
           />
 
           {/* V1.1.1-SKILLS-AUTO-USE: toggle list of [agents.md] skills

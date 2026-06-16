@@ -1,21 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import {
-  Check,
-  Cpu,
-  FolderOpen,
-  Minus,
-  Plus,
-  RefreshCw,
-  Save,
-  Trash2,
-  X,
-} from 'lucide-react';
+import { Cpu, Minus, Plus, X } from 'lucide-react';
 import {
   DEFAULT_NICHES as RECOMMENDED_NICHES,
   DEFAULT_GENRES as RECOMMENDED_GENRES,
-  buildDefaultAgentPrompt,
 } from '@/lib/agent-prompt';
 import {
   getAllBlocked,
@@ -28,20 +17,25 @@ import type { UserSettings } from '@/types/mashup';
 import { SettingsSection } from './SettingsSection';
 
 /**
- * M3.4-P4-B2: AI System Prompt + Personalities + Trademark
- * Blocklist, extracted from `components/SettingsModal.tsx`.
+ * AGENT.md REWIRE (chat-agent rework): the in-app agent is now a GENUINE
+ * intelligent agent driven by the repo-root `AGENT.md` instruction file + the
+ * structured canon — NOT a user-edited settings "system prompt". So the old
+ * "AI System Prompt" editor (the `agentPrompt` textarea + Saved Personalities +
+ * the Reset-to-default-personality button) is GONE: nothing on the agent/chat
+ * path reads `settings.agentPrompt` anymore, and showing an editable system
+ * prompt would falsely imply it still shapes the agent.
  *
- * Owns its own local state for the in-flight "Save personality" name
- * input and the trademark-store tick (which forces a re-read of the
- * persistent blocklist on every whitelist/blacklist mutation). The
- * `settings` and `updateSettings` pair flows through unchanged —
- * this component never reaches into the parent modal's state, so
- * swapping it back in is a one-line change in SettingsModal.
+ * What remains here is the still-live operator configuration the AgentConsole
+ * and the image pipeline DO consume:
+ *   - Content Pillars (`settings.agentNiches`) + Style Tags (`settings.agentGenres`)
+ *     — forwarded to the Director loop on every chat turn.
+ *   - the Trademark Blocklist — the image retry pipeline's auto-managed
+ *     name-swap store + the user's whitelist override.
  *
- * The `activeAiAgent` prop is used to swap the "Restart pi" hint
- * text after the textarea. With the v3.3 default-flip the value is
- * always `'vercel-ai'`; the `'pi'` branch is left in place for
- * older payloads during the migration window.
+ * The `settings.agentPrompt` key itself is intentionally left on the type for a
+ * later cleanup (the legacy Sidebar + image routes still reference it); it is
+ * simply no longer read or shown on the agent path. The component name is kept
+ * to avoid churn in `SettingsModal.tsx`'s import.
  */
 export interface SystemPromptEditorProps {
   settings: UserSettings;
@@ -50,17 +44,12 @@ export interface SystemPromptEditorProps {
       | Partial<UserSettings>
       | ((prev: UserSettings) => Partial<UserSettings>),
   ) => void;
-  activeAiAgent: 'vercel-ai' | 'pi' | undefined;
 }
 
 export function SystemPromptEditor({
   settings,
   updateSettings,
-  activeAiAgent,
 }: SystemPromptEditorProps) {
-  // Inline personality-save input — replaces the blocking prompt() dialog.
-  const [personalityName, setPersonalityName] = useState<string | null>(null);
-
   // TRADEMARK-STAGED-PIPELINE (2026-05-22): bump on every blocklist /
   // whitelist mutation. The store lives in localStorage; this tick
   // forces the next render to re-read it.
@@ -79,26 +68,11 @@ export function SystemPromptEditor({
   return (
     <SettingsSection
       icon={Cpu}
-      title="AI System Prompt"
-      subtitle="Shapes every AI interaction: idea generation, prompt enhancement, captions, and parameter selection."
+      title="Content Pillars & Style Tags"
+      subtitle="The canon pillars + styles the AIart4never agent draws on. The agent's persona itself is defined by AGENT.md + the structured canon — not an editable system prompt."
       tone="cyan"
     >
       <div className="space-y-6 bg-zinc-950/50 p-4 rounded-xl border border-zinc-800/60">
-        <div className="space-y-2">
-          <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">System Prompt</label>
-          <textarea
-            value={settings.agentPrompt}
-            onChange={(e) => updateSettings({ agentPrompt: e.target.value })}
-            placeholder="Define who the AI is, how it speaks, and what it focuses on..."
-            className="w-full bg-zinc-900 border border-zinc-800/60 rounded-xl px-3 py-2 text-sm text-zinc-300 focus:outline-none focus:ring-2 focus:ring-[#ff7a18]/30 min-h-[220px] resize-y leading-relaxed font-mono"
-          />
-          <p className="text-[10px] text-zinc-500 leading-tight">
-            {activeAiAgent === 'vercel-ai'
-              ? 'This prompt shapes every AI interaction: idea generation, prompt enhancement, captions, and parameter selection. Changes apply immediately to the active Vercel.ai backend.'
-              : 'This prompt shapes every AI interaction: idea generation, prompt enhancement, captions, and parameter selection. Applied to every pi request on top of the mode directive. Restart pi (Settings → Pi.dev AI Engine → Stop + Start) after editing.'}
-          </p>
-        </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
             <div className="space-y-2">
@@ -203,117 +177,6 @@ export function SystemPromptEditor({
           </div>
         </div>
 
-        {/* Saved Personalities */}
-        <div className="space-y-4 pt-4 border-t border-zinc-800/50">
-          <div className="flex items-center justify-between">
-            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Saved Personalities</label>
-            {personalityName === null ? (
-              <button
-                onClick={() => setPersonalityName('')}
-                className="text-[10px] text-[#00e6ff] hover:text-[#33eaff] flex items-center gap-1 transition-colors"
-              >
-                <Save className="w-3 h-3" />
-                Save Current
-              </button>
-            ) : (
-              <div className="flex items-center gap-1.5">
-                <input
-                  autoFocus
-                  type="text"
-                  value={personalityName}
-                  onChange={(e) => setPersonalityName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && personalityName.trim()) {
-                      updateSettings({
-                        savedPersonalities: [
-                          ...(settings.savedPersonalities || []),
-                          {
-                            id: `p-${Date.now()}`,
-                            name: personalityName.trim(),
-                            prompt: settings.agentPrompt || '',
-                            niches: settings.agentNiches || [],
-                            genres: settings.agentGenres || [],
-                          },
-                        ],
-                      });
-                      setPersonalityName(null);
-                    }
-                    if (e.key === 'Escape') setPersonalityName(null);
-                  }}
-                  placeholder="Personality name…"
-                  className="text-[10px] bg-zinc-900 border border-zinc-700 rounded px-2 py-0.5 text-zinc-200 w-28 focus:outline-none focus:ring-1 focus:ring-[#00e6ff]/40"
-                />
-                <button
-                  disabled={!personalityName.trim()}
-                  onClick={() => {
-                    if (!personalityName.trim()) return;
-                    updateSettings({
-                      savedPersonalities: [
-                        ...(settings.savedPersonalities || []),
-                        {
-                          id: `p-${Date.now()}`,
-                          name: personalityName.trim(),
-                          prompt: settings.agentPrompt || '',
-                          niches: settings.agentNiches || [],
-                          genres: settings.agentGenres || [],
-                        },
-                      ],
-                    });
-                    setPersonalityName(null);
-                  }}
-                  className="text-[10px] text-emerald-400 hover:text-emerald-300 disabled:opacity-40 transition-colors"
-                >
-                  <Check className="w-3 h-3" />
-                </button>
-                <button
-                  onClick={() => setPersonalityName(null)}
-                  className="text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 gap-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-            {settings.savedPersonalities?.map((p) => (
-              <div key={p.id} className="flex items-center justify-between bg-zinc-900/50 border border-zinc-800/60 rounded-xl p-3 group">
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium text-white">{p.name}</span>
-                  <span className="text-[10px] text-zinc-500">{p.niches.length} Niches • {p.genres.length} Genres</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => updateSettings({
-                      agentPrompt: p.prompt,
-                      agentNiches: p.niches,
-                      agentGenres: p.genres,
-                    })}
-                    className="p-2 bg-[#00e6ff]/10 text-[#00e6ff] hover:bg-[#00e6ff]/20 rounded-lg transition-all"
-                    title="Load Personality"
-                  >
-                    <FolderOpen className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => updateSettings({
-                      savedPersonalities: settings.savedPersonalities?.filter((pers) => pers.id !== p.id),
-                    })}
-                    className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                    title="Delete"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-            {(!settings.savedPersonalities || settings.savedPersonalities.length === 0) && (
-              <div className="text-center py-4 border border-dashed border-zinc-800 rounded-xl">
-                <p className="text-xs text-zinc-500 italic">No saved personalities yet.</p>
-              </div>
-            )}
-          </div>
-        </div>
-
         {/* TRADEMARK-STAGED-PIPELINE (2026-05-22): visibility +
             control surface for the auto-managed blocklist. Auto-
             blocked names come from Leonardo TRADEMARK errors
@@ -410,32 +273,6 @@ export function SystemPromptEditor({
             )}
           </div>
         </div>
-
-        <button
-          onClick={() => {
-            // V080-DES-003: build the prompt against the user's
-            // CURRENT niches/genres (or curated defaults if they
-            // have nothing selected) so Reset doesn't quietly
-            // overwrite their personalisation with a hardcoded
-            // franchise list. The runtime call sites then append
-            // the live tag list on every request.
-            const niches = (settings.agentNiches && settings.agentNiches.length > 0)
-              ? settings.agentNiches
-              : [...RECOMMENDED_NICHES];
-            const genres = (settings.agentGenres && settings.agentGenres.length > 0)
-              ? settings.agentGenres
-              : [...RECOMMENDED_GENRES];
-            updateSettings({
-              agentPrompt: buildDefaultAgentPrompt({ niches, genres }),
-              agentNiches: niches,
-              agentGenres: genres,
-            });
-          }}
-          className="w-full py-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl font-bold transition-all border border-zinc-800/60 flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest"
-        >
-          <RefreshCw className="w-3 h-3" />
-          Reset to Default Agent Personality
-        </button>
       </div>
     </SettingsSection>
   );

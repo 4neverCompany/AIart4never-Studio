@@ -155,6 +155,14 @@ export function buildDirectorSystemPrompt(context: PlanContext): string {
  * The single user-message the loop is started with. Kept
  * short on purpose — the system prompt carries the plan, the
  * user message carries the brief.
+ *
+ * PIPELINE PATH ONLY. This is the one-shot beat-generator turn used by the
+ * old `handleDirectorMode` pipeline: it forces EVERY message into "Beat: …
+ * Execute the director plan", so the loop always runs the full generate flow.
+ * The LIVE CHAT path (`handleDirectorStream`) must NOT use this — see
+ * `buildChatUserTurn` for the conversational turn that lets the model decide
+ * converse-vs-generate. Leave this unchanged: the pipeline is cut later and
+ * its tests pin this exact wording.
  */
 export function buildUserPrompt(context: PlanContext): string {
   return [
@@ -167,6 +175,80 @@ export function buildUserPrompt(context: PlanContext): string {
     '',
     'Execute the director plan and return the final on-canon prompt as your terminal assistant text.',
   ].join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// CHAT-PATH builders (live AgentConsole STREAM path).
+//
+// AGENT.md REWIRE: the chat path is now a GENUINE intelligent agent driven by
+// the single AGENT.md instruction file + the STRUCTURED canon — NOT the rigid
+// 6-step director scaffold. The system prompt = AGENT.md contents (who he is +
+// how he behaves, loaded server-side) + buildCanonSystemBlock (the structured
+// canon data) + buildCharacterLockBlock (the Element/identity lock). There is
+// NO buildDirectorPlan scaffold here: the agent decides converse-vs-generate
+// from AGENT.md + the operator's raw message, the way Claude Code decides what
+// to do from its instructions + the user's turn.
+//
+// These builders are used ONLY by `handleDirectorStream` →
+// `runDirectorLoop({ conversational: true })`; the one-shot pipeline path keeps
+// `buildDirectorSystemPrompt` + `buildUserPrompt` (the rigid scaffold) unchanged
+// for `handleDirectorMode`, which is being ripped in a later step.
+// ---------------------------------------------------------------------------
+
+/**
+ * The CHAT system prompt for the AGENT.md-driven agent.
+ *
+ * Assembles the agent's whole system stack for the live stream path:
+ *   1. `agentInstructions` — the AGENT.md file contents (IDENTITY + behavior +
+ *      tools + workflow), loaded server-side by `loadAgentInstructions`.
+ *   2. `buildCanonSystemBlock(characterId)` — the STRUCTURED canon (persona,
+ *      locked look, hard rules, reality hallmarks, persistence mandate) for the
+ *      active character. AGENT.md REFERENCES this block; it doesn't duplicate
+ *      the data.
+ *   3. `buildCharacterLockBlock(characterId)` — the compact identity-lock
+ *      fragment with the Higgsfield Element anchor token (`<<<id>>>`), so any
+ *      drafted image prompt carries the SAME-man lock + Element verbatim.
+ *
+ * Deliberately CONTAINS NO `buildDirectorPlan` text — no "Director plan
+ * (executed in this order)", no "Beat:", no numbered 6-step scaffold. The agent
+ * fills in the workflow with its own intelligence from AGENT.md. Pure function
+ * (the AGENT.md text is passed in) so the test suite can pin the assembly.
+ */
+export function buildDirectorChatSystemPrompt(
+  context: PlanContext,
+  agentInstructions: string,
+): string {
+  const characterId: CharacterId = context.characterId ?? 'kael';
+  const canonBlock = buildCanonSystemBlock(characterId);
+  const lockBlock = buildCharacterLockBlock(characterId);
+
+  return [
+    // 1. AGENT.md — who he is + how he behaves + his tools + his workflow.
+    agentInstructions.trim(),
+    '',
+    '---',
+    '',
+    // 2. The structured canon for the active character (AGENT.md references it).
+    '# Canon (structured, authoritative — do not restate to the operator)',
+    '',
+    canonBlock,
+    '',
+    // 3. The image-prompt identity lock + Element anchor token. When the agent
+    //    drafts an image prompt for this character, it embeds this verbatim so
+    //    the look never drifts.
+    'When you draft an image prompt for the active canon character, embed this identity lock verbatim — keep the SAME man (face + bone structure + features), carry the Anchor element token so the look never drifts:',
+    lockBlock,
+  ].join('\n');
+}
+
+/**
+ * The CHAT user turn. The operator's RAW message, verbatim — NOT wrapped in
+ * "Beat: … Execute the director plan". The model reads the system prompt's
+ * GATE and decides converse-vs-generate for itself, so a greeting stays a
+ * greeting and a real brief triggers the generate flow.
+ */
+export function buildChatUserTurn(context: PlanContext): string {
+  return context.ideaConcept;
 }
 
 /**

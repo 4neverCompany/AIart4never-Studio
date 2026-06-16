@@ -174,6 +174,30 @@ describe('AgentConsole — send drives the tool-loop agent', () => {
     expect(img.src).toBe('https://img.example/1.png');
   });
 
+  it('does NOT render the internal plan scaffold in the thread (chat suppression)', async () => {
+    const SCAFFOLD =
+      'Director plan (executed in this order)\n1. Determine the beat\n6. Finalize\nBeat: "hey"';
+    eventScript = [
+      // The bare plan marker (no text) — the stream layer strips the scaffold.
+      { type: 'plan', stepType: 'plan', idx: 0 },
+      // Defense in depth: even a stray plan-step TEXT event must be dropped.
+      { type: 'text', text: SCAFFOLD, stepType: 'plan', idx: 1 },
+      { type: 'text', text: 'hey! want me to forge a beat?', stepType: 'final', idx: 2 },
+      { type: 'done', prompt: 'hey! want me to forge a beat?', cost: 0.001, truncatedBy: 'natural' },
+    ];
+    render(<AgentConsole />);
+
+    const textarea = await screen.findByLabelText('Message the agent');
+    fireEvent.change(textarea, { target: { value: 'hey' } });
+    fireEvent.click(screen.getByLabelText('Send to agent'));
+
+    // The conversational reply renders…
+    expect(await screen.findByText('hey! want me to forge a beat?')).toBeInTheDocument();
+    // …but the internal director-plan scaffold NEVER does.
+    expect(screen.queryByText(/Director plan \(executed in this order\)/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Determine the beat/)).not.toBeInTheDocument();
+  });
+
   it('surfaces a streamed error event in-thread', async () => {
     eventScript = [{ type: 'error', error: 'No AI provider configured. Set MINIMAX_API_KEY.' }];
     render(<AgentConsole />);

@@ -77,10 +77,16 @@ import { StepLogger, truncateForLog, type Step } from './log';
 import { BudgetTracker, estimateStepCost } from './budget';
 import {
   buildDirectorSystemPrompt,
+  buildDirectorChatSystemPrompt,
   buildInitialPlanStep,
   buildUserPrompt,
+  buildChatUserTurn,
   type PlanContext,
 } from './plan';
+// AGENT.md REWIRE: the live chat/stream path is driven by the AGENT.md
+// instruction file (loaded server-side) + the structured canon — NOT the rigid
+// director scaffold. Only the conversational path reads it.
+import { loadAgentInstructions } from './agent-md';
 import { saveRun, type AgentRun, type TruncatedBy } from './persistence';
 
 // ---------------------------------------------------------------------------
@@ -120,6 +126,16 @@ export interface RunDirectorLoopInput {
   maxSteps?: number;
   /** Optional: USD cap for this run. Default $0.50 (configurable per request). */
   budgetUsd?: number;
+  /**
+   * CHAT-PATH FLAG. When true, the loop runs in LIVE-CHAT mode: it uses the
+   * conversational system prompt (`buildDirectorChatSystemPrompt`) + the raw
+   * operator message as the user turn (`buildChatUserTurn`), so the model
+   * decides converse-vs-generate instead of being forced into a full beat run.
+   * Set by the streaming chat path (`handleDirectorStream`). The default
+   * (false / unset) keeps the one-shot pipeline behaviour
+   * (`buildDirectorSystemPrompt` + `buildUserPrompt`) for `handleDirectorMode`.
+   */
+  conversational?: boolean;
   /** Optional: abort signal forwarded to the SDK and the model. */
   signal?: AbortSignal;
   /** Optional: per-step callback. Useful for streaming the log to the client. */
@@ -508,22 +524,31 @@ export async function runDirectorLoop(
   // -----------------------------------------------------------------------
   // 2. Plan step — recorded BEFORE the model runs so the Replay UI
   //    has the rationale on frame 1.
+  //
+  //    AGENT.md REWIRE: ONLY the one-shot pipeline path records the rigid
+  //    `buildInitialPlanStep` scaffold (the "Director plan (executed in this
+  //    order)… Beat: …" text). The LIVE CHAT path (`conversational: true`) is an
+  //    AGENT.md-driven intelligent agent — there is NO pre-baked plan scaffold
+  //    on the chat stream; the agent decides what to do from AGENT.md + the raw
+  //    message. So we skip the plan step entirely when conversational.
   // -----------------------------------------------------------------------
-  const planStep: Step = logger.append({
-    ...buildInitialPlanStep(
-      {
-        niches: input.niches,
-        genres: input.genres,
-        ideaConcept: input.ideaConcept,
-        skillContext: input.skillContext ?? [],
-        // M1 CANON-WIRING: default to 'kael' so the plan/system prompt always
-        // carries a canon character.
-        characterId: input.characterId ?? 'kael',
-      },
-      { clock },
-    ),
-  });
-  input.onStep?.(planStep);
+  if (!input.conversational) {
+    const planStep: Step = logger.append({
+      ...buildInitialPlanStep(
+        {
+          niches: input.niches,
+          genres: input.genres,
+          ideaConcept: input.ideaConcept,
+          skillContext: input.skillContext ?? [],
+          // M1 CANON-WIRING: default to 'kael' so the plan/system prompt always
+          // carries a canon character.
+          characterId: input.characterId ?? 'kael',
+        },
+        { clock },
+      ),
+    });
+    input.onStep?.(planStep);
+  }
 
   // -----------------------------------------------------------------------
   // 3. Build the system + user prompts.
@@ -537,13 +562,24 @@ export async function runDirectorLoop(
     // injects a canon block.
     characterId: input.characterId ?? 'kael',
   };
-  const baseSystem = buildDirectorSystemPrompt(planContext);
+  // CHAT-PATH: the live chat console runs the loop conversationally — it is an
+  // AGENT.md-driven intelligent agent. Its system prompt = the AGENT.md file
+  // contents (loaded server-side) + the STRUCTURED canon block + the character
+  // lock; the agent decides converse-vs-generate from AGENT.md + the operator's
+  // RAW message, with NO rigid plan scaffold. The one-shot pipeline path leaves
+  // `conversational` unset and keeps the beat-generator system + user prompt
+  // (the rigid scaffold) for `handleDirectorMode`.
+  const baseSystem = input.conversational
+    ? buildDirectorChatSystemPrompt(planContext, await loadAgentInstructions())
+    : buildDirectorSystemPrompt(planContext);
   // Skill block is appended to the system stack (mirrors the
   // existing route's behaviour).
   const skillNames = (input.skillContext ?? []).map((s) => s.name);
   const skillBlock = await buildSkillSystemBlock(skillNames);
   const system = [baseSystem, skillBlock].filter(Boolean).join('\n\n') || undefined;
-  const userPrompt = buildUserPrompt(planContext);
+  const userPrompt = input.conversational
+    ? buildChatUserTurn(planContext)
+    : buildUserPrompt(planContext);
 
   // -----------------------------------------------------------------------
   // 4. Run the SDK loop. We capture `onStepFinish` events into
@@ -892,7 +928,9 @@ export {
 export {
   buildDirectorPlan,
   buildDirectorSystemPrompt,
+  buildDirectorChatSystemPrompt,
   buildUserPrompt,
+  buildChatUserTurn,
   buildInitialPlanStep,
 } from './plan';
 export type { PlanContext } from './plan';

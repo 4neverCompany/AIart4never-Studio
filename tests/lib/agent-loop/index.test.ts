@@ -596,3 +596,93 @@ describe('runDirectorLoop — final prompt extraction (report scaffolding)', () 
     expect(result.finalPrompt).not.toContain('<think>');
   });
 });
+
+// ---------------------------------------------------------------------------
+// AGENT.md REWIRE: the CHAT/STREAM path (`conversational: true`) is an
+// AGENT.md-driven intelligent agent. Its system prompt = AGENT.md identity +
+// the STRUCTURED canon block, with NO rigid 6-step scaffold; its user turn is
+// the operator's RAW message (not "Beat: … Execute the director plan"); and it
+// does NOT emit a plan-step scaffold on the stream.
+// ---------------------------------------------------------------------------
+
+describe('runDirectorLoop — conversational (AGENT.md) chat path plumbing', () => {
+  /** Capture the `system` + `prompt` the loop hands to the agent. */
+  function captureGenerateArgs(): { current: { system?: string; prompt?: string } } {
+    const holder: { current: { system?: string; prompt?: string } } = { current: {} };
+    generateTextMock.mockImplementation(
+      async (opts: { system?: string; prompt?: string; onStepFinish?: (s: unknown) => Promise<void> | void }) => {
+        holder.current = { system: opts.system, prompt: opts.prompt };
+        const s = makeStepResult({
+          stepNumber: 0,
+          text: 'hey — what beat do you want to forge?',
+          toolCalls: [],
+          toolResults: [],
+          usage: { inputTokens: 5, outputTokens: 5 },
+          finishReason: 'stop',
+        });
+        await opts.onStepFinish?.(s);
+        return { text: 'hey — what beat do you want to forge?', steps: [s], finishReason: 'stop' };
+      },
+    );
+    return holder;
+  }
+
+  it('builds the system prompt from AGENT.md + the canon block (no rigid scaffold)', async () => {
+    const captured = captureGenerateArgs();
+    await runDirectorLoop({ ...baseInput, conversational: true, ideaConcept: 'hey' });
+
+    const system = captured.current.system ?? '';
+    // AGENT.md identity is present.
+    expect(system).toMatch(/AIart4never Studio agent/i);
+    expect(system).toMatch(/Master4never/);
+    expect(system).toMatch(/Element-anchored/i);
+    // The STRUCTURED canon block (default character Kael) is present.
+    expect(system).toMatch(/Master4never \(Kael\)/);
+    expect(system).toMatch(/cyberdeck/i);
+    expect(system).toMatch(/<<<[0-9a-f-]+>>>/i);
+    // The rigid 6-step director scaffold is NOT present.
+    expect(system).not.toMatch(/Director plan \(executed in this order/i);
+    expect(system).not.toMatch(/Determine the beat/);
+    expect(system).not.toMatch(/Execute the director plan/i);
+  });
+
+  it('uses the operator RAW message as the user turn (no Beat: wrapper)', async () => {
+    const captured = captureGenerateArgs();
+    await runDirectorLoop({ ...baseInput, conversational: true, ideaConcept: 'hey' });
+    expect(captured.current.prompt).toBe('hey');
+    expect(captured.current.prompt).not.toMatch(/^Beat:/);
+    expect(captured.current.prompt).not.toMatch(/Execute the director plan/i);
+  });
+
+  it('does NOT emit a plan step on the conversational stream', async () => {
+    captureGenerateArgs();
+    const seen: string[] = [];
+    await runDirectorLoop({
+      ...baseInput,
+      conversational: true,
+      ideaConcept: 'hey',
+      onStep: (s) => seen.push(s.type),
+    });
+    // The first (and every) step is NOT a 'plan' scaffold step.
+    expect(seen).not.toContain('plan');
+    expect(seen[0]).not.toBe('plan');
+  });
+
+  it('the one-shot pipeline path STILL emits the plan scaffold + Beat: user turn', async () => {
+    // Contrast: the non-conversational pipeline path is unchanged.
+    const holder: { current: { system?: string; prompt?: string } } = { current: {} };
+    generateTextMock.mockImplementation(
+      async (opts: { system?: string; prompt?: string; onStepFinish?: (s: unknown) => Promise<void> | void }) => {
+        holder.current = { system: opts.system, prompt: opts.prompt };
+        const s = makeStepResult({ stepNumber: 0, text: 'a draft', usage: { inputTokens: 5, outputTokens: 5 } });
+        await opts.onStepFinish?.(s);
+        return { text: 'a draft', steps: [s], finishReason: 'stop' };
+      },
+    );
+    const seen: string[] = [];
+    await runDirectorLoop({ ...baseInput, onStep: (s) => seen.push(s.type) });
+    expect(seen[0]).toBe('plan');
+    expect(holder.current.prompt).toMatch(/^Beat:/);
+    expect(holder.current.system).toMatch(/Director plan/);
+  });
+});

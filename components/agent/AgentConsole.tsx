@@ -186,9 +186,21 @@ export function AgentConsole() {
           userId: 'agent-console',
           signal: controller.signal,
         })) {
-          if (ev.type === 'text') {
-            // Append the reasoning delta (plan / final / error-step text).
-            if (ev.text && ev.text.trim().length > 0) {
+          if (ev.type === 'plan') {
+            // BUGFIX (live chat): the internal director-plan scaffold is
+            // Replay-UI-only and must NEVER render as the agent's visible
+            // message. The stream layer already strips its text (emits a bare
+            // {type:'plan'} marker); we simply ignore it here. The bubble stays
+            // in its "Planning…" state until real assistant text arrives.
+          } else if (ev.type === 'text') {
+            // Append the reasoning delta (final / error-step text). Defense in
+            // depth: drop any stray plan-step text so the scaffold can never
+            // leak into the thread even if an upstream layer changes.
+            if (
+              ev.stepType !== 'plan' &&
+              ev.text &&
+              ev.text.trim().length > 0
+            ) {
               patchAgent((t) => ({
                 ...t,
                 text: t.text ? `${t.text}\n\n${ev.text}` : ev.text,

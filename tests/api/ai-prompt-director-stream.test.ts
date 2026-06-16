@@ -166,8 +166,64 @@ describe('POST /api/ai/prompt — director STREAM mode', () => {
     expect(String(done!.runId)).toMatch(/^run_/);
     expect(done!.truncatedBy).toBe('natural');
 
-    // The plan step also surfaces as a leading text event.
-    expect(types).toContain('text');
+    // AGENT.md REWIRE: the chat/stream path is an AGENT.md-driven agent — there
+    // is NO rigid director-plan scaffold on the stream at all. The
+    // conversational loop skips the pre-baked plan step entirely, so no
+    // {type:'plan'} event is emitted, and the scaffold can never leak as text.
+    const planEvents = events.filter((e) => e.type === 'plan');
+    expect(planEvents.length).toBe(0);
+    expect(types).not.toContain('plan');
+    const planLeakedAsText = events.some(
+      (e) =>
+        e.type === 'text' &&
+        (e.stepType === 'plan' ||
+          /Director plan \(executed in this order/i.test(String(e.text ?? ''))),
+    );
+    expect(planLeakedAsText).toBe(false);
+  });
+
+  it('CHAT PATH: system prompt = AGENT.md + canon (no rigid scaffold) + the RAW operator message as the user turn', async () => {
+    let captured: { system?: string; prompt?: string } = {};
+    generateTextMock.mockImplementation(
+      async (opts: { system?: string; prompt?: string; onStepFinish?: (s: unknown) => Promise<void> | void }) => {
+        captured = { system: opts.system, prompt: opts.prompt };
+        const s0 = makeMockStepResult({ stepNumber: 0, text: 'hey! want me to forge a beat?' });
+        await opts.onStepFinish?.(s0);
+        return { text: 'hey! want me to forge a beat?', steps: [s0], finishReason: 'stop' };
+      },
+    );
+
+    const res = await promptPost(
+      makePost({
+        mode: 'director',
+        stream: true,
+        ideaConcept: 'hey',
+        niches: ['Story-Beat'],
+        userId: 'agent-console',
+      }),
+    );
+    expect(res.status).toBe(200);
+    await readEvents(res);
+
+    // AGENT.md REWIRE: the system prompt is the AGENT.md instruction file
+    // (identity + behavior + tools) + the STRUCTURED canon block — NOT the
+    // rigid 6-step director scaffold.
+    expect(captured.system).toMatch(/AIart4never Studio agent/i);
+    expect(captured.system).toMatch(/Master4never/);
+    expect(captured.system).toMatch(/Element-anchored/i);
+    // The structured canon block (default character Kael) is injected.
+    expect(captured.system).toMatch(/Master4never \(Kael\)/);
+    expect(captured.system).toMatch(/cyberdeck/i);
+    expect(captured.system).toMatch(/<<<[0-9a-f-]+>>>/i);
+    // The rigid 6-step director plan scaffold is NOT present on the chat path.
+    expect(captured.system).not.toMatch(/Director plan \(executed in this order/i);
+    expect(captured.system).not.toMatch(/Determine the beat/);
+    expect(captured.system).not.toMatch(/Execute the director plan/i);
+    // The user turn is the RAW operator message — NOT "Beat: hey … Execute the
+    // director plan".
+    expect(captured.prompt).toBe('hey');
+    expect(captured.prompt).not.toMatch(/Execute the director plan/i);
+    expect(captured.prompt).not.toMatch(/^Beat:/);
   });
 
   it('emits a single error event when no AI provider is configured', async () => {

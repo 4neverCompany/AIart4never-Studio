@@ -1028,6 +1028,12 @@ async function handleDirectorStream(
           ...(modelOverride ? { modelId: modelOverride } : {}),
           ...(maxSteps !== undefined ? { maxSteps } : {}),
           ...(budgetUsd !== undefined ? { budgetUsd } : {}),
+          // CHAT-PATH: this is the LIVE chat console stream. Run the loop
+          // conversationally so the model replies to greetings/chat and only
+          // runs the generate flow on a real brief — instead of forcing a beat
+          // run on every message (the old one-shot pipeline behaviour, which
+          // `handleDirectorMode` below keeps unchanged).
+          conversational: true,
           signal: loopSignal,
           onStep,
         });
@@ -1120,6 +1126,19 @@ function stepToEvent(step: Step): Record<string, unknown> {
       };
     }
     case 'plan':
+      // BUGFIX (live chat): the internal director-plan scaffold ("Director plan
+      // (executed in this order)… Beat: …") is meant for the Replay UI ONLY.
+      // It must NEVER render as the agent's visible chat message. Emit a
+      // non-text `{type:'plan'}` marker (no scaffold `text`) so the console can
+      // show a subtle "planning…" pill instead of pasting the scaffold. The
+      // full plan still lives in the run log (run-context / persistence) for
+      // Replay. This is the stream-layer half of the suppression; the console
+      // also defensively drops any `stepType:'plan'` text event.
+      return {
+        type: 'plan',
+        stepType: 'plan',
+        idx: step.idx,
+      };
     case 'final':
     case 'error':
     default:
