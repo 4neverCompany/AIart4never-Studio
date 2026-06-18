@@ -72,7 +72,7 @@
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19",
     "better-sqlite3": "^12.10.0",
-    "eslint": "^9.39.4",
+    "eslint": "^10.5.0",
     "eslint-config-next": "^16.2.6",
     "fake-indexeddb": "^6.0.0",
     "happy-dom": "^20.9.0",
