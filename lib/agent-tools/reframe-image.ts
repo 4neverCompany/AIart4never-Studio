@@ -25,6 +25,14 @@ import {
   type ToolResult,
 } from './errors';
 import { getProvider } from '@/lib/providers/registry';
+import { assertApproved, verifyToken } from '@/lib/approval/gate';
+import { loadSpendPreAuth } from '@/lib/approval/preauth';
+import {
+  ApprovalDeniedError,
+  type ApprovalRequest,
+  type ApprovalToken,
+} from '@/lib/approval/types';
+import { currentRunContext } from '@/lib/agent-loop/run-context';
 
 // ---------------------------------------------------------------------------
 // Zod schemas
@@ -106,6 +114,58 @@ export async function executeReframeImage(
     const parsed = zReframeImageInput.safeParse(rawInput);
     if (!parsed.success) throw parsed.error;
     const input = parsed.data;
+
+    // Story 10.1 (code-review follow-up): reframe_image is a real Higgsfield
+    // image generation — "Credit cost: same as a fresh generation" — and is
+    // exposed to the autonomous agent, so it spend-gates through THE canonical
+    // approval chokepoint (lib/approval/gate.ts), exactly like generate_image.
+    // There is no mock provider here (reframe always uses the CLI adapter), so
+    // the gate runs whenever a RunContext is present (the autonomous agent path).
+    // assertApproved fails closed on denial; verifyToken is the greppable
+    // verify-before-spend shape, immediately before the credit-spending submit.
+    const ctx = currentRunContext();
+    if (ctx) {
+      const approvalReq: ApprovalRequest = {
+        kind: 'spend',
+        summary: `Reframe image via ${input.model} → ${input.targetAspectRatio} (~$0.04)`,
+        target: `reframe:${input.model}`,
+        estimatedCostUsd: 0.04,
+        totalCostSoFarUsd: ctx.totalCostUsd,
+        budgetUsd: ctx.budgetUsd,
+        payloadPreview: {
+          prompt: input.sourcePrompt,
+          model: input.model,
+          aspectRatio: input.targetAspectRatio,
+        },
+      };
+      let token: ApprovalToken;
+      try {
+        token = await assertApproved(approvalReq, {
+          loadPreAuth: loadSpendPreAuth(ctx.autoApproveBelowUsd),
+        });
+      } catch (e) {
+        if (e instanceof ApprovalDeniedError) {
+          throw new ToolExecutionError(
+            'reframe_image',
+            `approval ${e.verdict}: ${e.reason}`,
+            { retryable: e.verdict === 'timeout' },
+          );
+        }
+        throw e;
+      }
+      // Review L-1: assertApproved already fail-closed-guaranteed an `approved`
+      // token bound to THIS exact approvalReq, so this verify is structural — it
+      // cannot fail against the same object. It is the greppable
+      // verify-before-side-effect shape Story 10.7's CI invariant asserts; the
+      // load-bearing fail-closed protection is `assertApproved` above.
+      if (!verifyToken(token, approvalReq)) {
+        throw new ToolExecutionError(
+          'reframe_image',
+          'approval token does not match the reframe request',
+          { retryable: false },
+        );
+      }
+    }
 
     // Routing: the reframe flow always goes through the CLI adapter
     // (the text adapter is text-only). If the registry doesn't have

@@ -18,6 +18,7 @@ import {
 import { HIGGSFIELD_VIDEO_MODELS } from '@/lib/higgsfield/models';
 import { __registerProvider, __resetRegistry } from '@/lib/providers/registry';
 import type { AssetRef, ProviderAdapter } from '@/lib/providers/interface';
+import { __setCurrentRunContextForTests } from '@/lib/agent-loop/run-context';
 
 const validPrompt = 'A long enough prompt to satisfy the min-20 validation gate.';
 
@@ -47,11 +48,16 @@ beforeEach(() => {
   // Default: CLI unavailable. Individual tests override with an
   // available mock when they exercise the wired success/poll paths.
   __registerProvider('higgsfield', mockHiggsfieldVideo({ available: false }));
+  // Default: NO RunContext → the spend gate is skipped (preserves the behaviour
+  // every pre-existing video test relies on). The Story 10.1 gate tests below
+  // set a context explicitly and this clears it again before the next test.
+  __setCurrentRunContextForTests(null);
 });
 
 afterEach(() => {
   __resetRegistry();
   vi.useRealTimers();
+  __setCurrentRunContextForTests(null);
 });
 
 describe('executeGenerateVideo — input validation', () => {
@@ -151,6 +157,60 @@ describe('V1.5: executeGenerateVideo — wired Higgsfield CLI', () => {
     const r = await promise;
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toBeInstanceOf(ToolExecutionError);
+  });
+});
+
+describe('executeGenerateVideo — spend gate fails closed (Story 10.1 / AC2)', () => {
+  it('denies a $0.30 video (above the $0.10 ceiling, no operator) → throws, NO generation', async () => {
+    // $0.30 > the $0.10 default spend ceiling and there is no operator channel
+    // for generation → the canonical gate fails closed (NFR-3). Before this
+    // story the video path NEVER exercised the gate in tests (no RunContext was
+    // set); this asserts the migrated tool actually refuses and never submits.
+    __setCurrentRunContextForTests({
+      runId: 'run_x',
+      stepCounter: 0,
+      totalCostUsd: 0,
+      budgetUsd: 1,
+    });
+    const generateVideoSpy = vi.fn(
+      async () => ({ kind: 'video', provider: 'higgsfield', url: 'x.mp4' }) as AssetRef,
+    );
+    __registerProvider('higgsfield', {
+      name: 'higgsfield',
+      label: 'Higgsfield (mock, available)',
+      isAvailable: async () => true,
+      generateImage: async () => ({ kind: 'image', provider: 'higgsfield' }) as AssetRef,
+      generateVideo: generateVideoSpy,
+    });
+    const r = await executeGenerateVideo({ model: 'seedance_2_0', prompt: validPrompt });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error).toBeInstanceOf(ToolExecutionError);
+      expect(r.error.message).toMatch(/approval denied/i);
+      expect((r.error as ToolExecutionError).retryable).toBe(false);
+    }
+    // Fail-closed proof: the gate denied BEFORE provider dispatch.
+    expect(generateVideoSpy).not.toHaveBeenCalled();
+  });
+
+  it('auto-approves a $0.30 video when the run raised autoApproveBelowUsd above it (positive control)', async () => {
+    // The escape hatch the migration preserves: a run that explicitly raised its
+    // per-run ceiling auto-approves through the SAME gate (still within budget),
+    // proving the gate is genuinely in the path — not skipped.
+    __setCurrentRunContextForTests({
+      runId: 'run_x',
+      stepCounter: 0,
+      totalCostUsd: 0,
+      budgetUsd: 10,
+      autoApproveBelowUsd: 1,
+    });
+    __registerProvider(
+      'higgsfield',
+      mockHiggsfieldVideo({ available: true, video: { url: 'https://cdn.higgsfield.ai/ok.mp4' } }),
+    );
+    const r = await executeGenerateVideo({ model: 'seedance_2_0', prompt: validPrompt });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.assetRef.url).toBe('https://cdn.higgsfield.ai/ok.mp4');
   });
 });
 

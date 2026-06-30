@@ -28,8 +28,14 @@ import {
   type HiggsfieldVideoModelSlug,
 } from '@/lib/higgsfield/models';
 import { getProvider } from '@/lib/providers/registry';
-import { requireApproval } from '@/lib/agent-loop/hil';
-import { currentRunContext, bumpStepCounter } from '@/lib/agent-loop/run-context';
+import { assertApproved, verifyToken } from '@/lib/approval/gate';
+import { loadSpendPreAuth } from '@/lib/approval/preauth';
+import {
+  ApprovalDeniedError,
+  type ApprovalRequest,
+  type ApprovalToken,
+} from '@/lib/approval/types';
+import { currentRunContext } from '@/lib/agent-loop/run-context';
 
 // ---------------------------------------------------------------------------
 // Provider dispatcher
@@ -250,30 +256,54 @@ export async function executeGenerateVideo(
 
     validateSettingsForModel(input);
 
-    // v1.2.3 HIL guard: video calls are the most expensive
-    // (~0.30 USD per call), so we ALWAYS gate on user
-    // approval, even for the mock provider. The endpoint
-    // auto-approves $0 mock calls in tests; the test env
-    // bypasses HTTP entirely.
+    // Story 10.1: spend-gate via THE canonical approval chokepoint
+    // (lib/approval/gate.ts) — the same gate publish uses, not the retired
+    // hil.ts / `/api/ai/confirm` sibling. Video is the most expensive call
+    // (~$0.30) — above the default $0.10 spend ceiling, so it fails closed
+    // unless the run raised `autoApproveBelowUsd` or an operator approves.
+    // Build a canonical `spend` request, obtain approval, then verify the
+    // hash-bound token immediately before the credit-spending submit.
     const provider: ProviderKind = opts.providerOverride ?? detectProvider(input.model);
     if (provider !== 'mock') {
       const ctx = currentRunContext();
       if (ctx) {
-        const stepId = `${ctx.runId}::video::${bumpStepCounter()}`;
-        await requireApproval({
-          runId: ctx.runId,
-          stepId,
-          toolName: 'generate_video',
-          estimatedCostUsd: 0.30,
+        const approvalReq: ApprovalRequest = {
+          kind: 'spend',
+          summary: `Generate video via ${input.model} (~$0.30)`,
+          target: `video:${input.model}`,
+          estimatedCostUsd: 0.3,
           totalCostSoFarUsd: ctx.totalCostUsd,
           budgetUsd: ctx.budgetUsd,
-          prompt: input.prompt,
-          model: input.model,
-          settings: input.settings as Record<string, unknown> | undefined,
-          ...(ctx.autoApproveBelowUsd !== undefined
-            ? { autoApproveBelowUsd: ctx.autoApproveBelowUsd }
-            : {}),
-        });
+          payloadPreview: { prompt: input.prompt, model: input.model },
+        };
+        let token: ApprovalToken;
+        try {
+          token = await assertApproved(approvalReq, {
+            loadPreAuth: loadSpendPreAuth(ctx.autoApproveBelowUsd),
+          });
+        } catch (e) {
+          if (e instanceof ApprovalDeniedError) {
+            throw new ToolExecutionError(
+              'generate_video',
+              `approval ${e.verdict}: ${e.reason}`,
+              { retryable: e.verdict === 'timeout' },
+            );
+          }
+          throw e;
+        }
+        // Story 10.1 (review L-1): assertApproved already fail-closed-guaranteed
+        // an `approved` token bound to THIS exact approvalReq, so this verify is
+        // structural — it cannot fail against the same object. It is the
+        // greppable verify-before-side-effect shape Story 10.7's CI invariant
+        // asserts (mirrors lib/publish/dispatch.ts); the load-bearing fail-closed
+        // protection is `assertApproved` above, not this line.
+        if (!verifyToken(token, approvalReq)) {
+          throw new ToolExecutionError(
+            'generate_video',
+            'approval token does not match the generation request',
+            { retryable: false },
+          );
+        }
       }
     }
 

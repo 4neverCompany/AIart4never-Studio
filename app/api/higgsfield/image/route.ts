@@ -179,6 +179,17 @@ export async function POST(req: Request): Promise<Response> {
   // the MCP connection. We map its throws to HTTP status codes:
   //   - MissingMinimaxKeyError → 503 (enhance needs the key)
   //   - anything else (enhance HTTP error, MCP/tool error, no job id) → 502.
+  //
+  // GOVERNANCE NOTE (Story 10.1 review L-2 + verification): this submit is NOT
+  // routed through lib/approval/gate.ts. Story 10.1 routed ALL THREE autonomous
+  // agent generation tools (`generate_image`, `generate_video`, `reframe_image`)
+  // through the canonical gate; this route is instead an OPERATOR-INITIATED
+  // request from the operator's own UI — the human click IS the consent, so the
+  // autonomous spend gate does not apply here. The agent spend path is now fully
+  // gated; the remaining ungated spend surfaces are operator-consent HTTP routes
+  // (this route + the MMX/MiniMax routes), which the human operator drives
+  // directly. Retiring this route if the UI no longer uses it is deliberate
+  // follow-up work, not part of 10.1.
   try {
     const result = await submitHiggsfieldGeneration({
       connector,

@@ -53,8 +53,10 @@ const CONNECTOR: McpServerConfig = {
 
 /**
  * Set the RunContext the tool reads, with the Higgsfield connector present (so
- * the generate_image tool can submit). NODE_ENV==='test' makes the HIL guard a
- * no-op, so the context here only supplies the connector + characterId.
+ * the generate_image tool can submit). The small image spend ($0.04) auto-
+ * approves under the canonical gate's default spend pre-auth rule ($0.10 ceiling,
+ * 0.95 budget cap), so the context here supplies the connector + characterId +
+ * a budget the projected cost stays well within (Story 10.1).
  */
 function enterCtxWithConnector(
   connector: McpServerConfig | undefined,
@@ -228,6 +230,50 @@ describe('executeGenerateImage — provider dispatch', () => {
     });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toBeInstanceOf(ToolNotAvailableError);
+  });
+});
+
+describe('executeGenerateImage — spend gate fails closed (Story 10.1 / AC2)', () => {
+  it('denies when the budget cap is breached → throws ApprovalDeniedError (mapped), NO Higgsfield submit', async () => {
+    // $0.04 ≤ the $0.10 default ceiling, BUT projected 0.95 + 0.04 = 0.99 > budget
+    // 1 * 0.95 → the default spend pre-auth rule REFUSES; there is no operator
+    // channel for generation → the canonical gate fails closed (NFR-3). The tool
+    // must surface the denial and never reach the credit-spending submit.
+    __setCurrentRunContextForTests({
+      runId: 'run_test',
+      stepCounter: 0,
+      totalCostUsd: 0.95,
+      budgetUsd: 1,
+      characterId: 'kael',
+      higgsfieldConnector: CONNECTOR,
+    });
+    const r = await executeGenerateImage({ model: 'nano_banana_2', prompt: validPrompt });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error).toBeInstanceOf(ToolExecutionError);
+      expect(r.error.message).toMatch(/approval denied/i);
+      expect((r.error as ToolExecutionError).retryable).toBe(false);
+    }
+    // Fail-closed proof: the spend primitive was never called.
+    expect(submitSpy).not.toHaveBeenCalled();
+  });
+
+  it('a raised autoApproveBelowUsd override does NOT lift a budget-cap denial', async () => {
+    // Even with the per-run ceiling raised well above $0.04, the 95% budget cap
+    // still refuses — the override raises the ceiling tier, not the cap tier.
+    __setCurrentRunContextForTests({
+      runId: 'run_test',
+      stepCounter: 0,
+      totalCostUsd: 0.99,
+      budgetUsd: 1,
+      autoApproveBelowUsd: 10,
+      characterId: 'kael',
+      higgsfieldConnector: CONNECTOR,
+    });
+    const r = await executeGenerateImage({ model: 'nano_banana_2', prompt: validPrompt });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toBeInstanceOf(ToolExecutionError);
+    expect(submitSpy).not.toHaveBeenCalled();
   });
 });
 

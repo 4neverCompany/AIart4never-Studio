@@ -19,6 +19,10 @@ import {
   savePreAuthRule,
   removePreAuthRule,
   evaluatePreAuth,
+  defaultSpendRule,
+  loadSpendPreAuth,
+  DEFAULT_SPEND_AUTO_APPROVE_USD,
+  DEFAULT_SPEND_BUDGET_CAP,
 } from '@/lib/approval/preauth';
 import type { ApprovalRequest, PreAuthRule } from '@/lib/approval/types';
 import * as persistenceModule from '@/lib/persistence';
@@ -71,6 +75,110 @@ describe('evaluatePreAuth — spend', () => {
   it('ignores a disabled rule', () => {
     const rules: PreAuthRule[] = [{ kind: 'spend', enabled: false, maxCostUsd: 100 }];
     expect(evaluatePreAuth(spend(1), rules)).toBe(false);
+  });
+
+  // Story 10.1 — budget-accumulation safety tier (preserves the old hil.ts 95% ceiling).
+  it('refuses a within-ceiling spend that would breach the budget cap', () => {
+    const rules: PreAuthRule[] = [
+      { kind: 'spend', enabled: true, maxCostUsd: 5, budgetCapFraction: 0.95 },
+    ];
+    // cost 1 ≤ ceiling 5, but projected 1.5 + 1 = 2.5 > budget 2 * 0.95 = 1.9 → refused.
+    const req: ApprovalRequest = {
+      kind: 'spend',
+      summary: 's',
+      estimatedCostUsd: 1,
+      totalCostSoFarUsd: 1.5,
+      budgetUsd: 2,
+    };
+    expect(evaluatePreAuth(req, rules)).toBe(false);
+  });
+
+  it('auto-approves a within-ceiling spend that stays within the budget cap', () => {
+    const rules: PreAuthRule[] = [
+      { kind: 'spend', enabled: true, maxCostUsd: 5, budgetCapFraction: 0.95 },
+    ];
+    const req: ApprovalRequest = {
+      kind: 'spend',
+      summary: 's',
+      estimatedCostUsd: 0.04,
+      totalCostSoFarUsd: 0.1,
+      budgetUsd: 1,
+    };
+    expect(evaluatePreAuth(req, rules)).toBe(true);
+  });
+
+  it('defaults the budget cap to 0.95 when the rule omits budgetCapFraction', () => {
+    const rules: PreAuthRule[] = [{ kind: 'spend', enabled: true, maxCostUsd: 5 }];
+    // projected 0.46 + 0.5 = 0.96 > 1 * 0.95 = 0.95 → refused.
+    const over: ApprovalRequest = {
+      kind: 'spend',
+      summary: 's',
+      estimatedCostUsd: 0.5,
+      totalCostSoFarUsd: 0.46,
+      budgetUsd: 1,
+    };
+    expect(evaluatePreAuth(over, rules)).toBe(false);
+    // projected 0 + 0.5 = 0.5 ≤ 0.95 → approved.
+    const under: ApprovalRequest = {
+      kind: 'spend',
+      summary: 's',
+      estimatedCostUsd: 0.5,
+      totalCostSoFarUsd: 0,
+      budgetUsd: 1,
+    };
+    expect(evaluatePreAuth(under, rules)).toBe(true);
+  });
+
+  it('ignores the budget cap when the request carries no budgetUsd (ceiling-only)', () => {
+    const rules: PreAuthRule[] = [{ kind: 'spend', enabled: true, maxCostUsd: 5 }];
+    expect(evaluatePreAuth({ kind: 'spend', summary: 's', estimatedCostUsd: 4 }, rules)).toBe(true);
+  });
+});
+
+describe('defaultSpendRule + loadSpendPreAuth (Story 10.1 — canonical-gate replacement for /api/ai/confirm)', () => {
+  it('defaultSpendRule encodes the $0.10 ceiling + 0.95 budget cap', () => {
+    expect(defaultSpendRule()).toEqual({
+      kind: 'spend',
+      enabled: true,
+      maxCostUsd: DEFAULT_SPEND_AUTO_APPROVE_USD,
+      budgetCapFraction: DEFAULT_SPEND_BUDGET_CAP,
+    });
+    expect(DEFAULT_SPEND_AUTO_APPROVE_USD).toBe(0.1);
+    expect(DEFAULT_SPEND_BUDGET_CAP).toBe(0.95);
+  });
+
+  it('defaultSpendRule honours an override ceiling', () => {
+    expect(defaultSpendRule(0.5).maxCostUsd).toBe(0.5);
+  });
+
+  it('loadSpendPreAuth returns the default rule when no override is given', async () => {
+    const rules = await loadSpendPreAuth()();
+    expect(rules).toEqual([defaultSpendRule()]);
+  });
+
+  it('loadSpendPreAuth raises the ceiling with a per-run override', async () => {
+    const rules = await loadSpendPreAuth(0.5)();
+    expect(rules[0].maxCostUsd).toBe(0.5);
+  });
+
+  it('a $0.04 image spend auto-approves under the default rule; a $0.30 video does not', () => {
+    const rule = defaultSpendRule();
+    const img: ApprovalRequest = {
+      kind: 'spend',
+      summary: 's',
+      estimatedCostUsd: 0.04,
+      totalCostSoFarUsd: 0,
+      budgetUsd: 1,
+    };
+    const vid: ApprovalRequest = {
+      kind: 'spend',
+      summary: 's',
+      estimatedCostUsd: 0.3,
+      totalCostSoFarUsd: 0,
+      budgetUsd: 1,
+    };
+    expect(evaluatePreAuth(img, [rule])).toBe(true);
+    expect(evaluatePreAuth(vid, [rule])).toBe(false);
   });
 });
 

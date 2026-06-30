@@ -3,7 +3,7 @@
  *
  * The gate is pure aside from the injected deps (askOperator / loadPreAuth /
  * now), so no network is needed — every branch is exercised via injected stubs,
- * mirroring the test-seam pattern in lib/agent-loop/hil.ts.
+ * using the dependency-injection test-seam the approval module is built around.
  *
  * Coverage:
  *   - pre-auth auto-approve → token, autoApproved+preAuthorized,

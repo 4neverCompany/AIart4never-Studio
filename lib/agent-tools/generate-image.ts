@@ -40,8 +40,14 @@ import {
   getHiggsfieldImageModel,
   type HiggsfieldImageModelSlug,
 } from '@/lib/higgsfield/models';
-import { requireApproval } from '@/lib/agent-loop/hil';
-import { currentRunContext, bumpStepCounter } from '@/lib/agent-loop/run-context';
+import { assertApproved, verifyToken } from '@/lib/approval/gate';
+import { loadSpendPreAuth } from '@/lib/approval/preauth';
+import {
+  ApprovalDeniedError,
+  type ApprovalRequest,
+  type ApprovalToken,
+} from '@/lib/approval/types';
+import { currentRunContext } from '@/lib/agent-loop/run-context';
 // AGENTIC-CORE: image generation routes through Higgsfield (character-anchored
 // via the canon Element `<<<id>>>`). The shared, tested core lives here so the
 // tool and the `/api/higgsfield/image/*` routes share the exact behavior.
@@ -337,30 +343,55 @@ export async function executeGenerateImage(
 
     validateSettingsForModel(input);
 
-    // v1.2.3 HIL guard: pause before any non-mock image generation
-    // and ask /api/ai/confirm for approval. The endpoint
-    // auto-approves small costs and the mock provider; the test
-    // environment bypasses the HTTP call entirely. This is the
-    // credit-burn safety net.
+    // Story 10.1: spend-gate via THE canonical approval chokepoint
+    // (lib/approval/gate.ts) — the same gate publish uses, not the retired
+    // hil.ts / `/api/ai/confirm` sibling. Build a canonical `spend` request,
+    // obtain approval (the default spend pre-auth rule auto-approves small cost
+    // within the budget cap; anything above fails closed), then verify the
+    // hash-bound token immediately before the credit-spending submit — exactly
+    // as lib/publish/dispatch.ts verifies before posting. This is the
+    // credit-burn safety net, now a single fail-closed chokepoint.
     const provider: ProviderKind = opts.providerOverride ?? detectProvider(input.model);
     if (provider !== 'mock') {
       const ctx = currentRunContext();
       if (ctx) {
-        const stepId = `${ctx.runId}::image::${bumpStepCounter()}`;
-        await requireApproval({
-          runId: ctx.runId,
-          stepId,
-          toolName: 'generate_image',
+        const approvalReq: ApprovalRequest = {
+          kind: 'spend',
+          summary: `Generate image via ${input.model} (~$0.04)`,
+          target: `image:${input.model}`,
           estimatedCostUsd: 0.04,
           totalCostSoFarUsd: ctx.totalCostUsd,
           budgetUsd: ctx.budgetUsd,
-          prompt: input.prompt,
-          model: input.model,
-          settings: input.settings as Record<string, unknown> | undefined,
-          ...(ctx.autoApproveBelowUsd !== undefined
-            ? { autoApproveBelowUsd: ctx.autoApproveBelowUsd }
-            : {}),
-        });
+          payloadPreview: { prompt: input.prompt, model: input.model },
+        };
+        let token: ApprovalToken;
+        try {
+          token = await assertApproved(approvalReq, {
+            loadPreAuth: loadSpendPreAuth(ctx.autoApproveBelowUsd),
+          });
+        } catch (e) {
+          if (e instanceof ApprovalDeniedError) {
+            throw new ToolExecutionError(
+              'generate_image',
+              `approval ${e.verdict}: ${e.reason}`,
+              { retryable: e.verdict === 'timeout' },
+            );
+          }
+          throw e;
+        }
+        // Story 10.1 (review L-1): assertApproved already fail-closed-guaranteed
+        // an `approved` token bound to THIS exact approvalReq, so this verify is
+        // structural — it cannot fail against the same object. It is the
+        // greppable verify-before-side-effect shape Story 10.7's CI invariant
+        // asserts (mirrors lib/publish/dispatch.ts); the load-bearing fail-closed
+        // protection is `assertApproved` above, not this line.
+        if (!verifyToken(token, approvalReq)) {
+          throw new ToolExecutionError(
+            'generate_image',
+            'approval token does not match the generation request',
+            { retryable: false },
+          );
+        }
       }
     }
     let output: GenerateImageOutput;

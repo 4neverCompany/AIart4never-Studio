@@ -94,8 +94,17 @@ export function evaluatePreAuth(req: ApprovalRequest, rules: PreAuthRule[]): boo
     if (req.kind === 'spend') {
       if (typeof rule.maxCostUsd !== 'number') continue;
       if (typeof req.estimatedCostUsd !== 'number') continue;
-      if (req.estimatedCostUsd <= rule.maxCostUsd) return true;
-      continue;
+      if (req.estimatedCostUsd > rule.maxCostUsd) continue;
+      // Budget-accumulation safety (Story 10.1 / FR-11): even a within-ceiling
+      // per-call cost must NOT auto-approve if it would push the run past its
+      // budget cap. Mirrors the old hil.ts 95 % ceiling, now expressed inside
+      // the canonical gate. Only applies when the request carries a budget.
+      if (typeof req.budgetUsd === 'number' && req.budgetUsd > 0) {
+        const cap = typeof rule.budgetCapFraction === 'number' ? rule.budgetCapFraction : 0.95;
+        const projected = (req.totalCostSoFarUsd ?? 0) + req.estimatedCostUsd;
+        if (projected > req.budgetUsd * cap) continue;
+      }
+      return true;
     }
 
     // Non-spend: target allow-list. Undefined/empty => allow-any (operator's
@@ -105,4 +114,50 @@ export function evaluatePreAuth(req: ApprovalRequest, rules: PreAuthRule[]): boo
     if (req.target !== undefined && allow.includes(req.target)) return true;
   }
   return false;
+}
+
+// ---------------------------------------------------------------------------
+// Default spend rule — the canonical-gate replacement for the retired
+// `/api/ai/confirm` cost-based auto-approve (Story 10.1).
+// ---------------------------------------------------------------------------
+
+/** Default spend auto-approve ceiling (USD). Was `HIL_DEFAULT_AUTO_APPROVE_USD`. */
+export const DEFAULT_SPEND_AUTO_APPROVE_USD = 0.1;
+
+/** Default budget-accumulation cap fraction (Story 10.1 — the old 95 % ceiling). */
+export const DEFAULT_SPEND_BUDGET_CAP = 0.95;
+
+/**
+ * The built-in `spend` pre-auth rule that replaces the old `/api/ai/confirm`
+ * cost-based auto-approve. Auto-approves spends at or below `maxCostUsd` so long
+ * as the projected run total stays within {@link DEFAULT_SPEND_BUDGET_CAP} of the
+ * run budget. This is a real standing pre-auth rule routed through the canonical
+ * {@link evaluatePreAuth} — NOT a hardcoded shortcut (FR-11 / Story 10.1 AC#3).
+ */
+export function defaultSpendRule(
+  maxCostUsd: number = DEFAULT_SPEND_AUTO_APPROVE_USD,
+): PreAuthRule {
+  return {
+    kind: 'spend',
+    enabled: true,
+    maxCostUsd,
+    budgetCapFraction: DEFAULT_SPEND_BUDGET_CAP,
+  };
+}
+
+/**
+ * `loadPreAuth` for the generation tools' spend gate (Story 10.1). Returns the
+ * built-in default spend rule, with the per-run `autoApproveBelowUsd` override
+ * (when set) raising the ceiling for that run. Pure (no storage) — it replicates
+ * the old `hil.ts` / `/api/ai/confirm` auto-approve behaviour EXACTLY while
+ * routing the decision through the canonical gate. An operator-editable persisted
+ * spend rule is a deliberate follow-up (no UI ships in 10.1); when it lands, swap
+ * this for a storage-backed loader (`listPreAuthRules`).
+ */
+export function loadSpendPreAuth(
+  overrideMaxCostUsd?: number,
+): () => Promise<PreAuthRule[]> {
+  const maxCostUsd =
+    typeof overrideMaxCostUsd === 'number' ? overrideMaxCostUsd : DEFAULT_SPEND_AUTO_APPROVE_USD;
+  return async () => [defaultSpendRule(maxCostUsd)];
 }
