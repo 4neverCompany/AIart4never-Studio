@@ -41,7 +41,7 @@ import { currentRunContext } from '@/lib/agent-loop/run-context';
 // Provider dispatcher
 // ---------------------------------------------------------------------------
 
-type ProviderKind = 'higgsfield' | 'minimax' | 'openai' | 'mock';
+type ProviderKind = 'higgsfield' | 'mock';
 
 /** Shape of a Higgsfield `generate get` job record (subset we read). */
 type HiggsfieldJobRecord = { status?: string; result_url?: string; url?: string; error?: string };
@@ -56,9 +56,16 @@ function detectProvider(model: string): ProviderKind {
   ) {
     return 'higgsfield';
   }
-  if (model.startsWith('minimax:') || model.includes('hailuo')) return 'minimax';
-  if (model.startsWith('openai:') || model.startsWith('sora')) return 'openai';
-  return 'openai';
+  // NFR-4: Higgsfield is the sole video engine. Any slug that isn't a
+  // Higgsfield catalog slug (or the test-only mock) is unsupported — fail
+  // CLEAR here, BEFORE the approval gate / any submit, so a typo'd or
+  // hallucinated model name can't trigger a wasted credit spend. (Story 10.2
+  // removed the dead minimax/openai dispatch arms — Higgsfield is sole-engine.)
+  // Note: `minimax_hailuo` is a Higgsfield catalog slug, matched above.
+  throw new ToolNotAvailableError(
+    'generate_video',
+    `Unsupported model "${model}" — Higgsfield is the sole video engine (NFR-4); use a higgsfield:* or catalog slug (e.g. seedance_2_0), or "mock" in tests.`,
+  );
 }
 
 async function generateMock(input: GenerateVideoInput): Promise<GenerateVideoOutput> {
@@ -181,14 +188,6 @@ async function generateHiggsfield(
       + 'poll it with job_lookup({ action: "get", jobId }).',
     { retryable: true },
   );
-}
-
-async function generateMinimax(_input: GenerateVideoInput): Promise<GenerateVideoOutput> {
-  throw new ToolNotAvailableError('generate_video', 'MiniMax video provider lands in v1.2.3.');
-}
-
-async function generateOpenai(_input: GenerateVideoInput): Promise<GenerateVideoOutput> {
-  throw new ToolNotAvailableError('generate_video', 'OpenAI video provider lands in v1.2.3.');
 }
 
 function hashString(s: string): string {
@@ -314,12 +313,6 @@ export async function executeGenerateVideo(
         break;
       case 'higgsfield':
         output = await generateHiggsfield(input, opts.signal);
-        break;
-      case 'minimax':
-        output = await generateMinimax(input);
-        break;
-      case 'openai':
-        output = await generateOpenai(input);
         break;
     }
     return zGenerateVideoOutput.parse(output);

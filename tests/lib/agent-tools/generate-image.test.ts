@@ -214,22 +214,16 @@ describe('executeGenerateImage — provider dispatch', () => {
     }
   });
 
-  it('minimax provider throws ToolNotAvailableError', async () => {
-    const r = await executeGenerateImage({
-      model: 'minimax:image-01',
-      prompt: validPrompt,
-    });
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error).toBeInstanceOf(ToolNotAvailableError);
-  });
-
-  it('openai provider throws ToolNotAvailableError', async () => {
-    const r = await executeGenerateImage({
-      model: 'gpt-image-1.5',
-      prompt: validPrompt,
-    });
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error).toBeInstanceOf(ToolNotAvailableError);
+  it('an unsupported (non-Higgsfield) model slug fails CLEAR with ToolNotAvailableError — no submit', async () => {
+    // Story 10.2: the dead minimax/openai dispatch arms are gone; detectProvider
+    // fails closed on any non-Higgsfield/non-mock slug BEFORE the approval gate or
+    // any Higgsfield submit, so a typo'd / hallucinated model can't burn credit.
+    for (const model of ['minimax:image-01', 'gpt-image-1.5', 'totally-unknown-slug']) {
+      const r = await executeGenerateImage({ model, prompt: validPrompt });
+      expect(r.ok, model).toBe(false);
+      if (!r.ok) expect(r.error, model).toBeInstanceOf(ToolNotAvailableError);
+    }
+    expect(submitSpy).not.toHaveBeenCalled();
   });
 });
 
@@ -343,8 +337,9 @@ describe('__test__ helpers', () => {
     expect(__test__.detectProvider('flux_2')).toBe('higgsfield');
     expect(__test__.detectProvider('gpt_image_2')).toBe('higgsfield');
     expect(__test__.detectProvider('higgsfield:anything')).toBe('higgsfield');
-    expect(__test__.detectProvider('minimax:image-01')).toBe('minimax');
-    expect(__test__.detectProvider('openai:anything')).toBe('openai');
+    // Story 10.2: unsupported slugs now THROW (Higgsfield sole-engine), not route.
+    expect(() => __test__.detectProvider('minimax:image-01')).toThrow();
+    expect(() => __test__.detectProvider('gpt-image-1.5')).toThrow();
   });
 
   it('exposes the current Higgsfield image-model count (catalog sanity check)', () => {

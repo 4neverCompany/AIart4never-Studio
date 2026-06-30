@@ -78,7 +78,7 @@ import {
  * should NOT be a runtime crash, it should be a typed error the
  * Director loop can fall back from.
  */
-type ProviderKind = 'higgsfield' | 'minimax' | 'openai' | 'mock';
+type ProviderKind = 'higgsfield' | 'mock';
 
 function detectProvider(model: string): ProviderKind {
   if (model.startsWith('higgsfield:')) return 'higgsfield';
@@ -93,12 +93,15 @@ function detectProvider(model: string): ProviderKind {
     // them as the primary surface, so treat them as Higgsfield.
     return 'higgsfield';
   }
-  if (model.startsWith('minimax:') || model.includes('minimax-image')) return 'minimax';
-  if (model.startsWith('openai:') || model.startsWith('gpt-image')) return 'openai';
-  // Unknown slug — let the caller decide whether to fall through.
-  // Default to 'openai' so a typo'd model name doesn't silently
-  // pick the wrong provider; the real provider will reject it.
-  return 'openai';
+  // NFR-4: Higgsfield is the sole image engine. Any slug that isn't a
+  // Higgsfield catalog slug (or the test-only mock) is unsupported — fail
+  // CLEAR here, BEFORE the approval gate / any submit, so a typo'd or
+  // hallucinated model name can't trigger a wasted credit spend. (Story 10.2
+  // removed the dead minimax/openai dispatch arms — Higgsfield is sole-engine.)
+  throw new ToolNotAvailableError(
+    'generate_image',
+    `Unsupported model "${model}" — Higgsfield is the sole image engine (NFR-4); use a higgsfield:* or catalog slug (e.g. nano_banana_2), or "mock" in tests.`,
+  );
 }
 
 /**
@@ -262,14 +265,6 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
-async function generateMinimax(_input: GenerateImageInput): Promise<GenerateImageOutput> {
-  throw new ToolNotAvailableError('generate_image', 'MiniMax image provider lands in v1.2.3.');
-}
-
-async function generateOpenai(_input: GenerateImageInput): Promise<GenerateImageOutput> {
-  throw new ToolNotAvailableError('generate_image', 'OpenAI image provider lands in v1.2.3.');
-}
-
 /**
  * Stable, fast non-crypto hash for the mock provider's deterministic
  * id. djb2 — good enough for in-test reproducibility, not for
@@ -401,12 +396,6 @@ export async function executeGenerateImage(
         break;
       case 'higgsfield':
         output = await generateHiggsfield(input, opts.signal);
-        break;
-      case 'minimax':
-        output = await generateMinimax(input);
-        break;
-      case 'openai':
-        output = await generateOpenai(input);
         break;
     }
     // Re-validate the final shape so a buggy provider branch

@@ -90,23 +90,14 @@ describe('executeGenerateVideo — provider dispatch', () => {
     if (!r.ok) expect(r.error).toBeInstanceOf(ToolNotAvailableError);
   });
 
-  it('minimax provider throws ToolNotAvailableError', async () => {
-    const r = await executeGenerateVideo({
-      model: 'minimax:hailuo',
-      prompt: validPrompt,
-    });
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error).toBeInstanceOf(ToolNotAvailableError);
-  });
-
-
-  it('openai provider throws ToolNotAvailableError', async () => {
-    const r = await executeGenerateVideo({
-      model: 'sora',
-      prompt: validPrompt,
-    });
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error).toBeInstanceOf(ToolNotAvailableError);
+  it('an unsupported (non-Higgsfield) model slug fails CLEAR with ToolNotAvailableError', async () => {
+    // Story 10.2: minimax/openai dispatch arms removed; detectProvider fails
+    // closed on any non-Higgsfield/non-mock slug before any provider call.
+    for (const model of ['minimax:hailuo', 'sora', 'totally-unknown-slug']) {
+      const r = await executeGenerateVideo({ model, prompt: validPrompt });
+      expect(r.ok, model).toBe(false);
+      if (!r.ok) expect(r.error, model).toBeInstanceOf(ToolNotAvailableError);
+    }
   });
 });
 
@@ -290,8 +281,9 @@ describe('__test__ helpers', () => {
     expect(__test__.detectProvider('wan2_6')).toBe('higgsfield');
     expect(__test__.detectProvider('minimax_hailuo')).toBe('higgsfield');
     expect(__test__.detectProvider('higgsfield:any')).toBe('higgsfield');
-    expect(__test__.detectProvider('minimax:hailuo')).toBe('minimax');
-    expect(__test__.detectProvider('sora')).toBe('openai');
+    // Story 10.2: unsupported slugs now THROW (Higgsfield sole-engine), not route.
+    expect(() => __test__.detectProvider('minimax:hailuo')).toThrow();
+    expect(() => __test__.detectProvider('sora')).toThrow();
   });
 
   it('DURATION_CAPS is non-empty and bounded (no model > 15s)', () => {
