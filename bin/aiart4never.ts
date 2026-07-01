@@ -20,7 +20,7 @@ import { runCli } from '@/lib/cli';
 import type { CliDeps, CliBudgetSnapshot, CliQuotaSnapshot, OperatorConfirm } from '@/lib/cli';
 
 import { runAutonomyTick } from '@/lib/autonomy/loop';
-import { readJournal } from '@/lib/autonomy';
+import { readJournal, appendTick } from '@/lib/autonomy';
 import type { AutonomyConfig } from '@/lib/autonomy';
 import { buildWeeklyContentPlan } from '@/lib/canon/content-plan';
 import {
@@ -121,6 +121,9 @@ const deps: CliDeps = {
     return { assetId: res.value.assetId };
   },
   runTick: (cfg, tickDeps) => runAutonomyTick(cfg, tickDeps),
+  appendTick: async (result) => {
+    await appendTick(result); // discard the returned journal — the CLI dep is void
+  },
   buildPlan: (input) => buildWeeklyContentPlan(input),
   readQuota,
   readBudget,

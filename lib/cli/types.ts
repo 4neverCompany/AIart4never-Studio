@@ -100,6 +100,13 @@ export interface CliDeps {
    * one place the director/persist are threaded.
    */
   runTick: (cfg: AutonomyConfig, tickDeps: AutonomyTickDeps) => Promise<AutonomyTickResult>;
+  /**
+   * Append a tick result to the autonomy journal. Story 8-13: the scheduled
+   * `tick` command journals every fired tick — both as the audit trail and as
+   * the dedup source it reads (newest entry's `at`) to decide "already ticked
+   * today". Wraps `appendTick` from lib/autonomy.
+   */
+  appendTick: (result: AutonomyTickResult) => Promise<void>;
 
   // --- run-week (content plan) ---
   /** Build the reuse-first weekly content plan (wraps `buildWeeklyContentPlan`). */

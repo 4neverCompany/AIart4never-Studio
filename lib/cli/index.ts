@@ -30,6 +30,7 @@ import type { CharacterId } from '@/lib/canon';
 import { listCharacters } from '@/lib/canon';
 import { buildConnectorActivateRequest } from '@/lib/connectors';
 import type { AutonomyConfig } from '@/lib/autonomy';
+import { shouldTick, nextTickAt } from '@/lib/autonomy';
 import type { AutonomyTickDeps } from '@/lib/autonomy/loop';
 import type { ConnectorHealth } from '@/lib/connectors/health';
 import { getErrorMessage } from '@/lib/errors';
@@ -52,6 +53,7 @@ const USAGE = [
   '',
   'Usage:',
   '  aiart4never run-beat [--character <id>]    Run one autonomy tick now (queues to the approval gate; never publishes)',
+  '  aiart4never tick [--character <id>]        Run one autonomy tick IF DUE (for a cron/daemon — no-ops until enabled + past the tick hour + not already today)',
   '  aiart4never run-week [--character <id>]    Print the reuse-first weekly content plan',
   '                       [--execute]            (safe: prints a notice, does NOT generate — use the app to spend)',
   '  aiart4never status                          Quota, budget ceiling, connector health, recent ticks (read-only)',
@@ -128,6 +130,81 @@ async function cmdRunBeat(args: ParsedArgs, deps: CliDeps): Promise<CliResult> {
   }
 
   // A beat that errored is a runtime failure (exit 1) but still well-formed.
+  return { code: result.error ? EXIT_RUNTIME : EXIT_OK, lines };
+}
+
+// ---------------------------------------------------------------------------
+// tick — the DUE-GATED autonomy tick (Story 8-13: the live-daemon entry)
+// ---------------------------------------------------------------------------
+
+/**
+ * Story 8-13 — the live autonomy trigger. Unlike `run-beat` (which ticks
+ * UNCONDITIONALLY), `tick` runs a tick ONLY when one is due per the pure
+ * `shouldTick` (enabled + daily cadence + at/after the local tick hour + not
+ * already ticked today). This is what a scheduler calls: safe to invoke on any
+ * cadence (e.g. hourly OS cron / a Tauri background timer) because it no-ops
+ * until a tick is genuinely due, so it fires at most once per local day.
+ *
+ * DECISION (Story 8-13 / OAQ-2): the live trigger runs LOCALLY via this CLI, NOT
+ * a remote server cron. A generate-day tick runs the director → Higgsfield,
+ * which needs the operator's connector; that connector is client-side (local
+ * store), so only a local process (this CLI on the operator's machine) can
+ * generate. A remote Vercel cron (like sunday-recap) can only do connector-less
+ * work. Schedule this command locally, e.g. `aiart4never tick` hourly.
+ *
+ * `lastTickAt` is derived from the journal's newest entry (no separate state
+ * store), consistent with `runAutonomyOnceIfDue` advancing lastTickAt even on an
+ * errored tick — so a failed tick does not retry the same local day. NEVER
+ * publishes (queues to the approval gate as approved:false, same as run-beat).
+ */
+async function cmdTick(args: ParsedArgs, deps: CliDeps): Promise<CliResult> {
+  const baseCfg = await deps.loadAutonomyConfig();
+  const resolved = resolveCharacter(args, baseCfg);
+  if ('error' in resolved) return { code: EXIT_USAGE, lines: [resolved.error] };
+  const cfg: AutonomyConfig = { ...baseCfg, activeCharacterId: resolved.characterId };
+
+  const now = deps.now();
+  // Derive lastTickAt from the journal (most-recent-first → [0].at).
+  const journal = await deps.readJournal();
+  const lastTickAt = journal[0]?.at ?? null;
+
+  if (!shouldTick(now, lastTickAt, cfg)) {
+    const reason = !cfg.enabled
+      ? 'autonomy is disabled (enable it first)'
+      : cfg.cadence !== 'daily'
+        ? `cadence is '${cfg.cadence}' (only 'daily' auto-ticks)`
+        : now.getHours() < cfg.tickHourLocal
+          ? `before the daily tick hour (${cfg.tickHourLocal}:00 local)`
+          : 'already ticked today';
+    return {
+      code: EXIT_OK,
+      lines: [
+        `Autonomy tick not due — ${reason}.`,
+        `  next daily window: ${new Date(nextTickAt(now, cfg)).toISOString()}`,
+      ],
+    };
+  }
+
+  const tickDeps: AutonomyTickDeps = {
+    now,
+    loadLibrary: deps.loadLibrary,
+    runDirector: deps.runDirector,
+    persistAsset: deps.persistAsset,
+  };
+  const result = await deps.runTick(cfg, tickDeps);
+  // Journal the fired tick — audit trail AND the dedup source for the next call.
+  await deps.appendTick(result);
+
+  const lines: string[] = [];
+  lines.push(`Autonomy tick FIRED — ${cfg.activeCharacterId} · ${result.day}`);
+  lines.push(`  decision: ${result.decision}${result.pillarId ? ` (${result.pillarId})` : ''}`);
+  lines.push(`  ${result.note}`);
+  if (result.error) lines.push(`  error: ${result.error}`);
+  if (result.queued && result.assetId) {
+    lines.push(`  queued asset: ${result.assetId} (approval queue, approved:false — never published)`);
+  } else {
+    lines.push('  nothing queued this tick');
+  }
   return { code: result.error ? EXIT_RUNTIME : EXIT_OK, lines };
 }
 
@@ -387,6 +464,8 @@ export async function runCli(argv: string[], deps: CliDeps): Promise<CliResult> 
     switch (command) {
       case 'run-beat':
         return await cmdRunBeat(args, deps);
+      case 'tick':
+        return await cmdTick(args, deps);
       case 'run-week':
         return await cmdRunWeek(args, deps);
       case 'status':

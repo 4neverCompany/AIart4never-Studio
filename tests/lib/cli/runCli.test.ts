@@ -66,6 +66,7 @@ function makeDeps(over: Partial<CliDeps> = {}): CliDeps {
       queued: true,
       note: 'generated + queued image for Story-Beat (story-beat)',
     })),
+    appendTick: vi.fn(async () => {}),
     buildPlan: (input) => buildWeeklyContentPlan(input),
     readQuota: vi.fn(async () => ({ tokensUsed: 1_250_000_000, allowance: 12_500_000_000, summary: '1.25B / 12.50B tokens this month (10%)' })),
     readBudget: vi.fn(async () => ({ dailyBudgetUsd: 0.5, creditsUsed: 40, creditCap: 200 })),
@@ -123,6 +124,63 @@ describe('runCli — help / unknown', () => {
     const r = await runCli(['frobnicate'], makeDeps());
     expect(r.code).toBe(2);
     expect(r.lines.join('\n')).toContain("unknown command 'frobnicate'");
+  });
+});
+
+describe('runCli — tick (Story 8-13 due-gated live trigger)', () => {
+  const dailyEnabled: AutonomyConfig = {
+    enabled: true, cadence: 'daily', activeCharacterId: 'kael', dailyBudgetUsd: 0.5, tickHourLocal: 9,
+  };
+
+  it('FIRES + journals when a tick is due (enabled, daily, at the tick hour, none today)', async () => {
+    const runTick = vi.fn(async (): Promise<AutonomyTickResult> => ({
+      at: 1, day: 'fri', pillarId: 'story-beat', decision: 'generate', assetId: 'image-x', queued: true,
+      note: 'generated + queued image for Story-Beat (story-beat)',
+    }));
+    const appendTick = vi.fn(async () => {});
+    const r = await runCli(['tick'], makeDeps({
+      loadAutonomyConfig: async () => dailyEnabled,
+      readJournal: async () => [],
+      runTick,
+      appendTick,
+    }));
+    expect(r.code).toBe(0);
+    expect(runTick).toHaveBeenCalledTimes(1);
+    expect(appendTick).toHaveBeenCalledTimes(1); // fired ticks are journaled (dedup + audit)
+    const out = r.lines.join('\n');
+    expect(out).toContain('FIRED');
+    expect(out).toContain('never published');
+  });
+
+  it('NO-OPS (no tick, no journal write) when autonomy is disabled', async () => {
+    const runTick = vi.fn(async (): Promise<AutonomyTickResult> => ({ at: 1, day: 'fri', decision: 'skip', queued: false, note: 'n' }));
+    const appendTick = vi.fn(async () => {});
+    const r = await runCli(['tick'], makeDeps({
+      loadAutonomyConfig: async () => ({ ...dailyEnabled, enabled: false }),
+      runTick,
+      appendTick,
+    }));
+    expect(r.code).toBe(0);
+    expect(runTick).not.toHaveBeenCalled();
+    expect(appendTick).not.toHaveBeenCalled();
+    const out = r.lines.join('\n');
+    expect(out).toContain('not due');
+    expect(out).toContain('disabled');
+  });
+
+  it('NO-OPS when it already ticked today (dedup derived from the journal newest entry)', async () => {
+    const earlierToday: AutonomyTickResult = {
+      at: new Date(2026, 5, 19, 8, 0, 0, 0).getTime(), // same local day as `now` (Fri 09:00)
+      day: 'fri', decision: 'skip', queued: false, note: 'earlier today',
+    };
+    const runTick = vi.fn(async (): Promise<AutonomyTickResult> => ({ at: 1, day: 'fri', decision: 'skip', queued: false, note: 'n' }));
+    const r = await runCli(['tick'], makeDeps({
+      loadAutonomyConfig: async () => dailyEnabled,
+      readJournal: async () => [earlierToday],
+      runTick,
+    }));
+    expect(runTick).not.toHaveBeenCalled();
+    expect(r.lines.join('\n')).toContain('already ticked today');
   });
 });
 
