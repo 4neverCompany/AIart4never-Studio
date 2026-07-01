@@ -15,12 +15,30 @@ import {
   ToolNotAvailableError,
   ToolExecutionError,
 } from '@/lib/agent-tools/errors';
-import { HIGGSFIELD_VIDEO_MODELS } from '@/lib/higgsfield/models';
+import { HIGGSFIELD_VIDEO_MODELS, HIGGSFIELD_DEFAULT_VIDEO_MODEL } from '@/lib/higgsfield/models';
+import { zGenerateVideoInput } from '@/lib/agent-tools/schemas';
 import { __registerProvider, __resetRegistry } from '@/lib/providers/registry';
 import type { AssetRef, ProviderAdapter } from '@/lib/providers/interface';
 import { __setCurrentRunContextForTests } from '@/lib/agent-loop/run-context';
 
 const validPrompt = 'A long enough prompt to satisfy the min-20 validation gate.';
+
+describe('generate_video — default model (Story 3-8 / OAQ-7)', () => {
+  it('defaults the model to the decided Higgsfield default (seedance_2_0) when omitted', () => {
+    const parsed = zGenerateVideoInput.parse({ prompt: validPrompt });
+    expect(parsed.model).toBe(HIGGSFIELD_DEFAULT_VIDEO_MODEL);
+    expect(parsed.model).toBe('seedance_2_0');
+  });
+
+  it('still honors an explicit model when the agent supplies one', () => {
+    const parsed = zGenerateVideoInput.parse({ prompt: validPrompt, model: 'veo3_1' });
+    expect(parsed.model).toBe('veo3_1');
+  });
+
+  it('the decided default is a real slug in the Higgsfield video catalog', () => {
+    expect(HIGGSFIELD_VIDEO_MODELS.some((m) => m.slug === HIGGSFIELD_DEFAULT_VIDEO_MODEL)).toBe(true);
+  });
+});
 
 /**
  * V1.5: deterministic Higgsfield video adapter stand-in so the wired
@@ -61,8 +79,15 @@ afterEach(() => {
 });
 
 describe('executeGenerateVideo — input validation', () => {
-  it('rejects when model is missing', async () => {
-    const r = await executeGenerateVideo({ prompt: validPrompt });
+  it('omitting model is NOT a validation error — it defaults to seedance_2_0 (Story 3-8)', async () => {
+    // Before 3-8 a missing model was a ValidationError; now it defaults, so the
+    // mock path succeeds without the agent naming a video model.
+    const r = await executeGenerateVideo({ prompt: validPrompt }, { providerOverride: 'mock' });
+    expect(r.ok).toBe(true);
+  });
+
+  it('rejects a too-short prompt', async () => {
+    const r = await executeGenerateVideo({ model: 'seedance_2_0', prompt: 'short' });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toBeInstanceOf(ValidationError);
   });

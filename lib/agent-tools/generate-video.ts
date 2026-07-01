@@ -321,7 +321,7 @@ export async function executeGenerateVideo(
 
 export const generateVideoTool = tool({
   description:
-    "Generate a video from a model+prompt+settings triple. Returns an AssetRef. Provider is auto-detected from the model slug; use 'mock' for tests. Duration caps vary per model (see execute() for the cap table).",
+    "Generate a video from a prompt (+ optional model + settings). The model defaults to seedance_2_0 (Seedance 2.0) when omitted. Returns an AssetRef; provider is auto-detected from the model slug (use 'mock' for tests). Duration caps vary per model (see execute() for the cap table).",
   inputSchema: zGenerateVideoInput,
   outputSchema: zGenerateVideoOutput,
   execute: async (input, options) => {

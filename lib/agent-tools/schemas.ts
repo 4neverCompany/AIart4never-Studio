@@ -22,6 +22,9 @@
  * call sites read naturally.
  */
 import { z } from 'zod';
+// Story 3-8 (OAQ-7): the decided default Higgsfield video model, applied when
+// the agent omits `model` on generate_video.
+import { HIGGSFIELD_DEFAULT_VIDEO_MODEL } from '@/lib/higgsfield/models';
 
 // ---------------------------------------------------------------------------
 // Shared atoms
@@ -348,7 +351,8 @@ export const zGenerateVideoInput = z.object({
     .string()
     .min(1)
     .max(120)
-    .describe('Video model slug (e.g. "seedance_2_0", "veo3_1", "wan2_6").'),
+    .default(HIGGSFIELD_DEFAULT_VIDEO_MODEL)
+    .describe('Video model slug — defaults to seedance_2_0 (Seedance 2.0) when omitted; e.g. "veo3_1", "wan2_6", "kling3_0".'),
   prompt: z
     .string()
     .min(20)
