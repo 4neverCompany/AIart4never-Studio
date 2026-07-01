@@ -306,7 +306,7 @@ describe('POST /api/ai/prompt — canon system block injection (M1)', () => {
     );
   });
 
-  it("injects the Kael canon block (Master4never + cyberdeck lock) when activeCharacterId='kael'", async () => {
+  it("injects the Kael canon block (structural, live-lookup) when activeCharacterId='kael'", async () => {
     const { POST } = await import('@/app/api/ai/prompt/route');
     const res = await POST(
       new Request('http://x/api/ai/prompt', {
@@ -318,7 +318,8 @@ describe('POST /api/ai/prompt — canon system block injection (M1)', () => {
     expect(res.status).toBe(200);
     const system = systemFromFetchCall();
     expect(system).toContain('Master4never');
-    expect(system).toMatch(/cyberdeck/i);
+    // Story 2.8: the block is STRUCTURAL and instructs the live lookup — no hardcoded lore.
+    expect(system).toMatch(/show_reference_elements/);
     // The canon block sits AFTER the base system prompt (authoritative persona).
     const baseIdx = system.indexOf('creative AI engine for AIart4never Studio');
     const canonIdx = system.indexOf('Canon character');
@@ -339,7 +340,7 @@ describe('POST /api/ai/prompt — canon system block injection (M1)', () => {
     expect(system).toContain('Master4never (Kael)');
   });
 
-  it('injects the requested variant canon (Kaelus Vorne, NO cyberdeck) on a valid activeCharacterId', async () => {
+  it('injects the requested variant canon (Kaelus Vorne, structural) on a valid activeCharacterId', async () => {
     const { POST } = await import('@/app/api/ai/prompt/route');
     await POST(
       new Request('http://x/api/ai/prompt', {
@@ -350,7 +351,7 @@ describe('POST /api/ai/prompt — canon system block injection (M1)', () => {
     );
     const system = systemFromFetchCall();
     expect(system).toContain('Kaelus Vorne');
-    expect(system).toMatch(/NO cyberdeck/i);
+    expect(system).toMatch(/show_reference_elements/);
   });
 
   it('falls back to Kael when activeCharacterId is invalid', async () => {

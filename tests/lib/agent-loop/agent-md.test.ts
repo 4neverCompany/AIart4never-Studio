@@ -29,7 +29,11 @@ describe('loadAgentInstructions', () => {
     expect(text).toMatch(/approval queue/i);
     // Tools are named so the agent knows its capabilities.
     expect(text).toMatch(/generate_image/);
-    expect(text).toMatch(/Element-anchored/i);
+    // Story 2.8: canon is resolved LIVE from Higgsfield via the read-only lookup.
+    expect(text).toMatch(/show_reference_elements/);
+    // The resolve-first hard gate (ordered step 1) + the fail-safe on ambiguity/absence.
+    expect(text).toMatch(/resolve the element first/i);
+    expect(text).toMatch(/ask the operator/i);
     // Original-IP-only guardrail.
     expect(text).toMatch(/Original IP only/i);
   });
@@ -50,6 +54,7 @@ describe('loadAgentInstructions', () => {
     expect(AGENT_MD_EMBEDDED_FALLBACK).toMatch(/AIart4never Studio agent/i);
     expect(AGENT_MD_EMBEDDED_FALLBACK).toMatch(/Master4never/);
     expect(AGENT_MD_EMBEDDED_FALLBACK).toMatch(/generate_image/);
+    expect(AGENT_MD_EMBEDDED_FALLBACK).toMatch(/show_reference_elements/);
     expect(AGENT_MD_EMBEDDED_FALLBACK).toMatch(/approval queue/i);
     // No rigid scaffold in the fallback either.
     expect(AGENT_MD_EMBEDDED_FALLBACK).not.toMatch(/Execute the director plan/i);

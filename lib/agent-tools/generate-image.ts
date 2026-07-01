@@ -55,6 +55,7 @@ import { currentRunContext } from '@/lib/agent-loop/run-context';
 import {
   submitHiggsfieldGeneration,
   pollHiggsfieldJob,
+  UnresolvedElementError,
 } from '@/lib/higgsfield/generate';
 
 // ---------------------------------------------------------------------------
@@ -185,6 +186,12 @@ async function generateHiggsfield(
       ...(signal ? { signal } : {}),
     });
   } catch (e: unknown) {
+    // Story 2.8: an unresolved-Element refusal is a NON-retryable, actionable
+    // error — the agent must resolve the character's Element first. No credit
+    // was spent (the refusal happens before the Higgsfield submit).
+    if (e instanceof UnresolvedElementError) {
+      throw new ToolExecutionError('generate_image', e.message, { retryable: false, cause: e });
+    }
     throw new ToolExecutionError(
       'generate_image',
       `Higgsfield submit failed: ${e instanceof Error ? e.message : String(e)}`,

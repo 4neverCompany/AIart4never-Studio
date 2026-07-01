@@ -18,7 +18,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { cleanup, render, screen, fireEvent, within } from '@testing-library/react';
 import type { GeneratedImage, ScheduledPost } from '@/types/mashup';
-import { CONTENT_PILLARS, getElementRef } from '@/lib/canon';
+import { CONTENT_PILLARS } from '@/lib/canon';
 
 // ── Mock state the useMashup mock reads ─────────────────────────────────────
 
@@ -122,10 +122,10 @@ describe('AgentConsoleRail — Canon Panel (real canon data)', () => {
       'Master4never (Kael)',
     );
 
-    // Locked Higgsfield Element token (real getElementRef).
-    const element = getElementRef('kael');
-    expect(element).toBeDefined();
-    expect(screen.getByTestId('canon-element')).toHaveTextContent(element!);
+    // Story 2.8: canon is resolved LIVE in chat — the panel shows the honest
+    // live state, not a hardcoded / browser-resolved token.
+    expect(screen.getByTestId('canon-element-live')).toHaveTextContent(/resolved live/i);
+    expect(screen.queryByTestId('canon-element')).toBeNull();
 
     // All 4 content pillars render as tags.
     const pillars = screen.getByTestId('canon-pillars');
@@ -143,7 +143,6 @@ describe('AgentConsoleRail — Canon Panel (real canon data)', () => {
     expect(screen.getByTestId('canon-character-name')).toHaveTextContent(
       'Kaelus Vorne (The Iron Halo)',
     );
-    const element = getElementRef('kaelus-vorne');
-    expect(screen.getByTestId('canon-element')).toHaveTextContent(element!);
+    expect(screen.getByTestId('canon-element-live')).toHaveTextContent(/resolved live/i);
   });
 });

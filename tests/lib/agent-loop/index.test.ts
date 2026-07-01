@@ -643,11 +643,12 @@ describe('runDirectorLoop — AGENT.md chat-path plumbing', () => {
     // AGENT.md identity is present.
     expect(system).toMatch(/AIart4never Studio agent/i);
     expect(system).toMatch(/Master4never/);
-    expect(system).toMatch(/Element-anchored/i);
+    // Story 2.8: canon is resolved live — the prompt names the lookup tool.
+    expect(system).toMatch(/show_reference_elements/);
     // The STRUCTURED canon block (default character Kael) is present.
     expect(system).toMatch(/Master4never \(Kael\)/);
-    expect(system).toMatch(/cyberdeck/i);
-    expect(system).toMatch(/<<<[0-9a-f-]+>>>/i);
+    expect(system).not.toMatch(/cyberdeck/i);
+    expect(system).not.toMatch(/<<<[0-9a-f-]+>>>/i);
     // The rigid 6-step director scaffold is NOT present.
     expect(system).not.toMatch(/Director plan \(executed in this order/i);
     expect(system).not.toMatch(/Determine the beat/);

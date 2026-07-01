@@ -14,10 +14,24 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // canon anchor for kael) and how it handles missing connectors / async jobs.
 const submitSpy = vi.fn();
 const pollSpy = vi.fn();
-vi.mock('@/lib/higgsfield/generate', () => ({
-  submitHiggsfieldGeneration: (...args: unknown[]) => submitSpy(...args),
-  pollHiggsfieldJob: (...args: unknown[]) => pollSpy(...args),
-}));
+vi.mock('@/lib/higgsfield/generate', () => {
+  // Story 2.8: generate_image now imports UnresolvedElementError for a
+  // non-retryable mapping — the mock must export it so the `instanceof` check
+  // (and every catch path) works.
+  class UnresolvedElementError extends Error {
+    characterId: string;
+    constructor(characterId: string) {
+      super(`No resolved Higgsfield Element for character "${characterId}" — resolve it with show_reference_elements before generating.`);
+      this.name = 'UnresolvedElementError';
+      this.characterId = characterId;
+    }
+  }
+  return {
+    submitHiggsfieldGeneration: (...args: unknown[]) => submitSpy(...args),
+    pollHiggsfieldJob: (...args: unknown[]) => pollSpy(...args),
+    UnresolvedElementError,
+  };
+});
 
 import {
   executeGenerateImage,
@@ -35,6 +49,7 @@ import {
   type RunContext,
 } from '@/lib/agent-loop/run-context';
 import { getElementRef } from '@/lib/canon';
+import { UnresolvedElementError } from '@/lib/higgsfield/generate';
 import type { McpServerConfig } from '@/lib/mcp';
 
 const validPrompt = 'A long enough prompt to satisfy the min-20 validation gate.';
@@ -69,6 +84,11 @@ function enterCtxWithConnector(
     budgetUsd: 1,
     ...(characterId ? { characterId } : {}),
     ...(connector ? { higgsfieldConnector: connector } : {}),
+    // Story 2.8: seed a live-resolved Element so getElementRef(characterId)
+    // resolves (the show_reference_elements lookup would have written this).
+    ...(characterId
+      ? { resolvedElements: new Map([[characterId, { elementId: `el-${characterId}`, name: characterId }]]) }
+      : {}),
   });
 }
 
@@ -211,6 +231,19 @@ describe('executeGenerateImage — provider dispatch', () => {
     if (!r.ok) {
       expect(r.error).toBeInstanceOf(ToolExecutionError);
       expect((r.error as ToolExecutionError).retryable).toBe(true);
+    }
+  });
+
+  it('Story 2.8: maps an UnresolvedElementError refusal to a NON-retryable ToolExecutionError (no spend)', async () => {
+    enterCtxWithConnector(CONNECTOR, 'kael');
+    submitSpy.mockRejectedValue(new UnresolvedElementError('kael'));
+    const r = await executeGenerateImage({ model: 'nano_banana_2', prompt: validPrompt });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error).toBeInstanceOf(ToolExecutionError);
+      // Actionable, not retryable — the agent must resolve the Element first.
+      expect((r.error as ToolExecutionError).retryable).toBe(false);
+      expect(r.error.message).toMatch(/No resolved Higgsfield Element/i);
     }
   });
 

@@ -112,8 +112,8 @@ describe('m3_vision_describe tool — registry wiring (V1.2.6)', () => {
     expect(found!.hasOutputSchema).toBe(true);
   });
 
-  it('the AGENT_TOOLS array now contains 10 tools (trending_search removed with the web-trending strip)', () => {
-    expect(AGENT_TOOLS.length).toBe(10);
+  it('the AGENT_TOOLS array now contains 11 tools (Story 2.8 added show_reference_elements)', () => {
+    expect(AGENT_TOOLS.length).toBe(11);
   });
 
   it('m3VisionDescribeTool object is the same reference as in AGENT_TOOLS', () => {

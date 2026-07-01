@@ -23,16 +23,16 @@ import {
   costEstimateTool,
   reframeImageTool,
   jobLookupTool,
+  showReferenceElementsTool,
 } from '@/lib/agent-tools';
 
 describe('AGENT_TOOLS — barrel contents', () => {
-  // V1.3.0: 11 tools, minus trending_search (removed with the
-  // web-trending strip) = 10 tools total.
-  it('contains exactly the 10 documented tools', () => {
-    expect(AGENT_TOOLS).toHaveLength(10);
+  // Story 2.8: +show_reference_elements (read-only live canon lookup) = 11 tools.
+  it('contains exactly the 11 documented tools', () => {
+    expect(AGENT_TOOLS).toHaveLength(11);
   });
 
-  it('contains the 10 expected tool references (in any order)', () => {
+  it('contains the 11 expected tool references (in any order)', () => {
     const set = new Set(AGENT_TOOLS);
     expect(set.has(generatePromptTool)).toBe(true);
     expect(set.has(critiquePromptTool)).toBe(true);
@@ -44,6 +44,7 @@ describe('AGENT_TOOLS — barrel contents', () => {
     expect(set.has(costEstimateTool)).toBe(true);
     expect(set.has(reframeImageTool)).toBe(true);
     expect(set.has(jobLookupTool)).toBe(true);
+    expect(set.has(showReferenceElementsTool)).toBe(true);
   });
 });
 
@@ -60,13 +61,14 @@ describe('AGENT_TOOLS — per-tool contract', () => {
     'cost_estimate',
     'reframe_image',
     'job_lookup',
+    'show_reference_elements',
   ];
 
   it('exposes one description row per tool', () => {
-    expect(docs).toHaveLength(10);
+    expect(docs).toHaveLength(11);
   });
 
-  it('names match the 10 documented tools', () => {
+  it('names match the 11 documented tools', () => {
     const names = docs.map((d) => d.name).sort();
     expect(names).toEqual([...expectedNames].sort());
   });
@@ -101,8 +103,8 @@ describe('AGENT_TOOLS_MAP — name-keyed ToolSet', () => {
     expect(Object.keys(map).sort()).toEqual([...expectedNames].sort());
   });
 
-  it('has exactly 10 entries', () => {
-    expect(Object.keys(map)).toHaveLength(10);
+  it('has exactly 11 entries', () => {
+    expect(Object.keys(map)).toHaveLength(11);
   });
 
   it('maps each name to the matching tool object', () => {
@@ -116,5 +118,6 @@ describe('AGENT_TOOLS_MAP — name-keyed ToolSet', () => {
     expect(map.cost_estimate).toBe(costEstimateTool);
     expect(map.reframe_image).toBe(reframeImageTool);
     expect(map.job_lookup).toBe(jobLookupTool);
+    expect(map.show_reference_elements).toBe(showReferenceElementsTool);
   });
 });

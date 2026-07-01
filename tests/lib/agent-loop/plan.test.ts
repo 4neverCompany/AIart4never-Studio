@@ -50,13 +50,15 @@ describe('buildDirectorChatSystemPrompt (chat path — AGENT.md-driven)', () => 
     expect(out).toContain('gated behind the operator');
   });
 
-  it('includes the STRUCTURED canon block + the Element/character identity lock', () => {
+  it('includes the STRUCTURED canon block + the character identity lock', () => {
     const out = buildDirectorChatSystemPrompt(baseContext, AGENT_MD_STUB);
-    // Default character Kael → his canon block (cyberdeck) + the Element token.
+    // Default character Kael → his structural canon block + the identity lock.
     expect(out).toMatch(/Master4never \(Kael\)/);
-    expect(out).toMatch(/cyberdeck/i);
     expect(out).toMatch(/Identity lock/);
-    expect(out).toMatch(/<<<[0-9a-f-]+>>>/i);
+    // Story 2.8: canon is resolved LIVE — the block instructs the lookup and
+    // carries no hardcoded lore or a build-time Element anchor.
+    expect(out).toMatch(/show_reference_elements/);
+    expect(out).not.toMatch(/cyberdeck/i);
   });
 
   // AGENT.md REWIRE: the rigid 6-step director scaffold must NOT appear on the
@@ -75,13 +77,14 @@ describe('buildDirectorChatSystemPrompt (chat path — AGENT.md-driven)', () => 
     expect(out).toMatch(/Canon \(structured/i);
   });
 
-  it('injects the requested character canon when a characterId is passed', () => {
+  it('injects the requested character framing when a characterId is passed', () => {
     const out = buildDirectorChatSystemPrompt(
       { ...baseContext, characterId: 'kaelus-vorne' },
       AGENT_MD_STUB,
     );
     expect(out).toMatch(/Kaelus Vorne/);
-    expect(out).toMatch(/NO cyberdeck/i);
+    // Story 2.8: no hardcoded per-character lore in the block anymore.
+    expect(out).not.toMatch(/cyberdeck/i);
   });
 });
 

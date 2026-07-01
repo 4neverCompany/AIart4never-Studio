@@ -27,15 +27,18 @@ describe('canon data integrity', () => {
     expect(getCharacter('kaelus-alt').isPrime).toBe(false);
   });
 
-  it('every character has at least one locked reference', () => {
+  it('the spine carries only routing keys (Story 2.8: no persistence/lockedRefs/lore fields)', () => {
     for (const c of listCharacters()) {
-      expect(c.persistence.lockedRefs.length).toBeGreaterThan(0);
+      expect(Object.keys(c).sort()).toEqual(['id', 'isPrime', 'name', 'reality']);
     }
   });
 
-  it('registered Elements: Kael + Kaelus Vorne have one; the alt study does not', () => {
-    expect(getElementRef('kael')).toBe('<<<9349dc19-0801-40de-8bb6-e433328f83e2>>>');
-    expect(getElementRef('kaelus-vorne')).toBe('<<<812c9a78-4b78-4910-a301-3083c8c65ecc>>>');
+  it('getElementRef returns undefined without a live resolution (no hardcoded Element ids) — Story 2.8', () => {
+    // The Element id is NOT hardcoded anymore; it is resolved live into the
+    // RunContext memo by show_reference_elements. With no active run/memo here,
+    // every character is unresolved.
+    expect(getElementRef('kael')).toBeUndefined();
+    expect(getElementRef('kaelus-vorne')).toBeUndefined();
     expect(getElementRef('kaelus-alt')).toBeUndefined();
   });
 
@@ -54,42 +57,44 @@ describe('realities', () => {
   });
 });
 
-describe('buildCanonSystemBlock', () => {
-  it('Kael block carries his PRIME-only locks + anchor + mandate', () => {
+describe('buildCanonSystemBlock — STRUCTURAL only (Story 2.8; lore lives in the live Element)', () => {
+  it('Kael block: framing + reality hallmarks + mandate + resolve-live instruction, NO hardcoded lore/anchor', () => {
     const b = buildCanonSystemBlock('kael');
     expect(b).toContain('Master4never (Kael)');
-    expect(b).toContain('cyberdeck');
-    expect(b).toContain('AIART4NEVER');
-    expect(b).toContain('<<<9349dc19-0801-40de-8bb6-e433328f83e2>>>');
-    expect(b.toLowerCase()).toContain('never generate a recurring character from scratch');
-    expect(b).toContain('neon cyberpunk'); // PRIME reality hallmark
+    expect(b).toContain('neon cyberpunk'); // PRIME reality hallmark (structural, kept)
+    expect(b.toLowerCase()).toContain('never generate a recurring character from scratch'); // mandate
+    expect(b).toMatch(/show_reference_elements/); // resolve-live instruction
+    // No hardcoded per-character lore or Element id in the block.
+    expect(b).not.toMatch(/cyberdeck/i);
+    expect(b).not.toMatch(/<<<[0-9a-f-]{8,}>>>/i);
   });
 
-  it('Kaelus Vorne block enforces NO cyberdeck + Astartes iconography + his Element', () => {
+  it('Kaelus Vorne block: name + reality framing, no hardcoded lore/anchor', () => {
     const b = buildCanonSystemBlock('kaelus-vorne');
     expect(b).toContain('Kaelus Vorne');
-    expect(b).toContain('NO cyberdeck');
-    expect(b).toContain('service studs');
-    expect(b).toContain('Iron Halo');
-    expect(b).toContain('<<<812c9a78-4b78-4910-a301-3083c8c65ecc>>>');
-    // a W40K variant does NOT wear the channel tag
-    expect(b).toContain('Does NOT wear the AIART4NEVER channel tag');
+    expect(b).toMatch(/show_reference_elements/);
+    expect(b).not.toMatch(/cyberdeck/i);
+    expect(b).not.toContain('service studs');
+    expect(b).not.toMatch(/<<<[0-9a-f-]{8,}>>>/i);
   });
 
-  it('the alt study falls back to a locked reference (no Element)', () => {
+  it('the alt study block is structural too — no lockedRefs fallback, no anchor line', () => {
     const b = buildCanonSystemBlock('kaelus-alt');
-    // The character anchor line uses the locked-reference fallback (no registered Element).
-    // (The mandate text itself shows a `<<<id>>>` example, so we check the anchor line specifically.)
-    expect(b).toContain('Anchor for this character: locked reference image');
+    expect(b).toContain('Kaelus');
+    // No per-character anchor line, and no lockedRefs image PATH is read into the block.
+    expect(b).not.toContain('Anchor for this character');
+    expect(b).not.toMatch(/\.png/i);
   });
 });
 
-describe('buildCharacterLockBlock', () => {
-  it('emits an identity lock + anchor for image prompts', () => {
+describe('buildCharacterLockBlock — character-agnostic lock (Story 2.8)', () => {
+  it('emits the identity lock only — no lore, no anchor at prompt-build time', () => {
     const b = buildCharacterLockBlock('kael');
     expect(b).toContain('Identity lock');
     expect(b).toContain('same face');
-    expect(b).toContain('Anchor element: <<<9349dc19-0801-40de-8bb6-e433328f83e2>>>');
+    expect(b).toMatch(/resolved Higgsfield Element reference/i);
+    expect(b).not.toMatch(/Anchor element/);
+    expect(b).not.toMatch(/<<<[0-9a-f-]{8,}>>>/i);
   });
 });
 

@@ -6,6 +6,7 @@ import type { CharacterId } from '@/lib/canon';
 import {
   submitHiggsfieldGeneration,
   MissingMinimaxKeyError,
+  UnresolvedElementError,
   // Re-exported below so the route's existing test imports
   // (`@/app/api/higgsfield/image/route`'s `extractJobId`) keep resolving.
   extractJobId as sharedExtractJobId,
@@ -83,6 +84,8 @@ interface RequestBody {
   genres?: unknown;
   skipEnhance?: unknown;
   connector?: unknown;
+  /** Story 2.8 — operator-supplied explicit Higgsfield Element id (the anchor). */
+  elementId?: unknown;
 }
 
 function sanitizeStringArray(raw: unknown): string[] {
@@ -156,6 +159,14 @@ export async function POST(req: Request): Promise<Response> {
     typeof body.systemPrompt === 'string' ? body.systemPrompt : '';
   const niches = sanitizeStringArray(body.niches);
   const genres = sanitizeStringArray(body.genres);
+  // Story 2.8: this is an OPERATOR-initiated route (human consent). The client
+  // holds the Higgsfield connector and resolves the character's Element, then
+  // passes its id here. Without it, the shared lib fails safe (422) rather than
+  // spending un-anchored (there is no hardcoded Element id to fall back to).
+  const elementId =
+    typeof body.elementId === 'string' && body.elementId.trim()
+      ? body.elementId.trim()
+      : undefined;
 
   // Validate characterId against the canon (defaults to kael). An unknown id
   // is a 400 rather than a thrown 500 from getCharacter.
@@ -202,6 +213,7 @@ export async function POST(req: Request): Promise<Response> {
       enhanceSystemPrompt: systemPrompt,
       niches,
       genres,
+      ...(elementId ? { elementId } : {}),
     });
 
     return NextResponse.json({
@@ -216,6 +228,15 @@ export async function POST(req: Request): Promise<Response> {
   } catch (e: unknown) {
     if (e instanceof MissingMinimaxKeyError) {
       return NextResponse.json({ error: e.message }, { status: 503 });
+    }
+    // Story 2.8: the character's Higgsfield Element could not be resolved →
+    // REFUSE (never spend un-anchored). 422 = the caller must resolve/supply the
+    // Element (e.g. pass an explicit elementId) rather than a transient fault.
+    if (e instanceof UnresolvedElementError) {
+      return NextResponse.json(
+        { error: e.message, characterId: e.characterId },
+        { status: 422 },
+      );
     }
     // Any failure in the enhance/connect/submit/extract chain is an
     // upstream/MCP fault (bad connector, transport error, tool-error, a

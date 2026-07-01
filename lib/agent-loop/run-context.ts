@@ -48,6 +48,19 @@ export interface RunContext {
    * "No Higgsfield connector configured" message.
    */
   higgsfieldConnector?: McpServerConfig;
+  /**
+   * Story 2.8 — per-turn resolved canon Elements, keyed by character id. The
+   * ONLY writer is the `show_reference_elements` tool (the agent's live,
+   * agent-driven Higgsfield lookup). `getElementRef` reads it, so the credit
+   * spend path (`submitHiggsfieldGeneration`) anchors to a LIVE, validated
+   * Higgsfield Element id — never a hardcoded/stale one, never a string the
+   * model typed into its prompt. Keyed (not a scalar) so a multi-character beat
+   * anchors each character to its own Element. Populated only when the tool
+   * resolves EXACTLY ONE element (single `list` name match, or an explicit
+   * `get`); an ambiguous (>1) `list` writes nothing → the spend path fails safe.
+   * Reset per turn (not per request) so stale resolutions never leak forward.
+   */
+  resolvedElements?: Map<CharacterId, { elementId: string; name: string }>;
 }
 
 let _current: RunContext | null = null;

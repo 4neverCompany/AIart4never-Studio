@@ -29,45 +29,22 @@ export interface Reality {
 export type CharacterId = 'kael' | 'kaelus-vorne' | 'kaelus-alt';
 
 /**
- * Persistence tiers for a recurring entity (MULTIVERSE.md §3):
- *  T1 locked reference image(s) → T2 Higgsfield Element (reusable by id) →
- *  T3 Soul (high-fidelity, only after the look is final).
- * Anchored generation prefers the Element id (embed as `<<<id>>>`), falling
- * back to a locked reference image fed as `--image`.
+ * A recurring character — Story 2.8 SPINE only. The identity that used to live
+ * here (locked look, hard rules, persona, and the Higgsfield Element id) is NO
+ * LONGER hardcoded: it lives in the character's CURRENT Higgsfield reference
+ * Element and is resolved live (the `show_reference_elements` tool writes the
+ * resolved id into the RunContext; `getElementRef` reads it). What remains are
+ * the stable ROUTING KEYS used by non-generation subsystems (planning, tagging,
+ * the roster/UI, the structural guard).
  */
-export interface CharacterPersistence {
-  /** Higgsfield Element id (T2). Embed in a prompt as `<<<elementId>>>` for
-   *  Nano Banana / GPT Image / Seedream / Kling / Cinema (NOT Soul models). */
-  elementId?: string;
-  /** Higgsfield Soul id (T3) — only for hero recurring characters once final. */
-  soulId?: string;
-  /** T1 locked reference image path(s), relative to the canon source root.
-   *  The minimum anchor; always present. */
-  lockedRefs: string[];
-}
-
 export interface CanonCharacter {
   id: CharacterId;
   /** Display name, e.g. "Master4never (Kael)". */
   name: string;
   reality: RealityId;
-  /** PRIME (Kael) carries traits no variant has (cyberdeck, AIART4NEVER tag). */
+  /** PRIME (Kael) is the hero; variants are separate characters. Structural
+   *  routing flag only — NOT a lore trait (the lore is the live Element). */
   isPrime: boolean;
-  /** One-line role. */
-  role: string;
-  /** The LOCKED look — fixed visual traits that must never drift across gens. */
-  lookLocks: string[];
-  /** Narrative personality (for captions, on-camera, voice-of-narration). */
-  personality: string;
-  /** Voice / narration register. */
-  voice: string;
-  /** On-camera behavior for reels/videos. */
-  onCamera: string;
-  /** HARD canon rules — the do-nots/musts that keep the character on-model.
-   *  These become explicit locks in every generation prompt. */
-  rules: string[];
-  /** Persistence anchors (Element / Soul / locked refs). */
-  persistence: CharacterPersistence;
 }
 
 export interface ContentPillar {

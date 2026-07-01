@@ -116,10 +116,11 @@ export function buildDirectorChatSystemPrompt(
     '',
     canonBlock,
     '',
-    // 3. The image-prompt identity lock + Element anchor token. When the agent
-    //    drafts an image prompt for this character, it embeds this verbatim so
-    //    the look never drifts.
-    'When you draft an image prompt for the active canon character, embed this identity lock verbatim — keep the SAME man (face + bone structure + features), carry the Anchor element token so the look never drifts:',
+    // 3. The image-prompt identity lock. When the agent drafts an image prompt
+    //    for this character, it embeds this verbatim so the look never drifts.
+    //    Story 2.8: the <<<Element>>> anchor is NOT carried by the model — the
+    //    system prepends the resolved Element at generation time.
+    'When you draft an image prompt for the active canon character, embed this identity lock verbatim — keep the SAME man (face + bone structure + features). Do NOT write an Element id yourself; the system adds the resolved Element anchor at generation time:',
     lockBlock,
   ].join('\n');
 }

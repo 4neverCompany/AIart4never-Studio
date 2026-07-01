@@ -1,14 +1,19 @@
 /**
  * Canon compliance guard (M1 / FR-4, FR-5 — "locks").
  *
- * The canon system block ASKS the model to honor each character's hard rules;
- * this guard CHECKS that a finished prompt/caption actually did, so a drift
- * (e.g. a cyberdeck rendered on a variant, or a missing identity anchor) is
- * caught before it reaches the approval gate. Heuristic + conservative: it
- * flags clear violations, not stylistic nuance.
+ * The canon system block ASKS the model to honor each character's identity;
+ * this guard CHECKS that a finished prompt/caption actually anchored to a
+ * resolved Higgsfield Element, so a from-scratch (un-anchored) generation is
+ * flagged before it reaches the approval UI. Heuristic + conservative.
+ *
+ * Story 2.8: the per-character LORE that the old cyberdeck / channel-tag rules
+ * hardcoded now lives in the live Higgsfield Element `description` (resolved at
+ * runtime), so those lore-specific rules are GONE — a guard cannot hardcode a
+ * character's current look without re-introducing the very drift this story
+ * removed. What remains is the ONE lore-agnostic, machine-checkable identity
+ * guarantee: a recurring-character prompt must carry the resolved Element token.
  */
 
-import { getCharacter } from './index';
 import type { CharacterId } from './types';
 
 export type CanonSeverity = 'error' | 'warn';
@@ -26,60 +31,40 @@ export interface CanonCheck {
   violations: CanonViolation[];
 }
 
-const CYBERDECK_RE = /\bcyberdeck\b|forehead tech-core|nanotech tech-core|tech[- ]core/i;
-const TAG_RE = /aiart4never/i;
-const TAG_WORN_RE = /(tag|wears?|worn|collar|jacket|sleeve|chest|clothing|back-print|label)/i;
-const ANCHOR_SIGNAL_RE = /<<<|--image|reference|locked ref|same man|same face|same bone structure|identity lock|keep the same/i;
+/** The STRUCTURAL identity anchor: a resolved Higgsfield Element token `<<<uuid>>>`. */
+const ELEMENT_TOKEN_RE = /<<<[0-9a-f-]{8,}>>>/i;
+/**
+ * A weaker, PROSE-only identity signal. Satisfiable by boilerplate ("same man",
+ * "reference"), so it is NOT an identity guarantee — advisory telemetry only.
+ */
+const WEAK_ANCHOR_RE = /--image|reference|locked ref|same man|same face|same bone structure|identity lock|keep the same/i;
 
 /**
- * Check a generated prompt/caption against a character's hard canon rules.
+ * Check a generated prompt/caption against the character's structural canon.
  * `text` is the finished prompt (or caption) to validate.
+ *
+ * Two rules only (Story 2.8):
+ *   - `missing-element-token` (ERROR) — a recurring-character prompt with no
+ *     `<<<Element>>>` anchor. The one lore-agnostic identity guarantee; keeps
+ *     `canon.ok` meaningfully failable.
+ *   - `weak-identity-lock` (WARN) — no prose identity reinforcement. Advisory.
  */
 export function checkCanonCompliance(characterId: CharacterId, text: string): CanonCheck {
-  const c = getCharacter(characterId);
   const violations: CanonViolation[] = [];
 
-  if (!c.isPrime) {
-    // PRIME-only traits must NOT appear on a variant.
-    if (CYBERDECK_RE.test(text)) {
-      violations.push({
-        rule: 'no-cyberdeck-on-variant',
-        severity: 'error',
-        detail: `${c.name} is a variant and must NOT have the forehead cyberdeck (PRIME-only).`,
-      });
-    }
-    if (TAG_RE.test(text) && TAG_WORN_RE.test(text)) {
-      violations.push({
-        rule: 'no-channel-tag-on-variant',
-        severity: 'error',
-        detail: `${c.name} (variant) must NOT wear the AIART4NEVER channel tag (PRIME-only); it is applied as a watermark at publish instead.`,
-      });
-    }
-  } else {
-    // PRIME musts — the model should include them; absence is a soft warning.
-    if (!CYBERDECK_RE.test(text)) {
-      violations.push({
-        rule: 'prime-cyberdeck-missing',
-        severity: 'warn',
-        detail: 'Kael (PRIME) should wear his signature forehead cyberdeck — it is missing from the prompt.',
-      });
-    }
-    if (!TAG_RE.test(text)) {
-      violations.push({
-        rule: 'prime-channel-tag-missing',
-        severity: 'warn',
-        detail: 'Kael (PRIME) should wear the AIART4NEVER channel tag somewhere legible — it is missing from the prompt.',
-      });
-    }
+  if (!ELEMENT_TOKEN_RE.test(text)) {
+    violations.push({
+      rule: 'missing-element-token',
+      severity: 'error',
+      detail: `Generation prompt for "${characterId}" carries no <<<Element>>> anchor — resolve the character's current Higgsfield Element first (the edit-from-reference identity lock).`,
+    });
   }
 
-  // Consistency mandate: a generation prompt should anchor to the locked
-  // Element / reference rather than describing a from-scratch character.
-  if (!ANCHOR_SIGNAL_RE.test(text)) {
+  if (!WEAK_ANCHOR_RE.test(text)) {
     violations.push({
-      rule: 'missing-identity-anchor',
+      rule: 'weak-identity-lock',
       severity: 'warn',
-      detail: 'No identity anchor detected (Element token, reference image, or explicit "same man/face" lock) — the edit-from-reference rule may be violated.',
+      detail: 'No prose identity reinforcement detected (e.g. "same man/face", "reference", "locked ref"). Advisory only — the Element token is the real anchor.',
     });
   }
 

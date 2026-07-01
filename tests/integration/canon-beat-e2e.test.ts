@@ -22,16 +22,19 @@ describe('M1 one-beat e2e (4NE-9): plan → canon prompt → guard → tag → r
     expect(beat.day).toBe('fri');
     expect(beat.decision).toBe('generate');
 
-    // 2. PROMPT — the director's system prompt is anchored to Kael's canon.
+    // 2. PROMPT — the director's system prompt is STRUCTURAL (Story 2.8): the
+    //    per-character lore lives in the live Element, so the block carries the
+    //    framing + the resolve-live instruction, not hardcoded cyberdeck/anchor.
     const system = buildCanonSystemBlock(beat.characterId);
-    expect(system).toContain('cyberdeck'); // PRIME signature lock
-    expect(system).toContain('AIART4NEVER'); // channel-tag lock
-    expect(system).toContain('<<<9349dc19-0801-40de-8bb6-e433328f83e2>>>'); // Element anchor
+    expect(system).toContain('Master4never (Kael)');
+    expect(system).toMatch(/show_reference_elements/);
+    expect(system).not.toMatch(/cyberdeck/i);
 
-    // 3. GUARD — a produced, on-canon image prompt passes compliance.
+    // 3. GUARD — a produced, anchored image prompt (resolved Element token +
+    //    prose lock) passes compliance.
     const prompt =
       'Editing from <<<9349dc19-0801-40de-8bb6-e433328f83e2>>>: Master4never steps into a neon-rain reality, ' +
-      'his forehead cyberdeck flaring cyan, an AIART4NEVER tag on his collar — keep the same man, same face.';
+      'keep the same man, same face.';
     const check = checkCanonCompliance(beat.characterId, prompt);
     expect(check.ok).toBe(true);
     expect(check.violations).toHaveLength(0);
@@ -49,10 +52,12 @@ describe('M1 one-beat e2e (4NE-9): plan → canon prompt → guard → tag → r
     expect(plan1.newGenCount).toBeLessThan(plan0.newGenCount);
   });
 
-  it('the guard BLOCKS an off-canon beat (a cyberdeck on the W40K variant)', () => {
-    const offCanon = '<<<812c9a78-4b78-4910-a301-3083c8c65ecc>>> Kaelus Vorne with a glowing forehead cyberdeck, crimson ceramite.';
-    const check = checkCanonCompliance('kaelus-vorne', offCanon);
+  it('the guard BLOCKS an un-anchored beat (no resolved Element token) — Story 2.8', () => {
+    // The structural guard now blocks on the ONE lore-agnostic guarantee: a
+    // recurring-character prompt with no <<<Element>>> anchor (edit-from-scratch).
+    const unanchored = 'Kaelus Vorne with crimson ceramite, same man.'; // no <<<uuid>>>
+    const check = checkCanonCompliance('kaelus-vorne', unanchored);
     expect(check.ok).toBe(false);
-    expect(check.violations.some((v) => v.rule === 'no-cyberdeck-on-variant' && v.severity === 'error')).toBe(true);
+    expect(check.violations.some((v) => v.rule === 'missing-element-token' && v.severity === 'error')).toBe(true);
   });
 });

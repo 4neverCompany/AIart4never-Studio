@@ -25,6 +25,11 @@ import type {
   WatermarkRecipe,
   WeeklySlot,
 } from './types';
+// Story 2.8 — `getElementRef` resolves the character's anchor from the per-turn
+// RunContext memo (written by the live `show_reference_elements` lookup). This is
+// a type-only cycle from run-context's side (it `import type`s CharacterId), so
+// there is no runtime import cycle.
+import { currentRunContext } from '@/lib/agent-loop/run-context';
 
 export * from './types';
 
@@ -57,7 +62,11 @@ export const REALITIES: Readonly<Record<RealityId, Reality>> = Object.freeze({
 });
 
 // ---------------------------------------------------------------------------
-// Characters (the recurring entities; each has locked look + hard rules + Element)
+// Characters — Story 2.8 SPINE only (routing keys). The locked look, hard
+// rules, persona, and Higgsfield Element id are NO LONGER hardcoded here: they
+// live in each character's CURRENT Higgsfield reference Element and are resolved
+// live (`show_reference_elements` → RunContext memo → getElementRef). These
+// records exist only for planning / tagging / the roster / the structural guard.
 // ---------------------------------------------------------------------------
 
 const KAEL: CanonCharacter = {
@@ -65,37 +74,6 @@ const KAEL: CanonCharacter = {
   name: 'Master4never (Kael)',
   reality: 'prime',
   isPrime: true,
-  role: 'Protagonist + narrator: a master Netrunner who travels the multiverse and meets variants of himself + other heroes.',
-  lookLocks: [
-    'ashen grey-blue skin',
-    'pointed elf-like ears',
-    'glowing amber/orange eyes',
-    'cyan circuit-lines tracing his skin',
-    'sharp, inhuman, handsome features',
-    'dark hair',
-    'forehead cyberdeck / nanotech tech-core (PRIME-only signature)',
-    'AIART4NEVER channel tag worn legibly on his clothing in the logo\'s stylized orange lettering (PRIME-only; placement/size flexible)',
-  ],
-  personality:
-    'The calm apex — main-character aura from unshakable composure, not volume. Perceptive, adaptive, quietly confident, curious about every reality, dry wit, deeply principled; bends to a reality\'s rules without ever losing himself (the meaning of "Master4never"). Flaw: detached — he observes more than he commits.',
-  voice:
-    'First-person, reflective, economical, a touch of dry humor — narrates the multiverse like a seasoned traveler\'s log, occasionally philosophical about identity ("every reality has a version of you; the only question is which choices made him").',
-  onCamera:
-    'The still point in the storm — enters a reality, reads it, then acts. Signature beat: his cyberdeck flares cyan as it adapts/materializes gear. Cool under pressure, lands a dry one-liner, rarely the aggressor unless forced.',
-  rules: [
-    'ALWAYS wears the forehead cyberdeck — his signature; PRIME-only, no variant has it.',
-    'ALWAYS wears the AIART4NEVER channel tag somewhere legible on his clothing in the orange logo lettering (PRIME-only). Placement/size flexible — collar by default; can be chest, sleeve, or a large back-print. Only constant: present and reads as the brand.',
-    'EDIT from his locked reference / Element; never regenerate from scratch.',
-    'Lock identity explicitly ("keep the SAME man, same face + bone structure, same features") so any transformation keeps him unmistakably himself.',
-  ],
-  persistence: {
-    elementId: '9349dc19-0801-40de-8bb6-e433328f83e2',
-    soulId: '7930f6de',
-    lockedRefs: [
-      '_reference/Master4never__PRIME__channel-tag__AIART4NEVER-collar.png',
-      '_reference/Master4never_element_image_3d03fb8a.png',
-    ],
-  },
 };
 
 const KAELUS_VORNE: CanonCharacter = {
@@ -103,41 +81,6 @@ const KAELUS_VORNE: CanonCharacter = {
   name: 'Kaelus Vorne (The Iron Halo)',
   reality: 'w40k',
   isPrime: false,
-  role: 'The W40K-native variant of Master4never: Chapter Master of the "Ashen Halo". A SEPARATE character — the reality\'s own son of war, not Kael visiting.',
-  lookLocks: [
-    'young',
-    'short dark beard',
-    'battle scars',
-    '3 metal service studs on the left brow',
-    'cybernetic port at the right temple',
-    'ashen grey-blue skin',
-    'pointed elf-like ears',
-    'glowing amber eyes',
-    'sharp inhuman features',
-    'CLEAN forehead (NO cyberdeck)',
-    'crimson + black ceramite power armor, gold trim, massive pauldrons',
-    'radiant golden Iron Halo behind the head; heraldry = a burning golden halo encircling an upright sword',
-  ],
-  personality:
-    'The grimdark mirror of Kael — the path-not-taken. Where Kael wanders and observes, Kaelus committed: stern, iron-disciplined, duty- and faith-bound, weary gravitas. Has buried too many brothers and believes in the mission absolutely; honor before self. Rare, grim humor; zealous but a leader, not a fanatic.',
-  voice:
-    'Formal, archaic-militant 40K cadence — low, measured, commanding. Invokes the Emperor and the burning halo ("By the Ashen Halo…", "The Emperor protects."). Speaks rarely and with weight; silence is a tool.',
-  onCamera:
-    'Command presence — stillness reads as menace; bare-headed always (helm mag-locked or held). In action: economical, brutal, decisive. The Iron Halo flares with his resolve. Meeting Kael: a long weighing silence, mutual recognition of one soul on a different road.',
-  rules: [
-    'NO cyberdeck — the forehead tech-core is PRIME-only; never on a variant, especially the face.',
-    'Service studs / skull implants ARE allowed (native Astartes iconography; ~one stud per century of service).',
-    'Does NOT wear the AIART4NEVER channel tag (PRIME-only); his published content gets the watermark Element overlaid at publish time instead.',
-    'No helmet in hero shots (Main Character Aura); helm held or mag-locked.',
-    'EDIT from his locked reference / Element; never regenerate from scratch. Lock the face explicitly ("keep the SAME man; do NOT age him") — then any weathering keeps his identity.',
-  ],
-  persistence: {
-    elementId: '812c9a78-4b78-4910-a301-3083c8c65ecc',
-    lockedRefs: [
-      'KaelusVorne-W40K-VARIANT__SoulV1/KaelusVorne__W40K__CANON-FACE__young-beard-scars-studs.png',
-      'KaelusVorne-W40K-VARIANT__SoulV1/KaelusVorne__W40K__CANON__chapter-master-ashen-halo__armor-v1.png',
-    ],
-  },
 };
 
 const KAELUS_ALT: CanonCharacter = {
@@ -145,23 +88,6 @@ const KAELUS_ALT: CanonCharacter = {
   name: 'Kaelus (modern-hightech)',
   reality: 'w40k-alt',
   isPrime: false,
-  role: 'Design study: modernized-but-clearly-Astartes armor on Kaelus\' face. Not yet a locked Element.',
-  lookLocks: [
-    "Kaelus' face (young, short beard, scars, brow studs, NO cyberdeck)",
-    'modernized high-tech power armor that still reads clearly as Astartes',
-    'black + crimson + orange palette (candidate)',
-  ],
-  personality: 'Same character as Kaelus Vorne — an alt-armor study; reads with the same stern, duty-bound gravitas.',
-  voice: 'Same as Kaelus Vorne (archaic-militant 40K cadence).',
-  onCamera: 'Same command presence as Kaelus Vorne.',
-  rules: [
-    'Design study only — no registered Element yet; the candidate reference must be locked before reuse.',
-    'Same hard rules as Kaelus Vorne: NO cyberdeck, does NOT wear the AIART4NEVER tag, service studs OK.',
-    'EDIT from the candidate reference; never regenerate from scratch.',
-  ],
-  persistence: {
-    lockedRefs: ['KaelusVorne-ALT-modern-hightech/KaelusVorne__W40K-ALT__takeB2-40K-black-crimson-orange.png'],
-  },
 };
 
 const CHARACTERS: Readonly<Record<CharacterId, CanonCharacter>> = Object.freeze({
@@ -242,13 +168,19 @@ export function getPillar(id: string): ContentPillar | undefined {
 }
 
 /**
- * The Higgsfield anchor token for a character: `<<<elementId>>>` when the
- * character has a registered Element, else undefined (the caller must fall
- * back to a locked reference image — see the character's persistence.lockedRefs).
+ * The Higgsfield anchor token for a character: `<<<elementId>>>`, or undefined
+ * when the character has not been resolved this turn.
+ *
+ * Story 2.8 — resolves SOLELY from the per-turn RunContext memo
+ * (`resolvedElements`), which the live `show_reference_elements` lookup populates
+ * with the character's CURRENT Higgsfield Element. There is no hardcoded id
+ * anymore; a character with no live resolution returns undefined and the spend
+ * path fails safe (refuses to generate un-anchored). `id` is accepted for a
+ * stable call-site signature even though resolution is by the memo key.
  */
 export function getElementRef(id: CharacterId): string | undefined {
-  const el = getCharacter(id).persistence.elementId;
-  return el ? `<<<${el}>>>` : undefined;
+  const resolved = currentRunContext()?.resolvedElements?.get(id)?.elementId;
+  return resolved ? `<<<${resolved}>>>` : undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -256,52 +188,48 @@ export function getElementRef(id: CharacterId): string | undefined {
 // ---------------------------------------------------------------------------
 
 /**
- * Build the canon system-prompt block for a character — the persona + locked
- * look + hard rules + the persistence mandate + the reality hallmarks. This is
- * injected into the LLM system prompt (text + director modes) so every prompt,
- * caption, and plan stays on-model.
+ * Build the canon system-prompt block for a character — STRUCTURAL only
+ * (Story 2.8). The per-character persona / locked look / hard rules are NO
+ * LONGER hardcoded here: they live in the character's CURRENT Higgsfield Element
+ * `description`, which the agent resolves live via `show_reference_elements`.
+ * This block carries only the character/reality framing, the reality hallmarks
+ * (structural, from REALITIES), the persistence mandate, and the standing
+ * instruction to resolve the Element first. It emits NO anchor — at prompt-build
+ * time nothing is resolved yet; the `<<<element>>>` anchor is prepended at spend
+ * time from the RunContext memo.
  */
 export function buildCanonSystemBlock(id: CharacterId): string {
   const c = getCharacter(id);
   const reality = getReality(c.reality);
-  const anchor = getElementRef(id) ?? `locked reference image (${c.persistence.lockedRefs[0]})`;
   const bullets = (xs: readonly string[]) => xs.map((x) => `- ${x}`).join('\n');
 
   return [
     `## Canon character: ${c.name} — reality: ${reality.label}`,
-    `Role: ${c.role}`,
-    `Personality: ${c.personality}`,
-    `Voice: ${c.voice}`,
-    `On-camera: ${c.onCamera}`,
     '',
-    '### Locked look (must never drift across generations)',
-    bullets(c.lookLocks),
-    '',
-    '### Hard canon rules (apply as explicit locks in every prompt)',
-    bullets(c.rules),
+    'This character\'s locked look, hard rules, and lore are NOT restated here —',
+    'they live in the character\'s CURRENT Higgsfield reference Element. Resolve it',
+    'with `show_reference_elements` BEFORE drafting a generation prompt; the',
+    'Element `description` is the authoritative canon and overrides memory.',
     '',
     `### Reality hallmarks — ${reality.name} (${reality.vibe})`,
     bullets(reality.hallmarks),
     '',
     '### Persistence (anchored generation)',
     CONSISTENCY_MANDATE,
-    `Anchor for this character: ${anchor}.`,
   ].join('\n');
 }
 
 /**
- * A compact look + rules fragment for injection into an IMAGE prompt (vs the
- * full system block). Returns the identity-lock the image model needs.
+ * A compact identity-lock fragment for injection into an IMAGE prompt (vs the
+ * full system block). Story 2.8: the character-AGNOSTIC lock only — the locked
+ * look / hard rules now come from the live Element `description`, and the
+ * `<<<element>>>` anchor is prepended at spend time from the resolved RunContext
+ * memo (not here, where nothing is resolved yet).
  */
 export function buildCharacterLockBlock(id: CharacterId): string {
   const c = getCharacter(id);
-  const anchor = getElementRef(id);
-  const lines = [
+  return [
     `Identity lock — ${c.name}: keep the SAME man, same face + bone structure + features. Do not drift the look.`,
-    `Locked look: ${c.lookLocks.join('; ')}.`,
-    `Rules: ${c.rules.join(' ')}`,
-  ];
-  if (anchor) lines.push(`Anchor element: ${anchor}.`);
-  else lines.push(`Anchor: edit from ${c.persistence.lockedRefs[0]} (no registered Element yet).`);
-  return lines.join('\n');
+    'Edit from the character\'s resolved Higgsfield Element reference — never generate a recurring character from scratch.',
+  ].join('\n');
 }

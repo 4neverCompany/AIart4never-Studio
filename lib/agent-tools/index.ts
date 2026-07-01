@@ -45,6 +45,9 @@ import { costEstimateTool, executeCostEstimate } from './cost-estimate';
 import { reframeImageTool, executeReframeImage } from './reframe-image';
 // V1.3.0 T1.5
 import { jobLookupTool, executeJobLookup } from './job-lookup';
+// Story 2.8 — read-only live canon lookup (agent resolves character Elements
+// from Higgsfield instead of hardcoded records).
+import { showReferenceElementsTool, executeShowReferenceElements } from './show-reference-elements';
 
 // ---------------------------------------------------------------------------
 // Schemas (re-export so consumers can re-use them in tests / route validation)
@@ -85,6 +88,11 @@ export {
   zViralityPredictInput,
   zViralityPredictOutput,
 } from './virality-predict';
+// Story 2.8 — reference-element (live canon) lookup schemas
+export {
+  zShowReferenceElementsInput,
+  zShowReferenceElementsOutput,
+} from './show-reference-elements';
 
 // Inferred TYPES (use in function signatures, return types, etc.).
 // The `type` keyword on the export tells `isolatedModules` that this
@@ -117,6 +125,8 @@ export type {
 } from './schemas';
 // V1.3: virality prediction types (defined in virality-predict.ts)
 export type { ViralityPredictInput, ViralityPredictOutput } from './virality-predict';
+// Story 2.8
+export type { ShowReferenceElementsInput, ShowReferenceElementsOutput } from './show-reference-elements';
 
 // ---------------------------------------------------------------------------
 // Error classes
@@ -167,6 +177,9 @@ export {
   // V1.3.0 — T1.5
   jobLookupTool,
   executeJobLookup,
+  // Story 2.8 — read-only live canon lookup
+  showReferenceElementsTool,
+  executeShowReferenceElements,
 };
 
 // Pure helpers re-exported for unit tests + non-SDK callers.
@@ -210,6 +223,8 @@ export const AGENT_TOOLS = [
   costEstimateTool,
   reframeImageTool,
   jobLookupTool,
+  // Story 2.8 — read-only live canon lookup (resolve character Elements from Higgsfield)
+  showReferenceElementsTool,
 ] as unknown as Tool[];
 
 // ---------------------------------------------------------------------------
@@ -246,6 +261,7 @@ export const AGENT_TOOLS_MAP = {
   cost_estimate: costEstimateTool,
   reframe_image: reframeImageTool,
   job_lookup: jobLookupTool,
+  show_reference_elements: showReferenceElementsTool,
 } as unknown as ToolSet;
 
 // ---------------------------------------------------------------------------
@@ -284,6 +300,7 @@ export function describeAgentTools(): Array<{ name: string; description: string;
       if (t === costEstimateTool) return 'cost_estimate';
       if (t === reframeImageTool) return 'reframe_image';
       if (t === jobLookupTool) return 'job_lookup';
+      if (t === showReferenceElementsTool) return 'show_reference_elements';
       return 'unknown';
     })();
     return { name, description: desc, hasInputSchema: hasInput, hasOutputSchema: hasOutput };

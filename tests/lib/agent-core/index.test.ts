@@ -211,9 +211,11 @@ describe('runAgent — wiring', () => {
     const system = String(captured.current.system ?? '');
     expect(system).toMatch(/AIart4never Studio agent/i);
     expect(system).toMatch(/Master4never/);
-    expect(system).toMatch(/Element-anchored/i);
+    // Story 2.8: the agent resolves canon live — the prompt names the lookup tool
+    // and carries no hardcoded lore or a build-time Element anchor.
+    expect(system).toMatch(/show_reference_elements/);
     expect(system).toMatch(/Master4never \(Kael\)/);
-    expect(system).toMatch(/<<<[0-9a-f-]+>>>/i);
+    expect(system).not.toMatch(/<<<[0-9a-f-]+>>>/i);
     // No rigid 6-step director scaffold.
     expect(system).not.toMatch(/Director plan \(executed in this order/i);
     expect(system).not.toMatch(/Execute the director plan/i);
@@ -357,7 +359,8 @@ describe('buildSystem', () => {
     const system = await buildSystem('kael', await loadAgentInstructions());
     expect(system).toMatch(/AIart4never Studio agent/i);
     expect(system).toMatch(/Master4never \(Kael\)/);
-    expect(system).toMatch(/<<<[0-9a-f-]+>>>/i);
+    expect(system).toMatch(/show_reference_elements/);
+    expect(system).not.toMatch(/<<<[0-9a-f-]+>>>/i);
     expect(system).not.toMatch(/Director plan \(executed in this order/i);
   });
 });

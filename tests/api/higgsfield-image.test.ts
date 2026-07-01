@@ -51,7 +51,6 @@ vi.mock('@/lib/mcp', () => {
 
 import { POST } from '@/app/api/higgsfield/image/route';
 import { GET } from '@/app/api/higgsfield/image/[id]/route';
-import { getElementRef } from '@/lib/canon';
 import { McpError as FakeMcpError } from '@/lib/mcp';
 
 const ORIGINAL_ENV = { ...process.env };
@@ -179,6 +178,7 @@ describe('POST /api/higgsfield/image — submit', () => {
         connector: CONNECTOR,
         aspectRatio: '9:16',
         count: 2,
+        elementId: 'kael-op-el-9999',
       }),
     );
     expect(res.status).toBe(200);
@@ -198,10 +198,9 @@ describe('POST /api/higgsfield/image — submit', () => {
     // The model we SUBMITTED — NOT the echoed nano_banana_flash remap.
     expect(json.model).toBe('nano_banana_2');
 
-    // Canon anchor: the prompt starts with kael's Element placeholder.
-    const elementRef = getElementRef('kael');
-    expect(elementRef).toBeTruthy();
-    expect(json.prompt.startsWith(elementRef as string)).toBe(true);
+    // Canon anchor: the prompt starts with the operator-supplied Element token.
+    const elementRef = '<<<kael-op-el-9999>>>';
+    expect(json.prompt.startsWith(elementRef)).toBe(true);
     expect(json.prompt).toContain('a vivid cyberpunk rooftop scene');
 
     // The generate_image call shape: { params: { model, prompt, aspect_ratio, count } }.
@@ -215,7 +214,7 @@ describe('POST /api/higgsfield/image — submit', () => {
     expect(args.params.model).toBe('nano_banana_2');
     expect(args.params.aspect_ratio).toBe('9:16');
     expect(args.params.count).toBe(2);
-    expect(String(args.params.prompt)).toContain(elementRef as string);
+    expect(String(args.params.prompt)).toContain(elementRef);
 
     // Client always closed.
     expect(closeSpy).toHaveBeenCalledTimes(1);
@@ -224,17 +223,20 @@ describe('POST /api/higgsfield/image — submit', () => {
   it('skipEnhance bypasses MiniMax (no fetch) and submits the idea verbatim (still anchored)', async () => {
     callMcpToolSpy.mockResolvedValue(submitEcho());
     const res = await POST(
-      postReq({ idea: 'raw prompt text', connector: CONNECTOR, skipEnhance: true }),
+      postReq({ idea: 'raw prompt text', connector: CONNECTOR, skipEnhance: true, elementId: 'kael-op-el-9999' }),
     );
     expect(res.status).toBe(200);
     const json = (await res.json()) as { prompt: string; anchored: boolean };
     expect(globalThis.fetch).not.toHaveBeenCalled();
-    const elementRef = getElementRef('kael') as string;
+    const elementRef = '<<<kael-op-el-9999>>>';
     expect(json.prompt).toBe(`${elementRef} raw prompt text`);
     expect(json.anchored).toBe(true);
   });
 
-  it('proceeds unanchored (anchored:false) for a character with no Element (kaelus-alt)', async () => {
+  it('REFUSES (422, no submit) for a character with no resolved Element (kaelus-alt) — Story 2.8', async () => {
+    // kaelus-alt has no live memo and no hardcoded Element → the shared lib
+    // throws UnresolvedElementError in Step 2, BEFORE any MCP submit. The route
+    // maps that to 422 and no credit is spent (fail-safe, never un-anchored).
     callMcpToolSpy.mockResolvedValue(submitEcho());
     const res = await POST(
       postReq({
@@ -244,11 +246,26 @@ describe('POST /api/higgsfield/image — submit', () => {
         skipEnhance: true,
       }),
     );
+    expect(res.status).toBe(422);
+    expect(callMcpToolSpy).not.toHaveBeenCalled();
+    expect(connectSpy).not.toHaveBeenCalled();
+  });
+
+  it('Story 2.8: an OPERATOR-supplied explicit elementId anchors + submits (operator-consented path)', async () => {
+    callMcpToolSpy.mockResolvedValue(submitEcho());
+    const res = await POST(
+      postReq({
+        idea: 'a design study',
+        connector: CONNECTOR,
+        characterId: 'kaelus-alt',
+        elementId: 'op-supplied-1234',
+        skipEnhance: true,
+      }),
+    );
     expect(res.status).toBe(200);
     const json = (await res.json()) as { prompt: string; anchored: boolean };
-    expect(json.anchored).toBe(false);
-    expect(json.prompt).toBe('a design study');
-    expect(json.prompt).not.toContain('<<<');
+    expect(json.anchored).toBe(true);
+    expect(json.prompt).toContain('<<<op-supplied-1234>>>');
   });
 
   it('400s on an unknown canon character', async () => {
@@ -262,7 +279,7 @@ describe('POST /api/higgsfield/image — submit', () => {
   it('surfaces a tool error as 502 AND still closes the client', async () => {
     mockMinimaxReturns('enhanced');
     callMcpToolSpy.mockRejectedValue(new FakeMcpError('tool-error', 'tool "generate_image" returned an error result'));
-    const res = await POST(postReq({ idea: 'kael', connector: CONNECTOR }));
+    const res = await POST(postReq({ idea: 'kael', connector: CONNECTOR, elementId: 'kael-op-el-9999' }));
     expect(res.status).toBe(502);
     const json = (await res.json()) as { error: string };
     expect(json.error).toMatch(/Higgsfield submit failed/);
@@ -274,7 +291,7 @@ describe('POST /api/higgsfield/image — submit', () => {
   it('502s when the submit echo carries no job id', async () => {
     mockMinimaxReturns('enhanced');
     callMcpToolSpy.mockResolvedValue({ results: [], adjustments: {} });
-    const res = await POST(postReq({ idea: 'kael', connector: CONNECTOR }));
+    const res = await POST(postReq({ idea: 'kael', connector: CONNECTOR, elementId: 'kael-op-el-9999' }));
     expect(res.status).toBe(502);
     expect(closeSpy).toHaveBeenCalledTimes(1);
   });

@@ -71,6 +71,26 @@ export class MissingMinimaxKeyError extends Error {
 }
 
 /**
+ * Story 2.8 — thrown when a recurring character has no resolved Higgsfield
+ * Element for this turn (the `show_reference_elements` lookup wasn't run, or was
+ * ambiguous). The generation is REFUSED before any submit — we never spend
+ * credits on an un-anchored recurring character. Non-retryable: the agent must
+ * resolve the Element first. The tool layer maps this to a clear ToolExecutionError.
+ */
+export class UnresolvedElementError extends Error {
+  readonly characterId: string;
+  constructor(characterId: string) {
+    super(
+      `No resolved Higgsfield Element for character "${characterId}" — resolve it with `
+        + `show_reference_elements before generating (refusing to spend un-anchored).`,
+    );
+    this.name = 'UnresolvedElementError';
+    this.characterId = characterId;
+    Object.setPrototypeOf(this, UnresolvedElementError.prototype);
+  }
+}
+
+/**
  * Compose the system message the MiniMax enhance call sees. Hard guardrails
  * first (no fences, no preamble), then the operator's agentPrompt, then
  * niches/genres. The canon Element placeholder is prepended AFTER enhance, so
@@ -304,10 +324,19 @@ export interface SubmitHiggsfieldGenerationArgs {
   /** How many images to request (default 1). */
   count?: number;
   /**
-   * The canon character whose `<<<elementId>>>` anchor is prepended. Default
-   * 'kael'. A character with no registered Element proceeds unanchored.
+   * The canon character whose live `<<<elementId>>>` anchor is prepended.
+   * Default 'kael'. Story 2.8: a character with NO resolved Element throws
+   * {@link UnresolvedElementError} (no submit, no spend) — never un-anchored.
    */
   characterId?: CharacterId;
+  /**
+   * Story 2.8 — an OPERATOR-supplied explicit Element id. Used ONLY by
+   * operator-consented HTTP routes (the human picks/resolves the Element in a UI
+   * that holds the client-side connector). The autonomous agent tool NEVER sets
+   * this — it resolves via the RunContext memo (`getElementRef`), so the model
+   * can't smuggle an id into a spend. When present, it is the anchor directly.
+   */
+  elementId?: string;
   /** Whether to run the MiniMax enhance before submit (default true). */
   enhance?: boolean;
   /** Enhance system-prompt knobs (only used when `enhance` is true). */
@@ -377,13 +406,27 @@ export async function submitHiggsfieldGeneration(
     enhancedPrompt = cleanEnhancedPrompt(rawEnhanced) || args.prompt;
   }
 
-  // ── Step 2: CANON ANCHOR ──────────────────────────────────────────────
-  // Prepend the character's Higgsfield Element placeholder `<<<elementId>>>`
-  // so the backend resolves it and injects the LOCKED character reference
-  // image. This is the canon "always EDIT from a locked reference" rule.
-  const elementRef = getElementRef(characterId);
-  const anchored = typeof elementRef === 'string';
-  const finalPrompt = anchored ? `${elementRef} ${enhancedPrompt}` : enhancedPrompt;
+  // ── Step 2: CANON ANCHOR (Story 2.8 — fail safe, never spend un-anchored) ──
+  // Resolve the character's LIVE Higgsfield Element token from the RunContext
+  // memo (written by the show_reference_elements lookup; record fallback during
+  // migration). If nothing is resolved for this character, REFUSE — do not
+  // submit, do not spend. There is no hardcoded lockedRefs image fallback
+  // anymore, so "fail safe" here means "do not spend".
+  // An operator-supplied explicit id (operator-consented routes) wins; otherwise
+  // resolve from the live RunContext memo (the autonomous agent path).
+  const elementRef = args.elementId && args.elementId.trim()
+    ? `<<<${args.elementId.trim()}>>>`
+    : getElementRef(characterId);
+  if (!elementRef) {
+    throw new UnresolvedElementError(characterId);
+  }
+  // Governance: the anchor id must be the SERVER-resolved one, never a string
+  // the model typed. Strip ANY <<<...>>> span the model may have smuggled into
+  // its prompt (non-greedy, matches even malformed tokens containing `<`/`>`),
+  // then prepend the single validated anchor.
+  const cleanedPrompt = enhancedPrompt.replace(/<<<[\s\S]*?>>>/g, ' ').replace(/\s{2,}/g, ' ').trim();
+  const finalPrompt = `${elementRef} ${cleanedPrompt}`;
+  const anchored = true;
 
   // ── Step 3: submit to Higgsfield via the generic MCP client ───────────
   let connection: Awaited<ReturnType<typeof connectMcp>> | undefined;

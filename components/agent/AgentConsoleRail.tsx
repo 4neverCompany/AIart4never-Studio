@@ -36,7 +36,6 @@ import {
 import { useMashup } from '@/components/MashupContext';
 import {
   getCharacter,
-  getElementRef,
   getReality,
   CONTENT_PILLARS,
   REALITIES,
@@ -215,14 +214,6 @@ function CanonPanel({ characterId }: { characterId: CharacterId }) {
     }
   }, [characterId]);
 
-  const elementRef = useMemo(() => {
-    try {
-      return getElementRef(characterId);
-    } catch {
-      return undefined;
-    }
-  }, [characterId]);
-
   if (!character) {
     return (
       <section data-testid="canon-panel" aria-label="Canon panel" className="rail-panel border-b-0">
@@ -269,29 +260,22 @@ function CanonPanel({ characterId }: { characterId: CharacterId }) {
         </div>
       </div>
 
-      {/* Locked Element id */}
+      {/* Element — Story 2.8: canon is resolved LIVE from Higgsfield per
+          generation (the agent looks up the character's current Element in chat).
+          The browser has no run context and the id is not hardcoded, so we show
+          the honest live state instead of a stale token. */}
       <div className="mb-3.5">
         <p className="rail-heading mb-1.5" style={{ fontFamily: 'var(--font-sans)' }}>
           Element
         </p>
-        {elementRef ? (
-          <span
-            data-testid="canon-element"
-            className="flex items-center gap-1.5 text-[10px] font-mono text-[#00e6ff] bg-[#00e6ff]/8 border border-[#00e6ff]/25 rounded-lg px-2 py-1 break-all"
-            style={{ fontFamily: 'var(--font-mono)' }}
-          >
-            <Lock className="w-3 h-3 shrink-0" />
-            {elementRef}
-          </span>
-        ) : (
-          <span
-            data-testid="canon-element-none"
-            className="text-[10px] font-mono text-[#8a97a6]"
-            style={{ fontFamily: 'var(--font-mono)' }}
-          >
-            no locked Element
-          </span>
-        )}
+        <span
+          data-testid="canon-element-live"
+          className="flex items-center gap-1.5 text-[10px] font-mono text-[#8a97a6] bg-[#8a97a6]/8 border border-[#8a97a6]/22 rounded-lg px-2 py-1"
+          style={{ fontFamily: 'var(--font-mono)' }}
+        >
+          <Lock className="w-3 h-3 shrink-0" />
+          resolved live in chat
+        </span>
       </div>
 
       {/* Content pillars */}
