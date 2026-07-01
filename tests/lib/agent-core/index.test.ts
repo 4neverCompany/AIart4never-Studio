@@ -156,6 +156,47 @@ describe('runAgent — wiring', () => {
     expect(captured.current.prompt).toBeUndefined();
   });
 
+  it('Story 10.5: compacts an over-budget history — keeps the newest turn + last user intent (AC1/AC4)', async () => {
+    const captured = capture();
+    const many: ModelMessage[] = [
+      { role: 'user', content: 'old turn 1' },
+      { role: 'assistant', content: 'reply 1' },
+      { role: 'user', content: 'old turn 2' },
+      { role: 'assistant', content: 'reply 2' },
+      { role: 'user', content: 'CURRENT: forge a beat' },
+    ];
+    const handle = await runAgent({
+      ...baseInput,
+      messages: many,
+      // Force over-budget: every message + the system estimate to 50k tokens, so
+      // against M3's 128k window (16k reserve) only the newest turn survives.
+      _tokenCounterOverride: () => 50_000,
+    });
+    if (!isHandle(handle)) throw new Error('expected a handle');
+    await drain(handle);
+    handle.dispose();
+    const sent = captured.current.messages as ModelMessage[];
+    expect(sent.length).toBeLessThan(many.length); // trimmed (AC1)
+    expect(sent[0].role).toBe('user'); // valid slice start (no orphaned tool)
+    expect(sent[sent.length - 1].content).toBe('CURRENT: forge a beat'); // operator intent kept
+  });
+
+  it('Story 10.5: leaves a short conversation unchanged — no compaction (AC2)', async () => {
+    const captured = capture();
+    const short: ModelMessage[] = [
+      { role: 'user', content: 'hello' },
+      { role: 'assistant', content: 'hi' },
+      { role: 'user', content: 'forge' },
+    ];
+    const handle = await runAgent({ ...baseInput, messages: short });
+    if (!isHandle(handle)) throw new Error('expected a handle');
+    await drain(handle);
+    handle.dispose();
+    expect(captured.current.messages).toEqual(short);
+    // AC2 byte-for-byte: the SAME array reference is passed through (not a copy).
+    expect(captured.current.messages).toBe(short);
+  });
+
   it('builds the system from AGENT.md + canon block + Element lock (no rigid scaffold)', async () => {
     const captured = capture();
     const handle = await runAgent(baseInput);

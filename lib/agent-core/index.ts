@@ -51,6 +51,8 @@ import { BudgetTracker, estimateStepCost } from '@/lib/agent-loop/budget';
 import { buildDirectorChatSystemPrompt, type PlanContext } from '@/lib/agent-loop/plan';
 import { loadAgentInstructions } from '@/lib/agent-loop/agent-md';
 import { resolveDirectorModel, type RunDirectorLoopResult } from '@/lib/agent-loop';
+import { resolveTextModel } from '@/lib/text-model-catalog';
+import { compactMessages } from './compact';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -116,6 +118,8 @@ export interface RunAgentInput {
   _runIdOverride?: string;
   /** @internal Test seam: deterministic clock (epoch ms). */
   _clockOverride?: () => number;
+  /** @internal Test seam: deterministic token estimator for history compaction. */
+  _tokenCounterOverride?: (text: string) => number;
 }
 
 /**
@@ -392,10 +396,27 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
     const tools = (input._toolsOverride ?? AGENT_TOOLS_MAP) as ToolSet;
     const makeTransform = makeThinkStripTransform();
 
+    // Story 10.5: token-budgeted sliding-window compaction so long sessions
+    // don't overflow the model context window (FR-1). PURE + deterministic; the
+    // canon system block (built above, passed separately) and RunContext
+    // (active character / Element / approval state) are NOT in `messages`, so
+    // trimming old turns cannot change identity-lock or approval behaviour. A
+    // short conversation is returned unchanged (byte-for-byte).
+    const estimateTokens = input._tokenCounterOverride ?? ((t: string) => Math.ceil(t.length / 4));
+    // Alias-aware lookup so a persisted alias id (e.g. `M2.7-highspeed`) resolves
+    // to its real context window instead of the conservative fallback.
+    const catalogEntry = resolveTextModel(resolved.modelId);
+    const messages = compactMessages(input.messages, {
+      contextWindowTokens: catalogEntry?.contextWindow ?? 32_000,
+      reserveTokens: catalogEntry?.defaultMaxTokens ?? 4_096,
+      systemTokens: estimateTokens(system),
+      estimateTokens,
+    });
+
     const result = streamText({
       model: resolved.model,
       system,
-      messages: input.messages,
+      messages,
       tools,
       // No workflow cap. stepCountIs(256) is a pure runaway safety net; the
       // agent stops naturally (finishReason stop) when it ends its turn with
