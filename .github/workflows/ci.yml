@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # Mirrors tauri-windows.yml: Bun primary for ~40× faster installs,
       # Node still set up because the build script chains node and the
