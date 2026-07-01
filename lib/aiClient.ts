@@ -309,14 +309,14 @@ export interface AgentAssetRef {
 
 /**
  * A typed event yielded by `streamAgent`. Mirrors the SSE shape emitted by
- * `/api/ai/prompt`'s streaming director path (`handleDirectorStream`).
+ * `/api/ai/prompt`'s conversational agent-core stream (`handleAgentStream`).
  */
 export type AgentEvent =
   | { type: 'text'; text: string; stepType?: string; idx?: number }
-  // The internal director-plan step. Carries NO scaffold text — it's a marker
-  // so the console can show a subtle "planning…" pill. The plan scaffold is
-  // deliberately NOT streamed to the visible chat (it's Replay-UI-only); see
-  // `stepToEvent` in app/api/ai/prompt/route.ts.
+  // Legacy director-plan marker. The agent-core stream (`handleAgentStream`)
+  // emits NO plan event; this variant is retained so the console can keep
+  // defensively ignoring a stray plan step — its scaffold text must never
+  // render in the visible chat.
   | { type: 'plan'; stepType?: string; idx?: number }
   | { type: 'tool-call'; tool: string; args?: unknown; idx?: number; cost?: number }
   | {
@@ -347,10 +347,11 @@ export type AgentEvent =
 
 export interface StreamAgentOptions {
   /**
-   * AGENTIC-HARNESS: opt into the clean conversational agent-core path
-   * (`runAgent`, behind `body.agentCore`) instead of the legacy brief frame
-   * (`runDirectorLoop`). When true, `messages` is the input (the niches /
-   * genres / ideaConcept brief is NOT required, and `message` is ignored).
+   * AGENTIC-HARNESS: the conversational agent-core path is now the ONLY path.
+   * `streamAgent` always POSTs `agentCore: true` (served by `handleAgentStream`,
+   * running `runAgent`) with `messages` as the input. The legacy brief frame was
+   * retired (Story 10.3), so this flag no longer selects a branch — it's kept
+   * for back-compat with the console, which still sets it explicitly.
    */
   agentCore?: boolean;
   /**
@@ -360,10 +361,6 @@ export interface StreamAgentOptions {
    * excluding the in-flight turn, with the new operator message last.
    */
   messages?: ModelMessage[];
-  /** 1-6 content pillars (Director requires at least one — legacy brief path). */
-  niches?: string[];
-  /** 0-10 style tags. */
-  genres?: string[];
   /** The active Master4never character whose canon anchors the run. */
   characterId?: CharacterId;
   /**
@@ -399,47 +396,30 @@ export async function* streamAgent(
   message: string,
   options: StreamAgentOptions,
 ): AsyncGenerator<AgentEvent, void, void> {
-  // AGENTIC-HARNESS: the agent-core path sends the conversation as
-  // `messages` (ModelMessage[]) and sets `agentCore: true`, hitting
-  // `handleAgentStream`. There is NO niches/genres/ideaConcept brief and NO
-  // message-length cap. The legacy brief path (below) is preserved for
-  // back-compat — it POSTs ideaConcept + clamped niches/genres to
-  // `handleDirectorStream`.
-  const body: Record<string, unknown> = options.agentCore
-    ? {
-        mode: 'director',
-        stream: true,
-        agentCore: true,
-        // messages-in. The route's readModelMessages validates the shape.
-        messages: options.messages ?? [],
-        activeCharacterId: options.characterId,
-        higgsfieldConnector: options.higgsfieldConnector,
-        skillContext: options.skills,
-        model: options.model,
-        higgsfieldCliToken: options.higgsfieldCliToken,
-        userId: options.userId,
-        // Optional soft-budget / runaway-net knobs (no required caps).
-        maxSteps: options.maxSteps,
-        budgetUsd: options.budgetUsd,
-      }
-    : {
-        mode: 'director',
-        stream: true,
-        // The Director loop reads the concept from `ideaConcept` (not `message`).
-        ideaConcept: message,
-        // Clamp to the director input schema (niches <=6, genres <=10) so the
-        // operator's full Settings lists never trip runDirectorLoop validation.
-        niches: (options.niches ?? []).slice(0, 6),
-        genres: (options.genres ?? []).slice(0, 10),
-        activeCharacterId: options.characterId,
-        higgsfieldConnector: options.higgsfieldConnector,
-        skillContext: options.skills,
-        model: options.model,
-        higgsfieldCliToken: options.higgsfieldCliToken,
-        userId: options.userId,
-        maxSteps: options.maxSteps,
-        budgetUsd: options.budgetUsd,
-      };
+  // AGENTIC-HARNESS: streamAgent has a SINGLE path — the clean conversational
+  // agent-core stream. It POSTs `messages` (ModelMessage[]) with
+  // `agentCore: true`, served by `handleAgentStream` (running `runAgent`). There
+  // is NO niches/genres/ideaConcept brief and NO message-length cap. Story 10.3
+  // retired the legacy brief-based director on the server, so the old
+  // `!agentCore` client branch that fed `ideaConcept` + clamped niches/genres is
+  // gone with it. The positional `message` is already the last entry in
+  // `messages` (the caller appends it), so it is not sent separately here.
+  const body: Record<string, unknown> = {
+    mode: 'director',
+    stream: true,
+    agentCore: true,
+    // messages-in. The route's readModelMessages validates the shape.
+    messages: options.messages ?? [],
+    activeCharacterId: options.characterId,
+    higgsfieldConnector: options.higgsfieldConnector,
+    skillContext: options.skills,
+    model: options.model,
+    higgsfieldCliToken: options.higgsfieldCliToken,
+    userId: options.userId,
+    // Optional soft-budget / runaway-net knobs (no required caps).
+    maxSteps: options.maxSteps,
+    budgetUsd: options.budgetUsd,
+  };
 
   const res = await fetch('/api/ai/prompt', {
     method: 'POST',
