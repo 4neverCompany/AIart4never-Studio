@@ -53,6 +53,21 @@ export interface RunContext {
 let _current: RunContext | null = null;
 
 export function enterRunContext(ctx: RunContext): void {
+  // Story 10.6 (AD-4 / OAQ-8): enforce the one-run-per-worker invariant. A second
+  // enter before exitRunContext means two runs overlap in this process — FAIL
+  // LOUD rather than silently overwrite `_current`. Silent overwrite would let a
+  // tool call from one run read another run's budget / active character /
+  // connector / approval state (cross-run bleed), a correctness + governance
+  // hazard. This guard never fires under the single-flight engine today; it
+  // defends against a future concurrent/multi-flight server or a leaked run.
+  if (_current !== null) {
+    throw new Error(
+      `RunContext concurrency violation: enterRunContext("${ctx.runId}") called ` +
+        `while run "${_current.runId}" is still active. Overlapping runs in one ` +
+        `worker are not allowed — ensure exitRunContext() (handle.dispose()) runs ` +
+        `before starting a new run.`,
+    );
+  }
   _current = ctx;
 }
 
@@ -76,6 +91,12 @@ export function addToTotalCost(usd: number): number {
   return _current.totalCostUsd;
 }
 
+/**
+ * Test-only direct setter. DELIBERATELY BYPASSES the {@link enterRunContext}
+ * concurrency guard (it assigns `_current` directly) so tests can force-set or
+ * force-clear run-scoped state — including overwriting an active context —
+ * without tripping the Story 10.6 guard.
+ */
 export function __setCurrentRunContextForTests(ctx: RunContext | null): void {
   _current = ctx;
 }

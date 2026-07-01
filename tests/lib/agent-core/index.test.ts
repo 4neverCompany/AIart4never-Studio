@@ -42,6 +42,7 @@ import {
   type RunAgentInput,
   type RunAgentHandle,
 } from '@/lib/agent-core';
+import { __setCurrentRunContextForTests } from '@/lib/agent-loop/run-context';
 
 // ---------------------------------------------------------------------------
 // Fake fullStream builder
@@ -102,6 +103,10 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.clearAllMocks();
+  // Story 10.6: never leak an active RunContext between tests — a runAgent test
+  // that threw before dispose() would otherwise trip the enterRunContext guard
+  // and cascade into the next test.
+  __setCurrentRunContextForTests(null);
 });
 
 // ---------------------------------------------------------------------------
