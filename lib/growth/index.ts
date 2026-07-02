@@ -9,9 +9,11 @@
  * hook rankings — plus the operator-control seam (Story 8-11): tuned changes
  * become explicit accept/edit/reject proposals, and only accepted decisions
  * flow into the plan. Everything here is PURE + deterministic + fixture-tested
- * EXCEPT `decision-log.ts` (the persisted audit of accepted changes, which
- * goes through `@/lib/persistence` like the autonomy journal). Import from
- * `@/lib/growth` rather than the individual files.
+ * EXCEPT `decision-log.ts` (the persisted audit of accepted changes) and
+ * `tuned-template.ts` (Story 8-12: the persisted tuned weekly template the
+ * next plan starts from), both of which go through `@/lib/persistence` like
+ * the autonomy journal. Import from `@/lib/growth` rather than the individual
+ * files.
  */
 
 export type {
@@ -73,3 +75,13 @@ export {
   TUNING_DECISION_LOG_KEY,
   TUNING_DECISION_CAP,
 } from './decision-log';
+
+export type { SavedTunedTemplate } from './tuned-template';
+
+export {
+  isValidTunedTemplate,
+  saveTunedTemplate,
+  loadTunedTemplate,
+  clearTunedTemplate,
+  TUNED_TEMPLATE_KEY,
+} from './tuned-template';

@@ -21,7 +21,12 @@ import type {
 } from '@/lib/autonomy';
 import type { AutonomyTickDeps } from '@/lib/autonomy/loop';
 import type { WeeklyPlan, WeeklyPlanInput } from '@/lib/canon/content-plan';
-import type { AttributedInsight, RecordedTuningChange } from '@/lib/growth';
+import type {
+  AttributedInsight,
+  RecordedTuningChange,
+  SavedTunedTemplate,
+  TunedSlot,
+} from '@/lib/growth';
 import type { ConnectorHealth } from '@/lib/connectors/health';
 import type { ConnectorProposal } from '@/lib/connectors';
 import type { ProposeConnectorInput, InstallDeps } from '@/lib/connectors';
@@ -131,6 +136,26 @@ export interface CliDeps {
    * exploit/explore deterministically. Optional — defaults to `Math.random`.
    */
   rng?: () => number;
+
+  // --- run-week tuned-template persistence (Story 8-12 / OAQ-5) ---
+  /**
+   * The SAVED tuned weekly template (local Studio config via
+   * `@/lib/persistence` — the OAQ-5 decision), or `null` on cold start /
+   * corrupt / stale-against-canon store. When present, `run-week` plans from
+   * it instead of the raw canon WEEKLY_TEMPLATE. Wraps `loadTunedTemplate`.
+   */
+  loadTunedTemplate: () => Promise<SavedTunedTemplate | null>;
+  /**
+   * Persist the operator-DECIDED template (base + only accepted changes) so
+   * next week's plan starts from it. Called only when at least one proposal
+   * was accepted this run. Wraps `saveTunedTemplate`.
+   */
+  saveTunedTemplate: (slots: TunedSlot[], savedAt: number) => Promise<void>;
+  /**
+   * Clear the saved tuned template (`run-week --reset-tuning`) — the explicit
+   * operator revert back to the canon default. Wraps `clearTunedTemplate`.
+   */
+  clearTunedTemplate: () => Promise<void>;
 
   // --- status ---
   /** MiniMax quota snapshot, or null when no quota source is configured. */

@@ -23,8 +23,13 @@ import { runAutonomyTick } from '@/lib/autonomy/loop';
 import { readJournal, appendTick } from '@/lib/autonomy';
 import type { AutonomyConfig } from '@/lib/autonomy';
 import { buildWeeklyContentPlan } from '@/lib/canon/content-plan';
-import { appendTuningDecisions } from '@/lib/growth';
-import type { AttributedInsight, RecordedTuningChange } from '@/lib/growth';
+import {
+  appendTuningDecisions,
+  clearTunedTemplate,
+  loadTunedTemplate,
+  saveTunedTemplate,
+} from '@/lib/growth';
+import type { AttributedInsight, RecordedTuningChange, TunedSlot } from '@/lib/growth';
 import {
   listServers,
   redactConfig,
@@ -146,6 +151,11 @@ const deps: CliDeps = {
   recordTuningDecisions: async (changes: RecordedTuningChange[]) => {
     await appendTuningDecisions(changes); // discard the returned log — the CLI dep is void
   },
+  // Story 8-12 (OAQ-5): the saved tuned weekly template, in the same
+  // local Studio store (@/lib/persistence) as the journal + decision log.
+  loadTunedTemplate: () => loadTunedTemplate(),
+  saveTunedTemplate: (slots: TunedSlot[], savedAt: number) => saveTunedTemplate(slots, savedAt),
+  clearTunedTemplate: () => clearTunedTemplate(),
   readQuota,
   readBudget,
   readJournal: () => readJournal(),

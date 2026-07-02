@@ -17,8 +17,12 @@
  *                         (Story 8-11): each change is explicit and only an
  *                         operator `--accept`/`--edit` flows into the plan
  *                         (ignored/`--reject` ⇒ the base value is kept — no
- *                         silent tuning). Does NOT generate by default;
- *                         `--execute` is the safe no-spend stub (see below).
+ *                         silent tuning). Accepted changes PERSIST (Story
+ *                         8-12 / OAQ-5): the decided template is saved to the
+ *                         local Studio store and becomes the base of every
+ *                         later run — `--reset-tuning` reverts to canon.
+ *                         Does NOT generate by default; `--execute` is the
+ *                         safe no-spend stub (see below).
  *   - `status`          — MiniMax quota, active budget ceiling, connector-health
  *                         summary, last few journal ticks. Read-only.
  *   - `connectors …`    — list / test / add / remove (add+remove are gated by
@@ -45,7 +49,7 @@ import {
   recommendHooks,
   recommendPostingTimes,
 } from '@/lib/growth';
-import type { ProposalDecision, TuningProposal } from '@/lib/growth';
+import type { ProposalDecision, TunedSlot, TuningProposal } from '@/lib/growth';
 import { getErrorMessage } from '@/lib/errors';
 
 import { parseArgs, strOption, flag, multiOption, type ParsedArgs } from './args';
@@ -71,6 +75,7 @@ const USAGE = [
   '                       [--accept <id>]        Accept a posting-time/hook proposal as recommended (repeatable)',
   '                       [--edit <id>=<value>]  Accept a proposal with YOUR value (hour 0..23 / hook id; repeatable)',
   '                       [--reject <id>]        Reject a proposal — same as ignoring it: the base value is kept',
+  '                       [--reset-tuning]       Clear the SAVED tuned template — plan from the canon default again',
   '                       [--execute]            (safe: prints a notice, does NOT generate — use the app to spend)',
   '  aiart4never status                          Quota, budget ceiling, connector health, recent ticks (read-only)',
   '  aiart4never connectors list                 List registered connectors (redacted) + health',
@@ -331,27 +336,36 @@ async function cmdRunWeek(args: ParsedArgs, deps: CliDeps): Promise<CliResult> {
 
   const library = await deps.loadLibrary();
 
+  // Story 8-12 (OAQ-5): the plan starts from the SAVED tuned template when one
+  // exists (it survives restarts), falling back to the canon WEEKLY_TEMPLATE on
+  // cold start / a stale store. `--reset-tuning` is the explicit revert: clear
+  // the store and plan from the canon default again.
+  const resetTuning = flag(args, 'reset-tuning');
+  if (resetTuning) await deps.clearTunedTemplate();
+  const saved = resetTuning ? null : await deps.loadTunedTemplate();
+  const baseTemplate: readonly TunedSlot[] = saved?.slots ?? (WEEKLY_TEMPLATE as readonly WeeklySlot[]);
+
   // Story 8-11: growth signals → adapted template → EXPLICIT operator proposals.
   // Nothing tuned reaches the plan below unless the operator accepts it here.
+  // The tuner adapts (and proposals diff against) the SAVED base, so a value
+  // the operator already accepted is not re-proposed, and a fresh
+  // recommendation names the saved value as its prior.
   const insights = await deps.loadInsights();
   const adapted = adaptWeeklyTemplate({
+    baseTemplate: [...baseTemplate],
     attribution: attributeEngagement(insights),
     slotRecs: recommendPostingTimes(insights),
     hookRecs: recommendHooks(insights),
     ...(deps.rng ? { rng: deps.rng } : {}),
   });
-  const proposals = buildTuningProposals(adapted);
+  const proposals = buildTuningProposals(adapted, baseTemplate);
 
   const parsed = parseProposalDecisions(args, proposals);
   if ('error' in parsed) return { code: EXIT_USAGE, lines: [parsed.error] };
 
-  // Apply ONLY the accepted decisions onto the canon base template; rejected
-  // and undecided proposals leave the base values untouched (no silent tuning).
-  const decided = applyProposalDecisions(
-    WEEKLY_TEMPLATE as readonly WeeklySlot[],
-    proposals,
-    parsed.decisions,
-  );
+  // Apply ONLY the accepted decisions onto the base template; rejected and
+  // undecided proposals leave the base values untouched (no silent tuning).
+  const decided = applyProposalDecisions(baseTemplate, proposals, parsed.decisions);
   const plan = deps.buildPlan({
     featuredCharacterId: resolved.characterId,
     library,
@@ -360,6 +374,13 @@ async function cmdRunWeek(args: ParsedArgs, deps: CliDeps): Promise<CliResult> {
 
   const lines: string[] = [];
   lines.push(`Weekly content plan — ${resolved.characterId} (reuse-first / 4NE-22)`);
+  if (resetTuning) {
+    lines.push('  tuning reset: cleared the saved tuned template — planning from the canon default');
+  } else if (saved) {
+    lines.push(
+      `  base template: saved tuned template (saved ${new Date(saved.savedAt).toISOString()}) — reset with --reset-tuning`,
+    );
+  }
   for (const slot of plan.slots) {
     // reuse names the asset it would reuse (best on-canon library match).
     let detail: string;
@@ -420,6 +441,13 @@ async function cmdRunWeek(args: ParsedArgs, deps: CliDeps): Promise<CliResult> {
       await deps.recordTuningDecisions(decided.applied.map((c) => ({ ...c, decidedAt })));
       lines.push(
         `    ${decided.applied.length} accepted change${decided.applied.length === 1 ? '' : 's'} recorded to the tuning decision log (the A/B baseline for later measurement)`,
+      );
+      // Story 8-12 (OAQ-5): persist the DECIDED template (base + only the
+      // accepted changes) to the local Studio store, so next week's plan
+      // starts from the tuned template instead of resetting to canon.
+      await deps.saveTunedTemplate(decided.slots, decidedAt);
+      lines.push(
+        '    tuned weekly template saved (local Studio config) — the next run-week plans from it; --reset-tuning reverts to canon',
       );
     }
   }

@@ -11,11 +11,12 @@ import { describe, it, expect, vi } from 'vitest';
 
 import { runCli, type CliDeps } from '@/lib/cli';
 import type { AutonomyConfig, AutonomyTickResult } from '@/lib/autonomy';
+import { WEEKLY_TEMPLATE } from '@/lib/canon';
 import { buildWeeklyContentPlan } from '@/lib/canon/content-plan';
 import { canonTags } from '@/lib/canon/content-plan';
 import type { ConnectorHealth } from '@/lib/connectors/health';
 import type { ConnectorProposal } from '@/lib/connectors';
-import type { AttributedInsight } from '@/lib/growth';
+import type { AttributedInsight, SavedTunedTemplate, TunedSlot } from '@/lib/growth';
 import type { McpServerConfig } from '@/lib/mcp';
 import type { ApprovalToken } from '@/lib/approval';
 import type { GeneratedImage } from '@/types/mashup';
@@ -72,6 +73,9 @@ function makeDeps(over: Partial<CliDeps> = {}): CliDeps {
     loadInsights: vi.fn(async () => [] as AttributedInsight[]),
     recordTuningDecisions: vi.fn(async () => {}),
     rng: () => 0.99, // deterministic exploit unless a test overrides
+    loadTunedTemplate: vi.fn(async () => null), // cold start unless a test overrides
+    saveTunedTemplate: vi.fn(async () => {}),
+    clearTunedTemplate: vi.fn(async () => {}),
     readQuota: vi.fn(async () => ({ tokensUsed: 1_250_000_000, allowance: 12_500_000_000, summary: '1.25B / 12.50B tokens this month (10%)' })),
     readBudget: vi.fn(async () => ({ dailyBudgetUsd: 0.5, creditsUsed: 40, creditCap: 200 })),
     readJournal: vi.fn(async () => [] as AutonomyTickResult[]),
@@ -443,6 +447,178 @@ describe('runCli — run-week growth proposals (Story 8-11)', () => {
     );
     expect(r.code).toBe(2);
     expect(r.lines.join('\n')).toContain('conflicting decisions');
+  });
+});
+
+describe('runCli — run-week tuned-template persistence (Story 8-12 / OAQ-5)', () => {
+  /** Same deterministic fixture as the 8-11 suite: fri/story-beat posts at 19:00 UTC. */
+  function insightsFixture(): AttributedInsight[] {
+    const base = {
+      pillarId: 'story-beat',
+      day: 'fri' as const,
+      reality: 'prime' as const,
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      impressions: 0,
+      reach: 1000,
+    };
+    const rows: AttributedInsight[] = [];
+    for (let i = 0; i < 6; i++) {
+      rows.push({ ...base, postId: `top${i}`, hookId: 'hook-top', saves: 30, postedAt: Date.UTC(2026, 4, 1 + i * 7, 19, 0, 0) });
+    }
+    for (let i = 0; i < 2; i++) {
+      rows.push({ ...base, postId: `alt${i}`, hookId: 'hook-alt', saves: 10, postedAt: Date.UTC(2026, 4, 2 + i * 7, 19, 0, 0) });
+    }
+    return rows;
+  }
+
+  /** A SAVED tuned template: canon shape with an accepted Friday posting hour. */
+  function savedTemplate(fridayHour: number, fridayHook?: string): SavedTunedTemplate {
+    return {
+      slots: WEEKLY_TEMPLATE.map((slot) =>
+        slot.day === 'fri'
+          ? { ...slot, recommendedHour: fridayHour, ...(fridayHook !== undefined ? { hookId: fridayHook } : {}) }
+          : { ...slot },
+      ),
+      savedAt: Date.UTC(2026, 5, 12, 9, 0, 0),
+    };
+  }
+
+  type CapturedSlot = TunedSlot & { day: string };
+
+  /** The baseTemplate run-week handed to the (spied) plan builder. */
+  function capturedTemplate(buildPlan: { mock: { calls: unknown[][] } }): readonly CapturedSlot[] {
+    const input = buildPlan.mock.calls[0]![0] as { baseTemplate?: readonly CapturedSlot[] };
+    return input.baseTemplate ?? [];
+  }
+
+  it('a saved tuned template is loaded and fed to the planner via the baseTemplate seam, invariants intact (AC3)', async () => {
+    const buildPlan = vi.fn(buildWeeklyContentPlan);
+    const r = await runCli(
+      ['run-week'],
+      makeDeps({
+        loadTunedTemplate: vi.fn(async () => savedTemplate(7, 'saved-hook')),
+        buildPlan,
+      }),
+    );
+    expect(r.code).toBe(0);
+    const template = capturedTemplate(buildPlan);
+    // The SAVED template (not raw canon) reached the planner…
+    const friday = template.find((s) => s.day === 'fri')!;
+    expect(friday.recommendedHour).toBe(7);
+    expect(friday.hookId).toBe('saved-hook');
+    // …with the six-slot / Friday-guarantee invariants preserved.
+    expect(template).toHaveLength(WEEKLY_TEMPLATE.length);
+    expect(template.map((s) => s.day)).toEqual(WEEKLY_TEMPLATE.map((s) => s.day));
+    expect(friday.guaranteesNewGen).toBe(true);
+    const out = r.lines.join('\n');
+    expect(out).toContain('base template: saved tuned template');
+    expect(out).toContain('post 07:00 UTC'); // the tuned hour is visible on the plan line
+  });
+
+  it('cold start (no saved template) → the canon WEEKLY_TEMPLATE, unchanged (AC4)', async () => {
+    const buildPlan = vi.fn(buildWeeklyContentPlan);
+    const saveTunedTemplate = vi.fn(async () => {});
+    const r = await runCli(['run-week'], makeDeps({ buildPlan, saveTunedTemplate }));
+    expect(r.code).toBe(0);
+    const template = capturedTemplate(buildPlan);
+    expect(template.map((s) => ({ day: s.day, pillarId: s.pillarId, format: s.format, guaranteesNewGen: s.guaranteesNewGen })))
+      .toEqual(WEEKLY_TEMPLATE.map((s) => ({ ...s })));
+    expect(template.every((s) => s.recommendedHour === undefined && s.hookId === undefined)).toBe(true);
+    // Nothing accepted → nothing saved; and the report doesn't claim a tuned base.
+    expect(saveTunedTemplate).not.toHaveBeenCalled();
+    expect(r.lines.join('\n')).not.toContain('base template: saved tuned template');
+  });
+
+  it('accepting a proposal persists the DECIDED template to the store, stamped with decidedAt (AC2)', async () => {
+    const saveTunedTemplate = vi.fn<CliDeps['saveTunedTemplate']>(async () => {});
+    const r = await runCli(
+      ['run-week', '--accept', 'hour:fri:story-beat'],
+      makeDeps({ loadInsights: vi.fn(async () => insightsFixture()), saveTunedTemplate }),
+    );
+    expect(r.code).toBe(0);
+    expect(saveTunedTemplate).toHaveBeenCalledTimes(1);
+    const [slots, savedAt] = saveTunedTemplate.mock.calls[0]!;
+    expect(slots.find((s) => s.day === 'fri')!.recommendedHour).toBe(19); // the accepted value
+    expect(slots).toHaveLength(WEEKLY_TEMPLATE.length);
+    expect(savedAt).toBe(new Date(2026, 5, 19, 9, 0, 0, 0).getTime()); // = the decision stamp
+    expect(r.lines.join('\n')).toContain('tuned weekly template saved');
+  });
+
+  it('ignoring or rejecting every proposal saves NOTHING — the store only changes on an accept', async () => {
+    const saveTunedTemplate = vi.fn(async () => {});
+    const ignored = await runCli(
+      ['run-week'],
+      makeDeps({ loadInsights: vi.fn(async () => insightsFixture()), saveTunedTemplate }),
+    );
+    expect(ignored.code).toBe(0);
+    const rejected = await runCli(
+      ['run-week', '--reject', 'hour:fri:story-beat'],
+      makeDeps({ loadInsights: vi.fn(async () => insightsFixture()), saveTunedTemplate }),
+    );
+    expect(rejected.code).toBe(0);
+    expect(saveTunedTemplate).not.toHaveBeenCalled();
+  });
+
+  it('a re-recommendation equal to the SAVED value proposes nothing (already-accepted tuning is not re-litigated)', async () => {
+    // Saved fri hour 19 = exactly what the fixture's tuner recommends.
+    const buildPlan = vi.fn(buildWeeklyContentPlan);
+    const r = await runCli(
+      ['run-week'],
+      makeDeps({
+        loadInsights: vi.fn(async () => insightsFixture()),
+        loadTunedTemplate: vi.fn(async () => savedTemplate(19)),
+        buildPlan,
+      }),
+    );
+    expect(r.code).toBe(0);
+    const out = r.lines.join('\n');
+    // Only the hook change (not saved yet) proposes; the hour is settled.
+    expect(out).toContain('Growth proposals (1)');
+    expect(out).not.toContain('[hour:fri:story-beat]');
+    expect(out).toContain('[hook:fri:story-beat]');
+    // The saved hour still flows into the plan (via the tuned base), untouched.
+    expect(capturedTemplate(buildPlan).find((s) => s.day === 'fri')!.recommendedHour).toBe(19);
+  });
+
+  it('a fresh recommendation against a saved base names the SAVED value as prior, and accept re-saves on top (AC2/AC3)', async () => {
+    // Saved fri hour 7; the fixture's tuner now recommends 19.
+    const saveTunedTemplate = vi.fn<CliDeps['saveTunedTemplate']>(async () => {});
+    const recordTuningDecisions = vi.fn<CliDeps['recordTuningDecisions']>(async () => {});
+    const r = await runCli(
+      ['run-week', '--accept', 'hour:fri:story-beat'],
+      makeDeps({
+        loadInsights: vi.fn(async () => insightsFixture()),
+        loadTunedTemplate: vi.fn(async () => savedTemplate(7)),
+        saveTunedTemplate,
+        recordTuningDecisions,
+      }),
+    );
+    expect(r.code).toBe(0);
+    expect(r.lines.join('\n')).toContain('prior: 07:00 UTC'); // the saved value IS the baseline
+    // The decision record pins the saved value as the experiment's prior arm.
+    expect(recordTuningDecisions.mock.calls[0]![0]).toEqual([
+      expect.objectContaining({ proposalId: 'hour:fri:story-beat', priorValue: 7, appliedValue: 19 }),
+    ]);
+    // And the store now holds the NEW decided template.
+    expect(saveTunedTemplate.mock.calls[0]![0].find((s) => s.day === 'fri')!.recommendedHour).toBe(19);
+  });
+
+  it('--reset-tuning clears the store and plans from the canon default (the explicit revert)', async () => {
+    const buildPlan = vi.fn(buildWeeklyContentPlan);
+    const clearTunedTemplate = vi.fn(async () => {});
+    const loadTunedTemplate = vi.fn(async () => savedTemplate(7));
+    const r = await runCli(
+      ['run-week', '--reset-tuning'],
+      makeDeps({ buildPlan, clearTunedTemplate, loadTunedTemplate }),
+    );
+    expect(r.code).toBe(0);
+    expect(clearTunedTemplate).toHaveBeenCalledTimes(1);
+    // The saved template is not even consulted — the base is canon again.
+    expect(loadTunedTemplate).not.toHaveBeenCalled();
+    expect(capturedTemplate(buildPlan).every((s) => s.recommendedHour === undefined && s.hookId === undefined)).toBe(true);
+    expect(r.lines.join('\n')).toContain('tuning reset');
   });
 });
 

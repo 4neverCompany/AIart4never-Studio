@@ -73,6 +73,12 @@ export interface WeeklyPlanInput {
    * (AdaptedSlot[] — WeeklySlot + recommendedHour/hookId), so feeding its output
    * here closes the LEARN->plan loop without restructuring the planner. Any
    * `recommendedHour`/`hookId` on a slot is carried onto the PlannedSlot.
+   *
+   * Story 8-12 (OAQ-5): the operator's ACCEPTED tuning persists as a saved
+   * tuned template in the local Studio store (`lib/growth/tuned-template.ts`);
+   * callers (the CLI's `run-week`) load it and pass it here, so next week's
+   * plan starts from the tuned template — absent/stale saved state falls back
+   * to the canon default via this same `?? WEEKLY_TEMPLATE` seam.
    */
   baseTemplate?: ReadonlyArray<WeeklySlot>;
 }
