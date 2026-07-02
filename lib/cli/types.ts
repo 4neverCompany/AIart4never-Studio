@@ -21,6 +21,7 @@ import type {
 } from '@/lib/autonomy';
 import type { AutonomyTickDeps } from '@/lib/autonomy/loop';
 import type { WeeklyPlan, WeeklyPlanInput } from '@/lib/canon/content-plan';
+import type { AttributedInsight, RecordedTuningChange } from '@/lib/growth';
 import type { ConnectorHealth } from '@/lib/connectors/health';
 import type { ConnectorProposal } from '@/lib/connectors';
 import type { ProposeConnectorInput, InstallDeps } from '@/lib/connectors';
@@ -111,6 +112,25 @@ export interface CliDeps {
   // --- run-week (content plan) ---
   /** Build the reuse-first weekly content plan (wraps `buildWeeklyContentPlan`). */
   buildPlan: (input: WeeklyPlanInput) => WeeklyPlan;
+
+  // --- run-week growth proposals (Story 8-11) ---
+  /**
+   * The operator's attributed own-account insight history (posts + hook
+   * metadata) that drives the posting-time / hook self-tuner. Empty = cold
+   * start: `run-week` renders no proposals and plans from the base template.
+   */
+  loadInsights: () => Promise<AttributedInsight[]>;
+  /**
+   * Record operator-ACCEPTED tuning changes to the durable tuning decision log
+   * (wraps `appendTuningDecisions`). Called only when at least one proposal was
+   * accepted — this is both the audit trail and the OAQ-9 experiment registry.
+   */
+  recordTuningDecisions: (changes: RecordedTuningChange[]) => Promise<void>;
+  /**
+   * RNG for the tuner's ε-greedy exploration, injectable so tests drive
+   * exploit/explore deterministically. Optional — defaults to `Math.random`.
+   */
+  rng?: () => number;
 
   // --- status ---
   /** MiniMax quota snapshot, or null when no quota source is configured. */

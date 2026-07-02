@@ -23,6 +23,8 @@ import { runAutonomyTick } from '@/lib/autonomy/loop';
 import { readJournal, appendTick } from '@/lib/autonomy';
 import type { AutonomyConfig } from '@/lib/autonomy';
 import { buildWeeklyContentPlan } from '@/lib/canon/content-plan';
+import { appendTuningDecisions } from '@/lib/growth';
+import type { AttributedInsight, RecordedTuningChange } from '@/lib/growth';
 import {
   listServers,
   redactConfig,
@@ -83,6 +85,21 @@ async function loadLibrary(): Promise<GeneratedImage[]> {
   }
 }
 
+/**
+ * The attributed own-account insight history driving the growth tuner
+ * (Story 8-11). The analytics layer (fetchInsights + the hookId join) writes
+ * this cache; read best-effort — no history simply means cold start (run-week
+ * renders no proposals).
+ */
+async function loadInsights(): Promise<AttributedInsight[]> {
+  try {
+    const raw = await get<AttributedInsight[]>('aiart4never_attributed_insights');
+    return Array.isArray(raw) ? raw : [];
+  } catch {
+    return [];
+  }
+}
+
 async function readBudget(): Promise<CliBudgetSnapshot> {
   const cfg = await loadAutonomyConfig();
   const usage = await loadCreditUsage();
@@ -125,6 +142,10 @@ const deps: CliDeps = {
     await appendTick(result); // discard the returned journal — the CLI dep is void
   },
   buildPlan: (input) => buildWeeklyContentPlan(input),
+  loadInsights,
+  recordTuningDecisions: async (changes: RecordedTuningChange[]) => {
+    await appendTuningDecisions(changes); // discard the returned log — the CLI dep is void
+  },
   readQuota,
   readBudget,
   readJournal: () => readJournal(),

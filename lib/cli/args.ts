@@ -14,10 +14,19 @@ export interface ParsedArgs {
   options: Record<string, string | boolean>;
   /** Repeatable `--header k=v` pairs, collected in order. */
   headers: Record<string, string>;
+  /** Repeatable value options (`--accept id --accept id2`), collected in order. */
+  multi: Record<string, string[]>;
 }
 
 /** Options that take a following value rather than being a boolean flag. */
 const VALUE_OPTIONS = new Set(['character', 'name', 'url']);
+
+/**
+ * Options that may REPEAT, each taking a following value (collected in order
+ * into `multi`). Used by `run-week`'s proposal decisions (Story 8-11):
+ * `--accept <id>`, `--edit <id>=<value>`, `--reject <id>`.
+ */
+const MULTI_VALUE_OPTIONS = new Set(['accept', 'edit', 'reject']);
 
 /**
  * Parse `argv` (already sliced past the node/script entries). Positionals are
@@ -28,6 +37,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   const positionals: string[] = [];
   const options: Record<string, string | boolean> = {};
   const headers: Record<string, string> = {};
+  const multi: Record<string, string[]> = {};
 
   let i = 0;
   // Leading positionals (until the first flag).
@@ -57,6 +67,17 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       continue;
     }
 
+    if (MULTI_VALUE_OPTIONS.has(key)) {
+      const val = argv[i + 1];
+      if (val !== undefined && !val.startsWith('--')) {
+        (multi[key] ??= []).push(val);
+        i++;
+      } else {
+        options[key] = true; // flag-shaped use (no value); command layer rejects
+      }
+      continue;
+    }
+
     if (VALUE_OPTIONS.has(key)) {
       const val = argv[i + 1];
       if (val !== undefined && !val.startsWith('--')) {
@@ -72,7 +93,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     options[key] = true;
   }
 
-  return { positionals, options, headers };
+  return { positionals, options, headers, multi };
 }
 
 /** Read a string option, or undefined when absent / boolean-shaped. */
@@ -84,4 +105,9 @@ export function strOption(args: ParsedArgs, key: string): string | undefined {
 /** Read a boolean flag (true only when explicitly present). */
 export function flag(args: ParsedArgs, key: string): boolean {
   return args.options[key] === true;
+}
+
+/** Read a repeatable option's collected values (empty when absent). */
+export function multiOption(args: ParsedArgs, key: string): string[] {
+  return args.multi[key] ?? [];
 }

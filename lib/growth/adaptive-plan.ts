@@ -87,6 +87,16 @@ export type AdaptedSlot = WeeklySlot & {
   adapted: boolean;
   /** Human-readable summary of what was applied (and why) to this slot. */
   rationale?: string;
+  /**
+   * How THIS run chose `recommendedHour`: `'top'` = exploit (top-ranked
+   * candidate) or `'explore'` = ε-greedy runner-up pick. Absent when no hour
+   * decision was made this run. `explored` records exploration only per SLOT
+   * key; this flag is the per-DIMENSION record the operator-proposal surface
+   * (Story 8-11) needs to name each change "top vs exploration" precisely.
+   */
+  hourBasis?: 'top' | 'explore';
+  /** How THIS run chose `hookId` — same semantics as {@link hourBasis}. */
+  hookBasis?: 'top' | 'explore';
 };
 
 /**
@@ -226,10 +236,12 @@ export function adaptWeeklyTemplate(input: AdaptiveInput = {}): AdaptiveResult {
       .filter((r) => r.pillarId === slot.pillarId && r.day === slot.day)
       .sort((a, b) => b.score - a.score || b.basis - a.basis);
     let recommendedHour: number | undefined;
+    let hourBasis: 'top' | 'explore' | undefined;
     if (timeCandidates.length > 0) {
       const { pick, explored: didExplore } = epsilonGreedy(timeCandidates, rate, rng);
       recommendedHour = pick?.recommendedHour;
       if (recommendedHour !== undefined) {
+        hourBasis = didExplore ? 'explore' : 'top';
         reasons.push(
           didExplore
             ? `exploring hour ${recommendedHour}:00 (ε-greedy, non-top slot to keep learning)`
@@ -245,10 +257,12 @@ export function adaptWeeklyTemplate(input: AdaptiveInput = {}): AdaptiveResult {
       .filter((h) => h.pillarId === slot.pillarId)
       .sort((a, b) => b.score - a.score || b.basis - a.basis);
     let hookId: string | undefined;
+    let hookBasis: 'top' | 'explore' | undefined;
     if (hookCandidates.length > 0) {
       const { pick, explored: didExplore } = epsilonGreedy(hookCandidates, rate, rng);
       hookId = pick?.hookId;
       if (hookId !== undefined) {
+        hookBasis = didExplore ? 'explore' : 'top';
         reasons.push(
           didExplore
             ? `exploring hook "${hookId}" (ε-greedy, non-top hook to keep learning)`
@@ -281,6 +295,8 @@ export function adaptWeeklyTemplate(input: AdaptiveInput = {}): AdaptiveResult {
       ...slot,
       ...(recommendedHour !== undefined ? { recommendedHour } : {}),
       ...(hookId !== undefined ? { hookId } : {}),
+      ...(hourBasis !== undefined ? { hourBasis } : {}),
+      ...(hookBasis !== undefined ? { hookBasis } : {}),
       adapted,
       ...(adapted ? { rationale: reasons.join('; ') } : {}),
     };

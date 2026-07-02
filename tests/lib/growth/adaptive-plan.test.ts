@@ -77,6 +77,8 @@ describe('adaptWeeklyTemplate — cold start', () => {
       expect(slot.recommendedHour).toBeUndefined();
       expect(slot.hookId).toBeUndefined();
       expect(slot.rationale).toBeUndefined();
+      expect(slot.hourBasis).toBeUndefined();
+      expect(slot.hookBasis).toBeUndefined();
     });
   });
 
@@ -214,6 +216,9 @@ describe('adaptWeeklyTemplate — ε-greedy exploration', () => {
     const friday = r.slots.find((s) => s.day === 'fri')!;
     expect(friday.recommendedHour).toBe(19); // top hour
     expect(friday.hookId).toBe('hook-top'); // top hook
+    // The per-dimension basis names each decision an exploit (Story 8-11).
+    expect(friday.hourBasis).toBe('top');
+    expect(friday.hookBasis).toBe('top');
   });
 
   it('rng < rate → exploration recorded (non-top picks), deterministically', () => {
@@ -225,6 +230,9 @@ describe('adaptWeeklyTemplate — ε-greedy exploration', () => {
     expect(friday.hookId).toBe('hook-alt'); // runner-up hook
     // The same slot key isn't double-recorded even though both decisions explored.
     expect(r.explored.filter((k) => k === 'fri:story-beat')).toHaveLength(1);
+    // The per-dimension basis names each decision an exploration (Story 8-11).
+    expect(friday.hourBasis).toBe('explore');
+    expect(friday.hookBasis).toBe('explore');
   });
 
   it('default exploration rate is the documented 0.15', () => {

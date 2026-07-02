@@ -12,9 +12,13 @@
  *   - `run-beat`        — run ONE autonomy tick now (generate is gated by the
  *                         director's own HIL; the asset lands in the approval
  *                         queue as approved:false). NEVER publishes.
- *   - `run-week`        — print the reuse-first weekly content plan (4NE-22).
- *                         Does NOT generate by default; `--execute` is the safe
- *                         no-spend stub (see below).
+ *   - `run-week`        — print the reuse-first weekly content plan (4NE-22)
+ *                         plus the growth tuner's posting-time/hook PROPOSALS
+ *                         (Story 8-11): each change is explicit and only an
+ *                         operator `--accept`/`--edit` flows into the plan
+ *                         (ignored/`--reject` ⇒ the base value is kept — no
+ *                         silent tuning). Does NOT generate by default;
+ *                         `--execute` is the safe no-spend stub (see below).
  *   - `status`          — MiniMax quota, active budget ceiling, connector-health
  *                         summary, last few journal ticks. Read-only.
  *   - `connectors …`    — list / test / add / remove (add+remove are gated by
@@ -26,16 +30,25 @@
  * Exit codes: 0 ok, 1 runtime error, 2 usage error.
  */
 
-import type { CharacterId } from '@/lib/canon';
-import { listCharacters } from '@/lib/canon';
+import type { CharacterId, WeeklySlot } from '@/lib/canon';
+import { listCharacters, WEEKLY_TEMPLATE } from '@/lib/canon';
 import { buildConnectorActivateRequest } from '@/lib/connectors';
 import type { AutonomyConfig } from '@/lib/autonomy';
 import { shouldTick, nextTickAt } from '@/lib/autonomy';
 import type { AutonomyTickDeps } from '@/lib/autonomy/loop';
 import type { ConnectorHealth } from '@/lib/connectors/health';
+import {
+  adaptWeeklyTemplate,
+  applyProposalDecisions,
+  attributeEngagement,
+  buildTuningProposals,
+  recommendHooks,
+  recommendPostingTimes,
+} from '@/lib/growth';
+import type { ProposalDecision, TuningProposal } from '@/lib/growth';
 import { getErrorMessage } from '@/lib/errors';
 
-import { parseArgs, strOption, flag, type ParsedArgs } from './args';
+import { parseArgs, strOption, flag, multiOption, type ParsedArgs } from './args';
 import type { CliDeps, CliResult, OperatorConfirm } from './types';
 
 export type { CliDeps, CliResult, OperatorConfirm } from './types';
@@ -54,7 +67,10 @@ const USAGE = [
   'Usage:',
   '  aiart4never run-beat [--character <id>]    Run one autonomy tick now (queues to the approval gate; never publishes)',
   '  aiart4never tick [--character <id>]        Run one autonomy tick IF DUE (for a cron/daemon — no-ops until enabled + past the tick hour + not already today)',
-  '  aiart4never run-week [--character <id>]    Print the reuse-first weekly content plan',
+  '  aiart4never run-week [--character <id>]    Print the reuse-first weekly content plan + growth tuning proposals',
+  '                       [--accept <id>]        Accept a posting-time/hook proposal as recommended (repeatable)',
+  '                       [--edit <id>=<value>]  Accept a proposal with YOUR value (hour 0..23 / hook id; repeatable)',
+  '                       [--reject <id>]        Reject a proposal — same as ignoring it: the base value is kept',
   '                       [--execute]            (safe: prints a notice, does NOT generate — use the app to spend)',
   '  aiart4never status                          Quota, budget ceiling, connector health, recent ticks (read-only)',
   '  aiart4never connectors list                 List registered connectors (redacted) + health',
@@ -209,8 +225,104 @@ async function cmdTick(args: ParsedArgs, deps: CliDeps): Promise<CliResult> {
 }
 
 // ---------------------------------------------------------------------------
-// run-week
+// run-week (+ Story 8-11 growth tuning proposals)
 // ---------------------------------------------------------------------------
+
+/** Render an hour value as `HH:00 UTC` for the report lines. */
+function fmtHour(v: number | string): string {
+  return `${String(v).padStart(2, '0')}:00 UTC`;
+}
+
+/** Render a proposal/decision value per its kind (`19 → 19:00 UTC`, hooks quoted). */
+function fmtValue(kind: TuningProposal['kind'], v: number | string): string {
+  return kind === 'posting-hour' ? fmtHour(v) : `"${v}"`;
+}
+
+/** The two report lines for one proposal: the change + the tuner's why. */
+function formatProposal(p: TuningProposal): string[] {
+  const change =
+    p.kind === 'posting-hour'
+      ? `post at ${fmtHour(p.recommendedValue)}`
+      : `use hook ${fmtValue('hook', p.recommendedValue)}`;
+  const basis = p.basis === 'exploration' ? 'ε-greedy exploration pick' : 'top recommendation';
+  const prior =
+    p.priorValue !== undefined ? fmtValue(p.kind, p.priorValue) : 'canon default (untuned)';
+  return [
+    `    [${p.id}] ${p.day} · ${p.pillarId} — ${change} (${basis}; prior: ${prior})`,
+    `        why: ${p.rationale}`,
+  ];
+}
+
+/**
+ * Parse the operator's `--accept` / `--edit` / `--reject` flags into
+ * {@link ProposalDecision}s, validating every referenced id against the live
+ * proposal list (an unknown id, a valueless flag, a conflicting double
+ * decision, or a malformed edit value is a usage error — nothing half-applies).
+ */
+function parseProposalDecisions(
+  args: ParsedArgs,
+  proposals: readonly TuningProposal[],
+): { decisions: ProposalDecision[] } | { error: string } {
+  // A bare `--accept` / `--edit` / `--reject` with no value parses as a flag.
+  for (const key of ['accept', 'edit', 'reject'] as const) {
+    if (flag(args, key)) {
+      return { error: `--${key} expects a value (usage: --${key} <proposal-id>${key === 'edit' ? '=<value>' : ''})` };
+    }
+  }
+
+  const byId = new Map(proposals.map((p) => [p.id, p]));
+  const seen = new Set<string>();
+  const decisions: ProposalDecision[] = [];
+
+  const lookup = (id: string): TuningProposal | { error: string } => {
+    const p = byId.get(id);
+    if (!p) {
+      return {
+        error: `unknown proposal id '${id}' — run \`run-week\` without decision flags to list the current proposals`,
+      };
+    }
+    if (seen.has(id)) return { error: `conflicting decisions for proposal '${id}'` };
+    seen.add(id);
+    return p;
+  };
+
+  for (const id of multiOption(args, 'accept')) {
+    const p = lookup(id);
+    if ('error' in p) return p;
+    decisions.push({ proposalId: id, action: 'accept' });
+  }
+
+  for (const pair of multiOption(args, 'edit')) {
+    const eq = pair.indexOf('=');
+    if (eq <= 0 || eq === pair.length - 1) {
+      return { error: `--edit expects <proposal-id>=<value>, got '${pair}'` };
+    }
+    const id = pair.slice(0, eq);
+    const value = pair.slice(eq + 1);
+    const p = lookup(id);
+    if ('error' in p) return p;
+    let editedValue: number | string;
+    if (p.kind === 'posting-hour') {
+      const h = Number(value);
+      if (!Number.isInteger(h) || h < 0 || h > 23) {
+        return { error: `--edit ${id}: '${value}' is not a posting hour (expected an integer 0..23)` };
+      }
+      editedValue = h;
+    } else {
+      if (value.trim() === '') return { error: `--edit ${id}: the hook id must be non-empty` };
+      editedValue = value.trim();
+    }
+    decisions.push({ proposalId: id, action: 'accept', editedValue });
+  }
+
+  for (const id of multiOption(args, 'reject')) {
+    const p = lookup(id);
+    if ('error' in p) return p;
+    decisions.push({ proposalId: id, action: 'reject' });
+  }
+
+  return { decisions };
+}
 
 async function cmdRunWeek(args: ParsedArgs, deps: CliDeps): Promise<CliResult> {
   const baseCfg = await deps.loadAutonomyConfig();
@@ -218,7 +330,33 @@ async function cmdRunWeek(args: ParsedArgs, deps: CliDeps): Promise<CliResult> {
   if ('error' in resolved) return { code: EXIT_USAGE, lines: [resolved.error] };
 
   const library = await deps.loadLibrary();
-  const plan = deps.buildPlan({ featuredCharacterId: resolved.characterId, library });
+
+  // Story 8-11: growth signals → adapted template → EXPLICIT operator proposals.
+  // Nothing tuned reaches the plan below unless the operator accepts it here.
+  const insights = await deps.loadInsights();
+  const adapted = adaptWeeklyTemplate({
+    attribution: attributeEngagement(insights),
+    slotRecs: recommendPostingTimes(insights),
+    hookRecs: recommendHooks(insights),
+    ...(deps.rng ? { rng: deps.rng } : {}),
+  });
+  const proposals = buildTuningProposals(adapted);
+
+  const parsed = parseProposalDecisions(args, proposals);
+  if ('error' in parsed) return { code: EXIT_USAGE, lines: [parsed.error] };
+
+  // Apply ONLY the accepted decisions onto the canon base template; rejected
+  // and undecided proposals leave the base values untouched (no silent tuning).
+  const decided = applyProposalDecisions(
+    WEEKLY_TEMPLATE as readonly WeeklySlot[],
+    proposals,
+    parsed.decisions,
+  );
+  const plan = deps.buildPlan({
+    featuredCharacterId: resolved.characterId,
+    library,
+    baseTemplate: decided.slots,
+  });
 
   const lines: string[] = [];
   lines.push(`Weekly content plan — ${resolved.characterId} (reuse-first / 4NE-22)`);
@@ -234,11 +372,57 @@ async function cmdRunWeek(args: ParsedArgs, deps: CliDeps): Promise<CliResult> {
     } else {
       detail = 'generate (new)';
     }
-    lines.push(`  ${slot.day} · ${slot.pillarName} · ${detail}`);
+    // Accepted tuning shows up on the planned slot itself (hour/hook carried
+    // through the baseTemplate seam) — visible proof of what actually applied.
+    const tuned: string[] = [];
+    if (slot.recommendedHour !== undefined) tuned.push(`post ${fmtHour(slot.recommendedHour)}`);
+    if (slot.hookId !== undefined) tuned.push(`hook "${slot.hookId}"`);
+    lines.push(
+      `  ${slot.day} · ${slot.pillarName} · ${detail}${tuned.length > 0 ? ` · ${tuned.join(' · ')}` : ''}`,
+    );
   }
   lines.push(
     `  credit estimate: ${plan.newGenCount} new generation${plan.newGenCount === 1 ? '' : 's'} this week (${plan.reuseCount} reused)`,
   );
+
+  // The proposal deck (Story 8-11 AC1): every posting-time/hook change as an
+  // explicit proposal with its basis (top vs ε-greedy exploration) + rationale.
+  if (proposals.length === 0) {
+    lines.push(
+      '  Growth proposals: none (no attributed insight history yet — the tuner needs posted engagement to learn from)',
+    );
+  } else {
+    lines.push('');
+    lines.push(
+      `  Growth proposals (${proposals.length}) — nothing below changes the plan unless you accept it; ignored proposals keep the base template:`,
+    );
+    for (const p of proposals) lines.push(...formatProposal(p));
+    lines.push('    decide with: --accept <id> · --edit <id>=<value> · --reject <id>');
+  }
+
+  // Decision outcomes (AC2/AC3): accepted values (edited wins) are named and
+  // RECORDED to the durable tuning decision log; rejections are echoed.
+  if (decided.applied.length > 0 || decided.rejected.length > 0) {
+    lines.push('');
+    lines.push('  Decisions:');
+    for (const c of decided.applied) {
+      lines.push(
+        c.edited
+          ? `    accepted [${c.proposalId}] → ${fmtValue(c.kind, c.appliedValue)} (operator-edited; recommended was ${fmtValue(c.kind, c.recommendedValue)})`
+          : `    accepted [${c.proposalId}] → ${fmtValue(c.kind, c.appliedValue)} (as recommended)`,
+      );
+    }
+    for (const id of decided.rejected) {
+      lines.push(`    rejected [${id}] — base value kept, no change applied`);
+    }
+    if (decided.applied.length > 0) {
+      const decidedAt = deps.now().getTime();
+      await deps.recordTuningDecisions(decided.applied.map((c) => ({ ...c, decidedAt })));
+      lines.push(
+        `    ${decided.applied.length} accepted change${decided.applied.length === 1 ? '' : 's'} recorded to the tuning decision log (the A/B baseline for later measurement)`,
+      );
+    }
+  }
 
   // SAFE DEFAULT: `--execute` does NOT spend. Surfacing the plan is read-only;
   // running the generate slots burns credits, so we refuse to do it unattended
