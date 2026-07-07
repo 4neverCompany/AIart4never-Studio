@@ -113,7 +113,7 @@ export function applyM33AiAgentFlip<
 }
 
 /**
- * MashupForge rip — Leonardo engine removal migration.
+ * Leonardo rip — Leonardo engine removal migration.
  *
  * The Leonardo image/video engine has been removed; MiniMax + Higgsfield
  * are the only providers. Pre-rip stores carry leftover `'leonardo'`
@@ -200,7 +200,7 @@ export function rewriteLegacyLeonardoImageProvider(provider: string | undefined)
  * `'vercel-ai'`. Idempotent: a value that's already `'vercel-ai'`
  * (or `undefined`) returns the input reference unchanged.
  *
- * MashupForge rip: `applyLeonardoRemovalMigration` is the outermost
+ * Leonardo rip: `applyLeonardoRemovalMigration` is the outermost
  * step — it rewrites stale `'leonardo'` provider/model references left
  * in pre-rip stores after the earlier migrations have settled the rest.
  */

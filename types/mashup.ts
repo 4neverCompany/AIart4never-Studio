@@ -80,7 +80,7 @@ export interface GeneratedImage {
     // settings.videoProviders is the CLI-based fallback). The
     // Studio's Animate button writes the matching provider id so
     // the gallery badge + post-lifecycle code can route correctly.
-    // MashupForge rip: `'leonardo'` has been removed; the
+    // Leonardo rip: `'leonardo'` has been removed; the
     // settings-migration rewrites any persisted 'leonardo' badge to
     // 'higgsfield' on hydration so legacy gallery metadata stays valid.
     provider: 'minimax' | 'higgsfield' | 'mmx';
@@ -147,7 +147,7 @@ export interface GenerateOptions {
    * minimax-image-01 entry). Set explicitly when the caller needs to
    * force a route; otherwise the model entry decides.
    *
-   * MashupForge rip: the Leonardo engine has been removed. MiniMax
+   * Leonardo rip: the Leonardo engine has been removed. MiniMax
    * (/api/minimax-image) and Higgsfield (/api/higgsfield/image) are
    * the only image providers.
    */
@@ -287,7 +287,7 @@ export interface ScheduledPost {
 }
 
 export interface UserSettings {
-  // MashupForge rip: the Leonardo image engine has been removed.
+  // Leonardo rip: the Leonardo image engine has been removed.
   // enabledProviders now lists the live image providers. The
   // settings-migration rewrites any persisted 'leonardo' entry to
   // 'minimax' on hydration.
@@ -642,7 +642,7 @@ export interface LeonardoModelConfig {
    * Backend provider. `'minimax'` routes the request to
    * `/api/minimax-image` and uses MiniMax's `image_generation`
    * endpoint; the `apiModelId` is then the MiniMax model name
-   * (e.g. `'image-01'`). MashupForge rip: `'leonardo'` has been
+   * (e.g. `'image-01'`). Leonardo rip: `'leonardo'` has been
    * removed — the kept entry is the MiniMax image model.
    */
   provider?: 'minimax';
@@ -671,7 +671,7 @@ export const LEONARDO_SHARED_STYLES = [
   { name: 'Pro Film Photography', uuid: '581ba6d6-5aac-4492-bebe-54c424a0d46e' },
 ];
 
-// MashupForge rip: the Leonardo image catalog (nano-banana, nano-banana-2,
+// Leonardo rip: the Leonardo image catalog (nano-banana, nano-banana-2,
 // nano-banana-pro, gpt-image-1.5, gpt-image-2 — all provider:'leonardo')
 // has been removed. The array name is retained because it is the kept,
 // non-Leonardo home for the MiniMax image model and is imported by the
@@ -713,7 +713,7 @@ export const LEONARDO_MODELS: LeonardoModelConfig[] = [
  * The Director / Compare flow looks up the guide for the target model
  * (a missing key simply means "no model-specific guide").
  *
- * MashupForge rip: the Leonardo-catalog guides (nano-banana*,
+ * Leonardo rip: the Leonardo-catalog guides (nano-banana*,
  * gpt-image-*) were removed with their models. The live MiniMax +
  * Higgsfield models carry their guidance through model-specs JSON and
  * the Higgsfield skill bindings instead, so this map is currently empty
@@ -757,7 +757,7 @@ export interface LeonardoVideoModelSpec {
 export type LeonardoModelSpec = LeonardoImageModelSpec | LeonardoVideoModelSpec;
 
 export const LEONARDO_MODEL_PARAMS: Record<string, LeonardoModelSpec> = {
-  // MashupForge rip: the Leonardo image/video param specs (gpt-image-*,
+  // Leonardo rip: the Leonardo image/video param specs (gpt-image-*,
   // nano-banana-*, kling-*, veo-*, seedance-*) were removed with their
   // models. Only the kept MiniMax image model remains. `param-suggest`
   // reads this slimmer map; missing keys yield an empty perModel entry.
@@ -782,7 +782,7 @@ export function getLeonardoModel(modelId: string): LeonardoModelConfig | undefin
 /**
  * Display label for the *underlying* provider/model family behind a
  * persisted gallery image. Used in the comparison-history badge so a
- * column carries the actual model family. After the MashupForge rip the
+ * column carries the actual model family. After the Leonardo rip the
  * live providers are MiniMax + Higgsfield; legacy persisted ids that
  * predate the rip still map to their historical family label.
  *

@@ -201,7 +201,7 @@ export function useComparison({ settings, saveImage, applyWatermark }: UseCompar
           // image models) route to /api/minimax-image, which calls
           // MiniMax's native image_generation endpoint with a
           // synchronous response (no polling). The Leonardo submit-then-
-          // poll path has been removed (MashupForge rip); MiniMax is the
+          // poll path has been removed (Leonardo rip); MiniMax is the
           // live Compare backend.
           // V1.7.0-PIPELINE-HIGGSFIELD: the unified registry is the
           // authoritative provider source (LEONARDO_MODELS now only
@@ -256,7 +256,7 @@ export function useComparison({ settings, saveImage, applyWatermark }: UseCompar
               return { imageUrl: first.url, imageId: data.generationId ?? '', seed: 0 };
             }
 
-            // MashupForge rip: the Leonardo submit-then-poll branch has
+            // Leonardo rip: the Leonardo submit-then-poll branch has
             // been removed. MiniMax is the only Compare backend; a
             // non-MiniMax provider here (e.g. a higgsfield-only model
             // dropped into Compare) is surfaced verbatim rather than

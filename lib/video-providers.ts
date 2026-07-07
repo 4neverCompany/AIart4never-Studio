@@ -9,7 +9,7 @@
  * parallel via `Promise.allSettled`. Each successful result is
  * saved to the gallery with the right `modelInfo.provider` badge.
  *
- * Provider endpoints + status shapes (Leonardo OUT — MashupForge rip):
+ * Provider endpoints + status shapes (Leonardo engine ripped out):
  *   - minimax:   POST /api/minimax-video  -> { taskId, status: 'pending' }
  *                GET  /api/minimax-video/<taskId> -> { status, videoUrl? }
  *   - higgsfield:POST /api/higgsfield/video -> { completed, videoUrl?, requestId? }

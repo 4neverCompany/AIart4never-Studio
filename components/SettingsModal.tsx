@@ -413,7 +413,7 @@ export function SettingsModal({
           <div className="space-y-4 pt-4 border-t border-zinc-800">
             <label className="text-sm font-medium text-zinc-300">API Keys</label>
             {/*
-              MashupForge rip: the Leonardo API-key input has been removed
+              Leonardo rip: the Leonardo API-key input has been removed
               (Leonardo engine is gone). The settings.apiKeys.leonardo field
               is preserved on UserSettings for IDB safety but no longer has
               a rendered control. MiniMax + Higgsfield are the live engines.
