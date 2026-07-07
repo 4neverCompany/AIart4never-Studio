@@ -16,7 +16,7 @@ import { type GeneratedImage } from '../types/mashup'
 // Normalize images on load: rewrite legacy tag spelling, reset any
 // transient pipeline status that was persisted mid-flight (the work itself
 // did not survive the reload, so the status would otherwise be stuck), and
-// rewrite the legacy MashupForge `modelInfo.provider === 'leonardo'` badge
+// rewrite the legacy `modelInfo.provider === 'leonardo'` badge
 // to 'higgsfield' so the narrowed provider union stays valid and
 // persist-asset never sees a stale Leonardo ref (Leonardo engine removed).
 function normalizeOnLoad(img: GeneratedImage): GeneratedImage {

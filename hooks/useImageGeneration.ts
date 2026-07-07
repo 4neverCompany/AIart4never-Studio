@@ -567,7 +567,7 @@ Return ONLY a JSON array of objects (one per input idea, in the same order), eac
             // here. Failed submissions don't count.
             void incrementCredits(1);
           } else {
-            // MashupForge rip: the Leonardo image engine has been
+            // Leonardo rip: the Leonardo image engine has been
             // removed. MiniMax + Higgsfield are the only image
             // providers; an unknown provider here is a config/registry
             // bug, surfaced verbatim instead of silently routing to a
@@ -942,7 +942,7 @@ Return ONLY a JSON array of objects (one per input idea, in the same order), eac
           // V1.0.7-PROMPT-ENG-D: charge 1 credit per successful reroll.
           void incrementCredits(1);
         } else {
-          // MashupForge rip: Leonardo image engine removed. MiniMax +
+          // Leonardo rip: Leonardo image engine removed. MiniMax +
           // Higgsfield are the only providers; anything else is a
           // config/registry bug surfaced verbatim.
           throw new Error(

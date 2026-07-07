@@ -20,3 +20,15 @@
 # heuristic flags the `aiart4never_skills` literal (an idb-keyval store-key
 # constant, not a secret) on the M2 connectors commit. Full-fingerprint match.
 5ac0f04ec3d371e6fe221ef9a29d6f971b4346c8:lib/connectors/skills.ts:generic-api-key:20
+
+# Persistence key string in lib/growth/decision-log.ts:24. Same class as the
+# two entries above: the generic-api-key heuristic flags the
+# `aiart4never_tuning_decisions` literal (an idb-keyval store-key constant,
+# not a secret) on the Story 8-11 commit. Full-fingerprint match.
+a2492ed415186691a496a3d78b326c70c6a92239:lib/growth/decision-log.ts:generic-api-key:24
+
+# SHA256 content hash in the BMAD files manifest (row for
+# bmm/.../key-screens.md). The generic-api-key heuristic pairs the "key" in
+# the filename with the adjacent 64-char hex digest — it's a file checksum,
+# not a secret — on the BMAD 6.9.0 update commit. Full-fingerprint match.
+8ef1d45f71f111d8b26c44e6ab5db7590e9eef59:_bmad/_config/files-manifest.csv:generic-api-key:47

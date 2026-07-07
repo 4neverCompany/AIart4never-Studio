@@ -22,7 +22,7 @@ const ctaSecondary =
   'inline-flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 text-sm font-medium rounded-xl border border-zinc-700/60 transition-colors';
 
 /**
- * Gallery empty state. The MashupForge content pipeline GUI and the
+ * Gallery empty state. The legacy content pipeline GUI and the
  * inherited Compare view have both been removed, so the CTAs now point
  * at the live Gallery surface instead of the dead 'ideas' / 'pipeline' /
  * 'compare' views.
